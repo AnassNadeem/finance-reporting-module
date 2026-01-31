@@ -7,30 +7,38 @@
 
     <groupId>uk.ac.brunel.finance</groupId>
     <artifactId>finance-reporting-app</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-
-    <name>Finance Reporting App</name>
-    <description>Finance &amp; Reporting Module</description>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
-
-        <!-- PostgreSQL JDBC Driver -->
+        <!-- SQLite JDBC -->
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.3</version>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>3.45.1.0</version>
+        </dependency>
+
+        <!-- JUnit (for tests later) -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
         </dependency>
         
-        <dependency>
-			<groupId>org.mindrot</groupId>
-			<artifactId>jbcrypt</artifactId>
-			<version>0.4</version>
+        <!-- BCrypt for password hashing -->
+		<dependency>
+		    <groupId>org.mindrot</groupId>
+		    <artifactId>jbcrypt</artifactId>
+		    <version>0.4</version>
 		</dependency>
+
 
     </dependencies>
 

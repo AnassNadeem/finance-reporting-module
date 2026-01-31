@@ -1,32 +1,27 @@
 package uk.ac.brunel.finance.app.database;
 
-
-import uk.ac.brunel.finance.app.config.DatabaseConfig;
-
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-
+import java.sql.Statement;
 
 public class DatabaseConnectionManager {
 
+    private static final String DB_URL =
+            "jdbc:sqlite:src/main/resources/database/nc1605_finance.db";
 
-private static Connection connection;
+    private DatabaseConnectionManager() {
+        // prevent instantiation
+    }
 
+    public static Connection getConnection() throws SQLException {
+        Connection connection = DriverManager.getConnection(DB_URL);
 
-public static Connection getConnection() throws SQLException {
+        // IMPORTANT: enable foreign keys
+        try (Statement stmt = connection.createStatement()) {
+            stmt.execute("PRAGMA foreign_keys = ON");
+        }
 
-
-if (connection == null || connection.isClosed()) {
-connection = DriverManager.getConnection(
-DatabaseConfig.DB_URL,
-DatabaseConfig.DB_USER,
-DatabaseConfig.DB_PASSWORD
-);
-}
-
-
-return connection;
-}
+        return connection;
+    }
 }
