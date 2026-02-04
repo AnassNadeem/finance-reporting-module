@@ -11,5 +11,14 @@ String hash = PasswordHasher.hashPassword(raw);
 
 System.out.println("Hash: " + hash);
 System.out.println("Matches: " + PasswordHasher.verifyPassword(raw, hash));
+
+System.out.println(PasswordHasher.hashPassword("analyst123"));
+System.out.println(PasswordHasher.hashPassword("auditor123"));
+
+
+
+
+
 }
+
 }
