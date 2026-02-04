@@ -14,6 +14,7 @@ Connection connection = DatabaseConnectionManager.getConnection();
 System.out.println("✅ Database connected successfully");
 } catch (SQLException e) {
 e.printStackTrace();
+
 }
 }
 }

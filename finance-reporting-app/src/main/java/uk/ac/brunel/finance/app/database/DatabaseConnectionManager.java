@@ -3,25 +3,24 @@ package uk.ac.brunel.finance.app.database;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.io.File;
 
 public class DatabaseConnectionManager {
 
     private static final String DB_URL =
-            "jdbc:sqlite:src/main/resources/database/nc1605_finance.db";
-
-    private DatabaseConnectionManager() {
-        // prevent instantiation
-    }
+        "jdbc:sqlite:D:/eclipse/finance-workspace/finance-reporting-module/finance-reporting-module/finance-reporting-app/src/main/resources/database/nc1605_finance.db";
 
     public static Connection getConnection() throws SQLException {
-        Connection connection = DriverManager.getConnection(DB_URL);
 
-        // IMPORTANT: enable foreign keys
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute("PRAGMA foreign_keys = ON");
-        }
+        // 🔍 PRINT ABSOLUTE FILE PATH
+        String rawPath = DB_URL.replace("jdbc:sqlite:", "");
+        File dbFile = new File(rawPath);
 
-        return connection;
+        System.out.println("Using DB URL: " + DB_URL);
+        System.out.println("DB exists? " + dbFile.exists());
+        System.out.println("DB absolute path: " + dbFile.getAbsolutePath());
+        System.out.println("DB file size: " + dbFile.length() + " bytes");
+
+        return DriverManager.getConnection(DB_URL);
     }
 }
