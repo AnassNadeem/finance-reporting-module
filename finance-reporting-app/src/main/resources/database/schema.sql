@@ -301,6 +301,16 @@ CREATE TABLE IF NOT EXISTS Alert (
   FOREIGN KEY (sourceAnomalyID) REFERENCES FinancialAnomalies(anomalyID)
 );
 
+-- =========================
+-- ROLE BASED ACCESS CONTROL
+-- =========================
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    action TEXT NOT NULL,
+    UNIQUE (role, action)
+);
 -- ===========================================================
 -- END OF SQLITE SCHEMA
 -- ===========================================================
