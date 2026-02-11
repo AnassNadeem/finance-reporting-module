@@ -2,13 +2,8 @@ package uk.ac.brunel.finance.app.authz;
 
 import org.junit.Before;
 import org.junit.Test;
-
 import static org.junit.Assert.*;
 
-/**
- * Unit tests for authorization logic.
- * These tests do NOT use the database.
- */
 public class AuthorizationServiceTest {
 
     private AuthorizationService authz;
@@ -35,25 +30,17 @@ public class AuthorizationServiceTest {
 
     @Test
     public void financeUserCanManageData() {
-        assertTrue(
-            authz.isAllowed(Role.FINANCE_USER, Action.MANAGE_FINANCE_DATA)
-        );
+        assertTrue(authz.isAllowed(Role.FINANCE_USER, Action.MANAGE_FINANCE_DATA));
     }
 
     @Test
     public void financeUserCannotExport() {
-        assertFalse(
-            authz.isAllowed(Role.FINANCE_USER, Action.EXPORT_REPORTS)
-        );
+        assertFalse(authz.isAllowed(Role.FINANCE_USER, Action.EXPORT_REPORTS));
     }
 
     @Test
-    public void viewerCanOnlyViewDashboard() {
-        assertTrue(
-            authz.isAllowed(Role.VIEWER, Action.VIEW_DASHBOARD)
-        );
-        assertFalse(
-            authz.isAllowed(Role.VIEWER, Action.MANAGE_FINANCE_DATA)
-        );
+    public void viewerCanOnlyView() {
+        assertTrue(authz.isAllowed(Role.VIEWER, Action.VIEW_DASHBOARD));
+        assertFalse(authz.isAllowed(Role.VIEWER, Action.MANAGE_FINANCE_DATA));
     }
 }

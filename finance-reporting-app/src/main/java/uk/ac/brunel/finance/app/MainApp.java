@@ -17,46 +17,86 @@ public class MainApp extends Application {
     @Override
     public void start(Stage stage) {
 
-        // 🔐 TEMP: simulate logged-in user
-        // (Later comes from AuthService)
+        // TEMP login (Phase 3.4)
         CurrentUser.login(Role.FINANCE_USER);
 
-        // ✅ REAL database-backed authorization
         AuthorizationService authz = new DatabaseAuthorizationService();
 
-        Button viewDashboardBtn = new Button("View Dashboard");
-        Button manageDataBtn = new Button("Manage Finance Data");
-        Button exportBtn = new Button("Export Reports");
-        Button manageUsersBtn = new Button("Manage Users");
+        Button viewDashboard = new Button("View Dashboard");
+        Button manageData = new Button("Manage Finance Data");
+        Button exportReports = new Button("Export Reports");
+        Button manageUsers = new Button("Manage Users");
 
-        // Authorization enforcement (DB-driven)
-        viewDashboardBtn.setDisable(
-            !authz.isAllowed(CurrentUser.getRole(), Action.VIEW_DASHBOARD)
-        );
-
-        manageDataBtn.setDisable(
+        // Initial RBAC enforcement
+        manageData.setDisable(
             !authz.isAllowed(CurrentUser.getRole(), Action.MANAGE_FINANCE_DATA)
         );
 
-        exportBtn.setDisable(
+        exportReports.setDisable(
             !authz.isAllowed(CurrentUser.getRole(), Action.EXPORT_REPORTS)
         );
 
-        manageUsersBtn.setDisable(
+        manageUsers.setDisable(
             !authz.isAllowed(CurrentUser.getRole(), Action.MANAGE_USERS)
         );
 
+        // -----------------------------
+        // CLICK HANDLERS (CRITICAL)
+        // -----------------------------
+
+        viewDashboard.setOnAction(e -> {
+            System.out.println("CLICK: View Dashboard");
+
+            if (!authz.isAllowed(CurrentUser.getRole(), Action.VIEW_DASHBOARD)) {
+                System.out.println("DENIED: Session expired or no permission");
+                return;
+            }
+
+            System.out.println("ALLOWED: Dashboard opened");
+        });
+
+        manageData.setOnAction(e -> {
+            System.out.println("CLICK: Manage Finance Data");
+
+            if (!authz.isAllowed(CurrentUser.getRole(), Action.MANAGE_FINANCE_DATA)) {
+                System.out.println("DENIED: Session expired or no permission");
+                return;
+            }
+
+            System.out.println("ALLOWED: Managing finance data");
+        });
+
+        exportReports.setOnAction(e -> {
+            System.out.println("CLICK: Export Reports");
+
+            if (!authz.isAllowed(CurrentUser.getRole(), Action.EXPORT_REPORTS)) {
+                System.out.println("DENIED: Session expired or no permission");
+                return;
+            }
+
+            System.out.println("ALLOWED: Exporting reports");
+        });
+
+        manageUsers.setOnAction(e -> {
+            System.out.println("CLICK: Manage Users");
+
+            if (!authz.isAllowed(CurrentUser.getRole(), Action.MANAGE_USERS)) {
+                System.out.println("DENIED: Session expired or no permission");
+                return;
+            }
+
+            System.out.println("ALLOWED: Managing users");
+        });
+
         VBox root = new VBox(10,
-                viewDashboardBtn,
-                manageDataBtn,
-                exportBtn,
-                manageUsersBtn
+                viewDashboard,
+                manageData,
+                exportReports,
+                manageUsers
         );
 
-        Scene scene = new Scene(root, 300, 200);
-
-        stage.setTitle("Finance App - RBAC Demo");
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 320, 220));
+        stage.setTitle("Finance App – Phase 3.4");
         stage.show();
     }
 

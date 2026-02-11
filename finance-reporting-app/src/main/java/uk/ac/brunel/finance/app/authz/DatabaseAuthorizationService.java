@@ -6,10 +6,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 
-/**
- * Database-backed authorization service.
- * Reads permissions from role_permissions table.
- */
 public class DatabaseAuthorizationService extends AuthorizationService {
 
     @Override
@@ -19,6 +15,8 @@ public class DatabaseAuthorizationService extends AuthorizationService {
             "SELECT COUNT(*) " +
             "FROM role_permissions " +
             "WHERE role = ? AND action = ?";
+        System.out.println("AUTHZ CHECK: " + role + " → " + action);
+
 
         try (Connection conn = DatabaseConnectionManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

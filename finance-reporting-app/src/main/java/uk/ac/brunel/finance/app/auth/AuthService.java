@@ -23,7 +23,6 @@ public class AuthService {
             stmt.setString(1, email);
             ResultSet rs = stmt.executeQuery();
 
-            // Email not found
             if (!rs.next()) {
                 return AuthResult.failure("Invalid email or password");
             }
@@ -36,16 +35,13 @@ public class AuthService {
                 storedHash
             );
 
-            // Password incorrect
             if (!valid) {
                 return AuthResult.failure("Invalid email or password");
             }
 
-            // ✅ LOGIN USER (Phase 3.3 integration)
-            Role userRole = Role.valueOf(roleFromDb);
-            CurrentUser.login(userRole);
+            Role role = Role.valueOf(roleFromDb);
+            CurrentUser.login(role);
 
-            // ✅ RETURN RESULT
             return AuthResult.success("Login successful", roleFromDb);
 
         } catch (Exception e) {
