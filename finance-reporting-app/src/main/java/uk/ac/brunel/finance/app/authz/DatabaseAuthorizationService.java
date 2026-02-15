@@ -15,8 +15,6 @@ public class DatabaseAuthorizationService extends AuthorizationService {
             "SELECT COUNT(*) " +
             "FROM role_permissions " +
             "WHERE role = ? AND action = ?";
-        System.out.println("AUTHZ CHECK: " + role + " → " + action);
-
 
         try (Connection conn = DatabaseConnectionManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {

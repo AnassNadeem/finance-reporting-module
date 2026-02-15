@@ -13,9 +13,9 @@ public class AuthService {
     public AuthResult authenticate(String email, String plainPassword) {
 
         String sql =
-            "SELECT passwordHash, role " +
+            "SELECT userID, passwordHash, role " +
             "FROM FUser " +
-            "WHERE email = ?";
+            "WHERE email = ? AND isActive = 1";
 
         try (Connection conn = DatabaseConnectionManager.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -27,22 +27,23 @@ public class AuthService {
                 return AuthResult.failure("Invalid email or password");
             }
 
+            int userId = rs.getInt("userID");
             String storedHash = rs.getString("passwordHash");
-            String roleFromDb = rs.getString("role");
+            String roleStr = rs.getString("role");
 
-            boolean valid = PasswordHasher.verifyPassword(
-                plainPassword,
-                storedHash
-            );
-
-            if (!valid) {
+            if (!PasswordHasher.verifyPassword(plainPassword, storedHash)) {
                 return AuthResult.failure("Invalid email or password");
             }
 
-            Role role = Role.valueOf(roleFromDb);
-            CurrentUser.login(role);
+            Role role = Role.valueOf(roleStr.toUpperCase());
 
-            return AuthResult.success("Login successful", roleFromDb);
+            // ✅ Create domain User
+            User user = new User(userId, email, role);
+
+            // ✅ Start session
+            SessionManager.startSession(user);
+
+            return AuthResult.success("Login successful", role.name());
 
         } catch (Exception e) {
             e.printStackTrace();
