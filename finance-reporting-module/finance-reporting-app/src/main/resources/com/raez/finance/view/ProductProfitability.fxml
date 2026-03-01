@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.ProductProfitabilityController">
+   <content>
+      <VBox spacing="24.0" style="-fx-background-color: #F9FAFB;">
+         <padding>
+            <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
+         </padding>
+         <children>
+
+            <HBox alignment="CENTER_LEFT">
+               <children>
+                  <VBox>
+                     <children>
+                        <Label text="Product Profitability" textFill="#111827">
+                           <font><Font name="System Bold" size="24.0" /></font>
+                        </Label>
+                        <Label text="Product performance and margin analysis" textFill="#4B5563">
+                           <font><Font size="14.0" /></font>
+                        </Label>
+                     </children>
+                  </VBox>
+                  <Region HBox.hgrow="ALWAYS" />
+                  
+                  <MenuButton mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export Reports">
+                    <items>
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV" />
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF" />
+                    </items>
+                     <graphic>
+                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" fill="TRANSPARENT" stroke="#374151" strokeWidth="1.5" />
+                     </graphic>
+                  </MenuButton>
+               </children>
+            </HBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding>
+                  <Insets bottom="16.0" left="24.0" right="24.0" top="16.0" />
+               </padding>
+               <children>
+                  <VBox spacing="8.0" maxWidth="300.0">
+                     <children>
+                        <Label text="Category Filter" textFill="#374151" />
+                        <ComboBox fx:id="cmbCategoryFilter" maxWidth="Infinity" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     </children>
+                  </VBox>
+               </children>
+            </VBox>
+
+            <GridPane hgap="24.0" vgap="24.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+              </columnConstraints>
+               <children>
+                  
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #EFF6FF; -fx-background-radius: 8;">
+                           <children><SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" stroke="#1E2939" strokeWidth="2.0" /></children>
+                           <VBox.margin><Insets bottom="16.0" /></VBox.margin>
+                        </StackPane>
+                        <Label text="Total Revenue" textFill="#4B5563" />
+                        <Label fx:id="lblTotalRevenue" text="\$5,503,354" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #ECFDF5; -fx-background-radius: 8;">
+                           <children><SVGPath content="M23 6l-9.5 9.5-5-5L1 18 M17 6h6v6" fill="TRANSPARENT" stroke="#10B981" strokeWidth="2.0" /></children>
+                           <VBox.margin><Insets bottom="16.0" /></VBox.margin>
+                        </StackPane>
+                        <Label text="Total Profit" textFill="#4B5563" />
+                        <Label fx:id="lblTotalProfit" text="\$1,853,364" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #F5F3FF; -fx-background-radius: 8;">
+                           <children><SVGPath content="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12" fill="TRANSPARENT" stroke="#9333EA" strokeWidth="2.0" /></children>
+                           <VBox.margin><Insets bottom="16.0" /></VBox.margin>
+                        </StackPane>
+                        <Label text="Average Margin" textFill="#4B5563" />
+                        <Label fx:id="lblAvgMargin" text="33.7%" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #FFF7ED; -fx-background-radius: 8;">
+                           <children><SVGPath content="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" fill="TRANSPARENT" stroke="#EA580C" strokeWidth="2.0" /></children>
+                           <VBox.margin><Insets bottom="16.0" /></VBox.margin>
+                        </StackPane>
+                        <Label text="Low Margin Products" textFill="#4B5563" />
+                        <Label fx:id="lblLowMarginCount" text="8" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+               </children>
+            </GridPane>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" prefHeight="400.0">
+               <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+               <children>
+                  <Label text="Profitability by Category" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font><VBox.margin><Insets bottom="16.0" /></VBox.margin></Label>
+                  <BarChart fx:id="chartProfitability" VBox.vgrow="ALWAYS" legendVisible="true" legendSide="BOTTOM">
+                    <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                    <yAxis><NumberAxis side="LEFT" /></yAxis>
+                  </BarChart>
+               </children>
+            </VBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <children>
+                  <VBox style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
+                     <padding><Insets bottom="16.0" left="24.0" right="24.0" top="16.0" /></padding>
+                     <children>
+                        <Label text="Product Analysis" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                        <Label text="Detailed profitability metrics by product" textFill="#4B5563" />
+                     </children>
+                  </VBox>
+                  <TableView fx:id="tblProducts" prefHeight="350.0" style="-fx-background-color: white;">
+                    <columns>
+                      <TableColumn fx:id="colName" prefWidth="250.0" text="Product Name" />
+                      <TableColumn fx:id="colCategory" prefWidth="120.0" text="Category" />
+                      <TableColumn fx:id="colRevenue" prefWidth="120.0" text="Revenue" />
+                      <TableColumn fx:id="colCost" prefWidth="120.0" text="Cost" />
+                      <TableColumn fx:id="colProfit" prefWidth="120.0" text="Profit" />
+                      <TableColumn fx:id="colMargin" prefWidth="100.0" text="Margin" />
+                      <TableColumn fx:id="colUnits" prefWidth="100.0" text="Units Sold" />
+                      <TableColumn fx:id="colTrend" prefWidth="100.0" text="Trend" />
+                    </columns>
+                  </TableView>
+               </children>
+            </VBox>
+
+            <HBox spacing="24.0">
+               <children>
+                  
+                  <VBox style="-fx-background-color: #F0FDF4; -fx-border-color: #A7F3D0; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS" prefWidth="500.0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <Label text="High Performers" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font><VBox.margin><Insets bottom="16.0" /></VBox.margin></Label>
+                        <VBox fx:id="vboxHighPerformers" spacing="12.0">
+                           </VBox>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: #FFF7ED; -fx-border-color: #FED7AA; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS" prefWidth="500.0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <Label text="Needs Attention" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font><VBox.margin><Insets bottom="16.0" /></VBox.margin></Label>
+                        <VBox fx:id="vboxNeedsAttention" spacing="12.0">
+                           </VBox>
+                     </children>
+                  </VBox>
+
+               </children>
+            </HBox>
+
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>

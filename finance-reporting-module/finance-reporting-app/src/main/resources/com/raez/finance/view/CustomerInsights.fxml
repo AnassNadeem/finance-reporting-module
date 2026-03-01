@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.CustomerInsightsController">
+   <content>
+      <VBox spacing="24.0" style="-fx-background-color: #F9FAFB;">
+         <padding>
+            <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
+         </padding>
+         <children>
+
+            <HBox alignment="CENTER_LEFT">
+               <children>
+                  <VBox>
+                     <children>
+                        <Label text="Customer Insights" textFill="#111827">
+                           <font><Font name="System Bold" size="24.0" /></font>
+                        </Label>
+                        <Label text="Customer behavior and performance analytics" textFill="#4B5563">
+                           <font><Font size="14.0" /></font>
+                        </Label>
+                     </children>
+                  </VBox>
+                  <Region HBox.hgrow="ALWAYS" />
+                  
+                  <MenuButton mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export Reports">
+                    <items>
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV" />
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF" />
+                    </items>
+                     <graphic>
+                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" fill="TRANSPARENT" stroke="#374151" strokeWidth="1.5" />
+                     </graphic>
+                  </MenuButton>
+               </children>
+            </HBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding>
+                  <Insets bottom="16.0" left="24.0" right="24.0" top="16.0" />
+               </padding>
+               <children>
+                  <VBox spacing="8.0" maxWidth="300.0">
+                     <children>
+                        <Label text="Customer Filter" textFill="#374151" />
+                        <ComboBox fx:id="cmbCustomerFilter" maxWidth="Infinity" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     </children>
+                  </VBox>
+               </children>
+            </VBox>
+
+            <GridPane hgap="24.0" vgap="24.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+              </columnConstraints>
+               <children>
+                  
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #EFF6FF; -fx-background-radius: 8;">
+                           <children><SVGPath content="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" fill="TRANSPARENT" stroke="#1E2939" strokeWidth="2.0" /></children>
+                        </StackPane>
+                        <Region minHeight="16.0" />
+                        <Label text="Total Customers" textFill="#4B5563" />
+                        <Label fx:id="lblTotalCustomers" text="1,247" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #ECFDF5; -fx-background-radius: 8;">
+                           <children><SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" stroke="#10B981" strokeWidth="2.0" /></children>
+                        </StackPane>
+                        <Region minHeight="16.0" />
+                        <Label text="Avg. Spending Per Customer" textFill="#4B5563" />
+                        <Label fx:id="lblAvgSpending" text="\$9,431" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #F5F3FF; -fx-background-radius: 8;">
+                           <children><SVGPath content="M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M20 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" fill="TRANSPARENT" stroke="#9333EA" strokeWidth="2.0" /></children>
+                        </StackPane>
+                        <Region minHeight="16.0" />
+                        <Label text="Avg. Purchase Frequency" textFill="#4B5563" />
+                        <Label fx:id="lblAvgFrequency" text="3.2 / month" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <StackPane alignment="CENTER_LEFT" prefHeight="48.0" prefWidth="48.0" maxWidth="48.0" style="-fx-background-color: #FEFCE8; -fx-background-radius: 8;">
+                           <children><SVGPath content="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" fill="TRANSPARENT" stroke="#CA8A04" strokeWidth="2.0" /></children>
+                        </StackPane>
+                        <Region minHeight="16.0" />
+                        <Label text="Company Customers" textFill="#4B5563" />
+                        <Label fx:id="lblCompanyCustomers" text="6" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font></Label>
+                     </children>
+                  </VBox>
+               </children>
+            </GridPane>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" prefHeight="350.0">
+               <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+               <children>
+                  <Label text="Purchase Frequency Trend" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                  <Region minHeight="16.0" />
+                  <BarChart fx:id="chartFrequency" VBox.vgrow="ALWAYS" legendVisible="false">
+                    <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                    <yAxis><NumberAxis side="LEFT" /></yAxis>
+                  </BarChart>
+               </children>
+            </VBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <children>
+                  <VBox style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
+                     <padding><Insets bottom="16.0" left="24.0" right="24.0" top="16.0" /></padding>
+                     <children>
+                        <Label text="Top Buyers" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                        <Label text="Customers ranked by total spending" textFill="#4B5563" />
+                     </children>
+                  </VBox>
+                  <TableView fx:id="tblTopBuyers" prefHeight="300.0" style="-fx-background-color: white;">
+                    <columns>
+                      <TableColumn fx:id="colRank" prefWidth="60.0" text="Rank" />
+                      <TableColumn fx:id="colName" prefWidth="200.0" text="Customer Name" />
+                      <TableColumn fx:id="colType" prefWidth="120.0" text="Type" />
+                      <TableColumn fx:id="colCountry" prefWidth="100.0" text="Country" />
+                      <TableColumn fx:id="colSpent" prefWidth="120.0" text="Total Spent" />
+                      <TableColumn fx:id="colOrders" prefWidth="100.0" text="Order Count" />
+                      <TableColumn fx:id="colAOV" prefWidth="120.0" text="Avg. Order Value" />
+                      <TableColumn fx:id="colLastPurchase" prefWidth="120.0" text="Last Purchase" />
+                    </columns>
+                  </TableView>
+               </children>
+            </VBox>
+
+            <HBox spacing="24.0">
+               <children>
+                  
+                  <VBox style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS" prefWidth="500.0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <HBox alignment="TOP_LEFT" spacing="12.0">
+                           <children>
+                              <SVGPath content="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" fill="TRANSPARENT" stroke="#DC2626" strokeWidth="2.0" />
+                              <VBox>
+                                 <children>
+                                    <Label text="Unusual Refunds Alert" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                                    <Region minHeight="12.0" />
+                                    <VBox spacing="12.0">
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#DC2626" radius="3.0" translateY="6.0" />
+                                          <Label text="InnovateCo requested 3 refunds this month (unusual pattern)" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#DC2626" radius="3.0" translateY="6.0" />
+                                          <Label text="GlobalTech Solutions refund rate increased by 40% vs. last month" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#DC2626" radius="3.0" translateY="6.0" />
+                                          <Label text="5 individual customers haven't made purchases in 90+ days" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                    </VBox>
+                                 </children>
+                              </VBox>
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: #FFFBEB; -fx-border-color: #FDE68A; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS" prefWidth="500.0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <HBox alignment="TOP_LEFT" spacing="12.0">
+                           <children>
+                              <SVGPath content="M23 6l-9.5 9.5-5-5L1 18 M17 6h6v6" fill="TRANSPARENT" stroke="#D97706" strokeWidth="2.0" />
+                              <VBox>
+                                 <children>
+                                    <Label text="Customer Product Issues" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                                    <Region minHeight="12.0" />
+                                    <VBox spacing="12.0">
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#D97706" radius="3.0" translateY="6.0" />
+                                          <Label text="AR7 Robots seeing low adoption among individual customers" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#D97706" radius="3.0" translateY="6.0" />
+                                          <Label text="2 company customers downgraded their service tier" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#D97706" radius="3.0" translateY="6.0" />
+                                          <Label text="Support tickets increased 25% for Drone Accessories" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                    </VBox>
+                                 </children>
+                              </VBox>
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+
+               </children>
+            </HBox>
+
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>

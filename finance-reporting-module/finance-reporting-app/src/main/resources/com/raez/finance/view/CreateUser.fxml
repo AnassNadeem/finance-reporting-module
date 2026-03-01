@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.raez.finance.controller.CreateUserController"
+           styleClass="app-background">
+
+    <children>
+        <VBox alignment="CENTER" spacing="16">
+            <children>
+                <VBox styleClass="card" spacing="12" alignment="CENTER">
+                    <children>
+                        <Label text="Create User" styleClass="title-label"/>
+                        <Label text="Adds a new FUser to finance_raez.db (BCrypt hashed password)" styleClass="subtitle-label"/>
+
+                        <GridPane hgap="10" vgap="10" maxWidth="420">
+                            <columnConstraints>
+                                <ColumnConstraints minWidth="120" halignment="RIGHT"/>
+                                <ColumnConstraints hgrow="ALWAYS"/>
+                            </columnConstraints>
+
+                            <children>
+                                <Label text="Email" styleClass="field-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <TextField fx:id="emailField" promptText="user@example.com" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                                <Label text="Username" styleClass="field-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <TextField fx:id="usernameField" promptText="username" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                                <Label text="Password" styleClass="field-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <PasswordField fx:id="passwordField" promptText="Password" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                                <Label text="Role" styleClass="field-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                <ComboBox fx:id="roleCombo" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+                                <Label text="First name" styleClass="field-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                                <TextField fx:id="firstNameField" promptText="First name" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+                                <Label text="Last name" styleClass="field-label" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                                <TextField fx:id="lastNameField" promptText="Last name" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+                                <Label text="Phone" styleClass="field-label" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                                <TextField fx:id="phoneField" promptText="Phone" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+
+                                <Label text="Active" styleClass="field-label" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+                                <CheckBox fx:id="activeCheck" text="isActive = 1" selected="true"
+                                          GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                            </children>
+                        </GridPane>
+
+                        <Label fx:id="statusLabel" text="" styleClass="error-label"/>
+
+                        <HBox spacing="10" alignment="CENTER">
+                            <children>
+                                <Button text="Create"
+                                        styleClass="primary-button"
+                                        onAction="#handleCreate"/>
+                                <Button text="Close"
+                                        styleClass="primary-button-outline"
+                                        onAction="#handleClose"/>
+                            </children>
+                        </HBox>
+                    </children>
+                    <padding>
+                        <Insets top="24" right="24" bottom="24" left="24"/>
+                    </padding>
+                </VBox>
+            </children>
+        </VBox>
+    </children>
+</StackPane>

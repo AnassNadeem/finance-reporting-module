@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.effect.DropShadow?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.paint.Color?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<HBox fx:id="rootBox" alignment="TOP_LEFT" minWidth="320.0" maxWidth="450.0" spacing="12.0" style="-fx-background-color: #EFF6FF; -fx-border-color: #BFDBFE; -fx-border-radius: 8; -fx-background-radius: 8;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.NotificationToastController">
+   <padding>
+      <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
+   </padding>
+   <effect>
+      <DropShadow blurType="GAUSSIAN" height="15.0" radius="7.0" width="15.0">
+         <color>
+            <Color opacity="0.15" />
+         </color>
+      </DropShadow>
+   </effect>
+   <children>
+      
+      <SVGPath fx:id="iconPath" content="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M12 8v4 M12 16h.01" fill="TRANSPARENT" stroke="#2563EB" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0">
+         <HBox.margin>
+            <Insets top="2.0" />
+         </HBox.margin>
+      </SVGPath>
+      
+      <Label fx:id="lblMessage" text="Notification message goes here." textFill="#111827" wrapText="true" HBox.hgrow="ALWAYS">
+         <font>
+            <Font size="14.0" />
+         </font>
+         <HBox.margin>
+            <Insets top="1.0" />
+         </HBox.margin>
+      </Label>
+      
+      <Region HBox.hgrow="ALWAYS" />
+      
+      <Button fx:id="btnClose" mnemonicParsing="false" onAction="#handleClose" style="-fx-background-color: transparent; -fx-cursor: hand;">
+         <graphic>
+            <SVGPath content="M18 6L6 18 M6 6l12 12" fill="TRANSPARENT" stroke="#6B7280" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+         </graphic>
+         <HBox.margin>
+            <Insets right="-8.0" top="-4.0" />
+         </HBox.margin>
+      </Button>
+      
+   </children>
+</HBox>

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.NotificationsAlertsController">
+   <content>
+      <VBox spacing="24.0" style="-fx-background-color: #F9FAFB;">
+         <padding>
+            <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
+         </padding>
+         <children>
+
+            <VBox>
+               <children>
+                  <Label text="Notifications &amp; Alerts" textFill="#111827">
+                     <font><Font name="System Bold" size="24.0" /></font>
+                  </Label>
+                  <Label text="System notifications and important alerts" textFill="#4B5563">
+                     <font><Font size="14.0" /></font>
+                  </Label>
+               </children>
+            </VBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding>
+                  <Insets bottom="24.0" left="24.0" right="24.0" top="24.0" />
+               </padding>
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="8.0">
+                     <children>
+                        <SVGPath content="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" fill="TRANSPARENT" stroke="#DC2626" strokeWidth="2.0" />
+                        <Label text="Critical Alerts" textFill="#111827">
+                           <font><Font name="System Bold" size="18.0" /></font>
+                        </Label>
+                     </children>
+                     <VBox.margin>
+                        <Insets bottom="16.0" />
+                     </VBox.margin>
+                  </HBox>
+                  
+                  <VBox fx:id="vboxAlerts" spacing="16.0">
+                     <HBox style="-fx-background-color: #FEF2F2; -fx-border-color: #EF4444; -fx-border-width: 0 0 0 4; -fx-background-radius: 0 8 8 0;">
+                        <padding><Insets bottom="16.0" left="16.0" right="16.0" top="16.0" /></padding>
+                        <children>
+                           <SVGPath content="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" fill="TRANSPARENT" stroke="#DC2626" strokeWidth="2.0" />
+                           <VBox HBox.hgrow="ALWAYS"><padding><Insets left="12.0" /></padding>
+                              <Label text="Critical: High Refund Rate" textFill="#7F1D1D"><font><Font name="System Bold" size="14.0" /></font><VBox.margin><Insets bottom="4.0" /></VBox.margin></Label>
+                              <Label text="Electronics category experiencing 15% increase in refunds. Immediate action required." textFill="#B91C1C" wrapText="true" />
+                           </VBox>
+                        </children>
+                     </HBox>
+                     
+                     <HBox style="-fx-background-color: #FEFCE8; -fx-border-color: #EAB308; -fx-border-width: 0 0 0 4; -fx-background-radius: 0 8 8 0;">
+                        <padding><Insets bottom="16.0" left="16.0" right="16.0" top="16.0" /></padding>
+                        <children>
+                           <SVGPath content="M23 6l-9.5 9.5-5-5L1 18 M17 6h6v6" fill="TRANSPARENT" stroke="#CA8A04" strokeWidth="2.0" />
+                           <VBox HBox.hgrow="ALWAYS"><padding><Insets left="12.0" /></padding>
+                              <Label text="Product Performance Issue" textFill="#713F12"><font><Font name="System Bold" size="14.0" /></font><VBox.margin><Insets bottom="4.0" /></VBox.margin></Label>
+                              <Label text="SKU-4512 sales declined 40% this week. Review product listing and pricing." textFill="#A16207" wrapText="true" />
+                           </VBox>
+                        </children>
+                     </HBox>
+                  </VBox>
+               </children>
+            </VBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="8.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
+                     <padding>
+                        <Insets bottom="24.0" left="24.0" right="24.0" top="24.0" />
+                     </padding>
+                     <children>
+                        <SVGPath content="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0" fill="TRANSPARENT" stroke="#4B5563" strokeWidth="2.0" />
+                        <Label text="All Notifications" textFill="#111827">
+                           <font><Font name="System Bold" size="18.0" /></font>
+                        </Label>
+                     </children>
+                  </HBox>
+
+                  <VBox fx:id="vboxNotifications">
+                     <HBox style="-fx-background-color: #EFF6FF; -fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0; -fx-cursor: hand;">
+                        <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                        <children>
+                           <SVGPath content="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4L12 14.01l-3-3" fill="TRANSPARENT" stroke="#16A34A" strokeWidth="2.0" />
+                           <VBox HBox.hgrow="ALWAYS"><padding><Insets left="16.0" /></padding>
+                              <HBox alignment="CENTER_LEFT">
+                                 <Label text="Payment Processed Successfully" textFill="#111827" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="14.0" /></font></Label>
+                                 <Region HBox.hgrow="ALWAYS" />
+                                 <Circle fill="#2563EB" radius="4.0" />
+                              </HBox>
+                              <Label text="Payment of \$12,500 from Acme Corp has been processed." textFill="#4B5563" wrapText="true"><VBox.margin><Insets bottom="8.0" top="4.0" /></VBox.margin></Label>
+                              <Label text="2 minutes ago" textFill="#6B7280"><font><Font size="12.0" /></font></Label>
+                           </VBox>
+                        </children>
+                     </HBox>
+
+                     <HBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0; -fx-cursor: hand;">
+                        <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                        <children>
+                           <SVGPath content="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M12 8v4 M12 16h.01" fill="TRANSPARENT" stroke="#2563EB" strokeWidth="2.0" />
+                           <VBox HBox.hgrow="ALWAYS"><padding><Insets left="16.0" /></padding>
+                              <HBox alignment="CENTER_LEFT">
+                                 <Label text="New Order Received" textFill="#111827" HBox.hgrow="ALWAYS"><font><Font name="System Bold" size="14.0" /></font></Label>
+                                 <Region HBox.hgrow="ALWAYS" />
+                              </HBox>
+                              <Label text="Order #ORD-1847 has been placed by TechStart Inc." textFill="#4B5563" wrapText="true"><VBox.margin><Insets bottom="8.0" top="4.0" /></VBox.margin></Label>
+                              <Label text="1 hour ago" textFill="#6B7280"><font><Font size="12.0" /></font></Label>
+                           </VBox>
+                        </children>
+                     </HBox>
+                  </VBox>
+               </children>
+            </VBox>
+
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>
