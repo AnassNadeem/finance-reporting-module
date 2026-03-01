@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns="http://javafx.com/javafx"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.raez.finance.controller.LoginController"
+           styleClass="app-background">
+    <children>
+                <VBox alignment="TOP_LEFT" spacing="16">
+            <children>
+                <Hyperlink text="Back to Role Selection"
+                           styleClass="back-link"
+                           onAction="#handleBackToRoleSelection"/>
+                <Pane minHeight="10" maxHeight="10"/>
+                <VBox alignment="CENTER" spacing="16" StackPane.alignment="CENTER">
+                    <children>
+                        <VBox styleClass="card" spacing="16" alignment="CENTER">
+                            <children>
+                                <Label text="\$" styleClass="icon-circle"/>
+                                <VBox alignment="CENTER" spacing="4">
+                                    <children>
+                                        <Label fx:id="titleLabel" text="Finance User Login" styleClass="title-label"/>
+                                        <Label fx:id="subtitleLabel" text="Finance &amp; Reporting Access" styleClass="subtitle-label"/>
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="8" maxWidth="260">
+                                    <children>
+                                        <Label text="Username / Email" styleClass="field-label"/>
+                                        <TextField fx:id="emailField" promptText="Enter your email"/>
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="8" maxWidth="260">
+                                    <children>
+                                        <Label text="Password" styleClass="field-label"/>
+                                        <PasswordField fx:id="passwordField" promptText="Enter your password"/>
+                                    </children>
+                                </VBox>
+
+                                <Button fx:id="loginButton"
+                                        text="Login as Finance User"
+                                        onAction="#handleLogin"
+                                        maxWidth="260"
+                                        styleClass="primary-button"/>
+
+                                <Hyperlink text="Forgot Password?"
+                                           styleClass="link-muted"
+                                           onAction="#handleForgotPassword"/>
+
+                                <Label fx:id="errorLabel" text="" styleClass="error-label"/>
+
+                                <Label text="First-time users: You will be required to change your temporary password immediately after login."
+                                       wrapText="true"
+                                       maxWidth="260"
+                                       styleClass="info-banner"/>
+
+                                <Hyperlink text="Report Technical Issues" styleClass="link-muted"/>
+                            </children>
+                            <padding>
+                                <Insets top="32" right="32" bottom="32" left="32"/>
+                            </padding>
+                        </VBox>
+                    </children>
+                </VBox>
+            </children>
+            <padding>
+                <Insets top="24" right="24" bottom="24" left="24"/>
+            </padding>
+        </VBox>
+    </children>
+</StackPane>

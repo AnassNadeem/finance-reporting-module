@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefWidth="256.0" style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-width: 0 1 0 0;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.SidebarController">
+   <children>
+      
+      <VBox style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
+         <padding>
+            <Insets bottom="24.0" left="24.0" right="24.0" top="24.0" />
+         </padding>
+         <children>
+            <Label text="RAEZ Finance" textFill="#111827">
+               <font>
+                  <Font name="System Bold" size="20.0" />
+               </font>
+            </Label>
+            <Label text="Portal System" textFill="#4B5563">
+               <font>
+                  <Font size="14.0" />
+               </font>
+               <VBox.margin>
+                  <Insets top="4.0" />
+               </VBox.margin>
+            </Label>
+         </children>
+      </VBox>
+
+      <VBox spacing="8.0" VBox.vgrow="ALWAYS">
+         <padding>
+            <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
+         </padding>
+         <children>
+            
+            <Button fx:id="btnDashboard" alignment="BASELINE_LEFT" graphicTextGap="12.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleNavDashboard" prefHeight="45.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;" text="Dashboard">
+               <graphic>
+                  <SVGPath content="M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z" fill="WHITE" />
+               </graphic>
+               <font><Font size="14.0" /></font>
+            </Button>
+
+            <Button fx:id="btnReports" alignment="BASELINE_LEFT" graphicTextGap="12.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleNavReports" prefHeight="45.0" style="-fx-background-color: transparent; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;" text="Reports">
+               <graphic>
+                  <SVGPath content="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+               </graphic>
+               <font><Font size="14.0" /></font>
+            </Button>
+
+            <Button fx:id="btnInsights" alignment="BASELINE_LEFT" graphicTextGap="12.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleNavInsights" prefHeight="45.0" style="-fx-background-color: transparent; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;" text="Customer Insights">
+               <graphic>
+                  <SVGPath content="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+               </graphic>
+               <font><Font size="14.0" /></font>
+            </Button>
+
+            <Button fx:id="btnProfitability" alignment="BASELINE_LEFT" graphicTextGap="12.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleNavProfitability" prefHeight="45.0" style="-fx-background-color: transparent; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;" text="Product Profitability">
+               <graphic>
+                  <SVGPath content="M23 6l-9.5 9.5-5-5L1 18 M17 6h6v6" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+               </graphic>
+               <font><Font size="14.0" /></font>
+            </Button>
+
+            <Button fx:id="btnSettings" alignment="BASELINE_LEFT" graphicTextGap="12.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleNavSettings" prefHeight="45.0" style="-fx-background-color: transparent; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;" text="Settings">
+               <graphic>
+                  <SVGPath content="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" scaleX="0.8" scaleY="0.8"/>
+               </graphic>
+               <font><Font size="14.0" /></font>
+            </Button>
+
+         </children>
+      </VBox>
+
+      <VBox style="-fx-border-color: #E5E7EB; -fx-border-width: 1 0 0 0;">
+         <padding>
+            <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
+         </padding>
+         <children>
+            
+            <VBox style="-fx-background-color: #F9FAFB; -fx-background-radius: 8;">
+               <padding>
+                  <Insets bottom="12.0" left="16.0" right="16.0" top="12.0" />
+               </padding>
+               <VBox.margin>
+                  <Insets bottom="12.0" />
+               </VBox.margin>
+               <children>
+                  <Label text="System Version" textFill="#4B5563">
+                     <font><Font size="12.0" /></font>
+                  </Label>
+                  <Label text="v2.4.1" textFill="#111827">
+                     <font><Font size="14.0" /></font>
+                  </Label>
+               </children>
+            </VBox>
+
+            <Button fx:id="btnLogout" alignment="CENTER" graphicTextGap="8.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleLogout" prefHeight="40.0" style="-fx-background-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="Logout">
+               <graphic>
+                  <SVGPath content="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9" fill="TRANSPARENT" stroke="#4B5563" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+               </graphic>
+               <font><Font size="14.0" /></font>
+            </Button>
+
+         </children>
+      </VBox>
+
+   </children>
+</VBox>
