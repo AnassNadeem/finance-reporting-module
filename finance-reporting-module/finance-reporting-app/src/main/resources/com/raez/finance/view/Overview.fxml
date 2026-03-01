@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.OverviewController">
+   <content>
+      <VBox spacing="24.0" style="-fx-background-color: #F9FAFB;">
+         <padding>
+            <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+         </padding>
+         <children>
+
+            <HBox alignment="CENTER_LEFT">
+               <children>
+                  <VBox>
+                     <children>
+                        <Label text="Dashboard" textFill="#111827">
+                           <font><Font name="System Bold" size="24.0" /></font>
+                        </Label>
+                        <Label text="Business performance and key metrics" textFill="#4B5563">
+                           <font><Font size="14.0" /></font>
+                        </Label>
+                     </children>
+                  </VBox>
+                  <Region HBox.hgrow="ALWAYS" />
+                  
+                  <MenuButton mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export Reports">
+                    <items>
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV" />
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF" />
+                    </items>
+                     <graphic>
+                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                     </graphic>
+                  </MenuButton>
+               </children>
+            </HBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding>
+                  <Insets bottom="16.0" left="24.0" right="24.0" top="16.0" />
+               </padding>
+               <children>
+                  <HBox alignment="BOTTOM_LEFT" spacing="16.0">
+                     <children>
+                        
+                        <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                           <children>
+                              <Label text="Date Range" textFill="#374151" />
+                              <ComboBox fx:id="cmbDateRange" maxWidth="Infinity" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           </children>
+                        </VBox>
+
+                        <VBox fx:id="boxStartDate" managed="false" spacing="8.0" visible="false" HBox.hgrow="ALWAYS">
+                           <children>
+                              <Label text="Start Date" textFill="#374151" />
+                              <DatePicker fx:id="dpStartDate" maxWidth="Infinity" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           </children>
+                        </VBox>
+
+                        <VBox fx:id="boxEndDate" managed="false" spacing="8.0" visible="false" HBox.hgrow="ALWAYS">
+                           <children>
+                              <Label text="End Date" textFill="#374151" />
+                              <DatePicker fx:id="dpEndDate" maxWidth="Infinity" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           </children>
+                        </VBox>
+
+                        <VBox spacing="8.0" HBox.hgrow="ALWAYS">
+                           <children>
+                              <Label text="Category" textFill="#374151" />
+                              <ComboBox fx:id="cmbCategory" maxWidth="Infinity" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           </children>
+                        </VBox>
+                        
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+
+            <GridPane hgap="24.0" vgap="24.0">
+              <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+                <ColumnConstraints hgrow="SOMETIMES" percentWidth="25.0" />
+              </columnConstraints>
+               <children>
+                  
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Total Sales" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblTotalSales" text="\$487,250" textFill="#111827"><font><Font name="System Bold" size="28.0" /></font><VBox.margin><Insets top="12.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="+12.5% from last period" textFill="#10B981"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Total Profit" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M23 6l-9.5 9.5-5-5L1 18 M17 6h6v6" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblTotalProfit" text="\$412,890" textFill="#111827"><font><Font name="System Bold" size="28.0" /></font><VBox.margin><Insets top="12.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="+8.3% from last period" textFill="#10B981"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Outstanding Payments" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M3 5h18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z M1 10h22" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblOutstanding" text="\$34,560" textFill="#111827"><font><Font name="System Bold" size="28.0" /></font><VBox.margin><Insets top="12.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="-5.2% from last period" textFill="#EF4444"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Refunds / Returns" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblRefunds" text="\$12,340" textFill="#111827"><font><Font name="System Bold" size="28.0" /></font><VBox.margin><Insets top="12.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="+2.1% from last period" textFill="#EF4444"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Total Customers" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblCustomers" text="1,247" textFill="#111827"><font><Font name="System Bold" size="28.0" /></font><VBox.margin><Insets top="12.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="+18.3% from last period" textFill="#10B981"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Total Number of Orders" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M20 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblOrders" text="1,842" textFill="#111827"><font><Font name="System Bold" size="28.0" /></font><VBox.margin><Insets top="12.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="+15.7% from last period" textFill="#10B981"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="2" GridPane.rowIndex="1">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Average Order Value" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.27 6.96L12 12.01l8.73-5.05 M12 22.08V12" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblAOV" text="\$264.58" textFill="#111827"><font><Font name="System Bold" size="28.0" /></font><VBox.margin><Insets top="12.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="+3.2% from last period" textFill="#10B981"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" GridPane.columnIndex="3" GridPane.rowIndex="1">
+                     <padding><Insets bottom="20.0" left="20.0" right="20.0" top="20.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT"><Label text="Most Popular Product" textFill="#6B7280" HBox.hgrow="ALWAYS" /><Region HBox.hgrow="ALWAYS" /><SVGPath content="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="TRANSPARENT" stroke="#9CA3AF" strokeWidth="2.0" /></HBox>
+                        <Label fx:id="lblPopular" text="XV2 Drones" textFill="#111827"><font><Font name="System Bold" size="24.0" /></font><VBox.margin><Insets top="16.0" bottom="8.0" /></VBox.margin></Label>
+                        <Label text="Consistent top seller" textFill="#4B5563"><font><Font size="12.0" /></font></Label>
+                     </children>
+                  </VBox>
+               </children>
+            </GridPane>
+
+            <HBox spacing="24.0" prefHeight="350.0">
+               <children>
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+                     <padding><Insets bottom="16.0" left="16.0" right="16.0" top="16.0" /></padding>
+                     <children>
+                        <Label text="Sales Trends" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font><VBox.margin><Insets bottom="16.0" /></VBox.margin></Label>
+                        <LineChart fx:id="chartSales" VBox.vgrow="ALWAYS" legendVisible="false">
+                          <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                          <yAxis><NumberAxis side="LEFT" /></yAxis>
+                        </LineChart>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+                     <padding><Insets bottom="16.0" left="16.0" right="16.0" top="16.0" /></padding>
+                     <children>
+                        <Label text="Revenue by Category" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font><VBox.margin><Insets bottom="16.0" /></VBox.margin></Label>
+                        <PieChart fx:id="chartRevenue" VBox.vgrow="ALWAYS" legendVisible="true" legendSide="BOTTOM" />
+                     </children>
+                  </VBox>
+               </children>
+            </HBox>
+
+            <HBox spacing="24.0">
+               <children>
+                  
+                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS" prefWidth="500.0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <HBox alignment="CENTER_LEFT" spacing="8.0">
+                           <children>
+                              <Label text="Top Products" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                              <Region HBox.hgrow="ALWAYS" />
+                              <SVGPath content="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#EAB308" />
+                           </children>
+                           <VBox.margin><Insets bottom="16.0" /></VBox.margin>
+                        </HBox>
+                        
+                        <VBox fx:id="vboxTopProducts" spacing="16.0">
+                           <HBox alignment="CENTER_LEFT">
+                              <HBox alignment="CENTER" prefHeight="32.0" prefWidth="32.0" style="-fx-background-color: #F1F5F9; -fx-background-radius: 8;"><Label text="#1" textFill="#1E293B"><font><Font name="System Bold" size="12.0" /></font></Label></HBox>
+                              <VBox HBox.hgrow="ALWAYS"><padding><Insets left="12.0" /></padding>
+                                 <Label text="XV2 Drones" textFill="#111827"><font><Font name="System Bold" size="14.0" /></font></Label>
+                                 <Label text="892 orders" textFill="#4B5563"><font><Font size="12.0" /></font></Label>
+                              </VBox>
+                              <Label text="\$2,450,000" textFill="#111827"><font><Font name="System Bold" size="14.0" /></font></Label>
+                           </HBox>
+                        </VBox>
+                     </children>
+                  </VBox>
+
+                  <VBox style="-fx-background-color: #FFFBEB; -fx-border-color: #FDE68A; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS" prefWidth="500.0">
+                     <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                     <children>
+                        <HBox alignment="TOP_LEFT" spacing="12.0">
+                           <children>
+                              <SVGPath content="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01" fill="TRANSPARENT" stroke="#D97706" strokeWidth="2.0" />
+                              <VBox>
+                                 <children>
+                                    <Label text="System Alerts" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font><VBox.margin><Insets bottom="12.0" /></VBox.margin></Label>
+                                    
+                                    <VBox fx:id="vboxAlerts" spacing="12.0">
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#D97706" radius="3.0"><HBox.margin><Insets top="6.0" /></HBox.margin></Circle>
+                                          <Label text="Refund rate increased by 15% in Electronics category" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                       <HBox alignment="TOP_LEFT" spacing="8.0">
+                                          <Circle fill="#D97706" radius="3.0"><HBox.margin><Insets top="6.0" /></HBox.margin></Circle>
+                                          <Label text="3 customers have overdue invoices totaling \$12,450" textFill="#374151" wrapText="true" />
+                                       </HBox>
+                                    </VBox>
+                                 </children>
+                              </VBox>
+                           </children>
+                        </HBox>
+                     </children>
+                  </VBox>
+
+               </children>
+            </HBox>
+
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>
