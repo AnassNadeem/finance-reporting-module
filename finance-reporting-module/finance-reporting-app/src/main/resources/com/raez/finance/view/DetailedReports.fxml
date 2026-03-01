@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<VBox spacing="24.0" style="-fx-background-color: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.DetailedReportsController">
+   <padding>
+      <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
+   </padding>
+   <children>
+
+      <HBox alignment="CENTER_LEFT">
+         <children>
+            <VBox>
+               <children>
+                  <Label text="Reports" textFill="#111827">
+                     <font><Font name="System Bold" size="24.0" /></font>
+                  </Label>
+                  <Label text="Detailed reports and analytics" textFill="#4B5563">
+                     <font><Font size="14.0" /></font>
+                  </Label>
+               </children>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS" />
+            <MenuButton mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export Reports">
+              <items>
+                <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV" />
+                <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF" />
+              </items>
+               <graphic>
+                  <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m4 4V4" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+               </graphic>
+            </MenuButton>
+         </children>
+      </HBox>
+
+      <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" VBox.vgrow="ALWAYS">
+         <children>
+
+            <HBox spacing="32.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
+               <padding>
+                  <Insets left="24.0" right="24.0" />
+               </padding>
+               <children>
+                  <Button fx:id="btnTabOrders" mnemonicParsing="false" onAction="#handleTabOrders" style="-fx-background-color: transparent; -fx-border-color: #1E2939; -fx-border-width: 0 0 2 0; -fx-text-fill: #1E2939; -fx-cursor: hand;" text="Order Report">
+                     <padding><Insets bottom="16.0" left="8.0" right="8.0" top="16.0" /></padding>
+                     <font><Font name="System Bold" size="14.0" /></font>
+                  </Button>
+                  <Button fx:id="btnTabProducts" mnemonicParsing="false" onAction="#handleTabProducts" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="Product Report">
+                     <padding><Insets bottom="16.0" left="8.0" right="8.0" top="16.0" /></padding>
+                     <font><Font size="14.0" /></font>
+                  </Button>
+                  <Button fx:id="btnTabCustomers" mnemonicParsing="false" onAction="#handleTabCustomers" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="Customer Report">
+                     <padding><Insets bottom="16.0" left="8.0" right="8.0" top="16.0" /></padding>
+                     <font><Font size="14.0" /></font>
+                  </Button>
+               </children>
+            </HBox>
+
+            <FlowPane hgap="16.0" vgap="16.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
+               <padding>
+                  <Insets bottom="24.0" left="24.0" right="24.0" top="24.0" />
+               </padding>
+               <children>
+                  <VBox spacing="8.0" prefWidth="250.0">
+                     <Label text="Search" textFill="#374151" />
+                     <TextField fx:id="txtSearch" prefHeight="40.0" promptText="Search..." style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+
+                  <VBox spacing="8.0" prefWidth="150.0">
+                     <Label text="Date Range" textFill="#374151" />
+                     <ComboBox fx:id="cmbDateRange" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+
+                  <VBox fx:id="boxCustomDate" managed="false" visible="false" spacing="8.0">
+                     <children>
+                        <HBox spacing="16.0">
+                           <VBox spacing="8.0">
+                              <Label text="Start Date" textFill="#374151" />
+                              <DatePicker fx:id="dpStartDate" prefHeight="40.0" prefWidth="140.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           </VBox>
+                           <VBox spacing="8.0">
+                              <Label text="End Date" textFill="#374151" />
+                              <DatePicker fx:id="dpEndDate" prefHeight="40.0" prefWidth="140.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           </VBox>
+                        </HBox>
+                     </children>
+                  </VBox>
+
+                  <VBox fx:id="boxOrderStatus" spacing="8.0" prefWidth="150.0">
+                     <Label text="Status" textFill="#374151" />
+                     <ComboBox fx:id="cmbOrderStatus" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+
+                  <VBox fx:id="boxProductCategory" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                     <Label text="Category" textFill="#374151" />
+                     <ComboBox fx:id="cmbProductCategory" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+
+                  <VBox fx:id="boxCustomerType" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                     <Label text="Customer Type" textFill="#374151" />
+                     <ComboBox fx:id="cmbCustomerType" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+                  <VBox fx:id="boxCustomerCompany" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                     <Label text="Company" textFill="#374151" />
+                     <ComboBox fx:id="cmbCustomerCompany" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+                  <VBox fx:id="boxCustomerCountry" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                     <Label text="Country" textFill="#374151" />
+                     <ComboBox fx:id="cmbCustomerCountry" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+
+               </children>
+            </FlowPane>
+
+            <StackPane VBox.vgrow="ALWAYS" minHeight="400.0">
+               <children>
+                  <TableView fx:id="tblOrders" style="-fx-background-color: white;">
+                    <columns>
+                      <TableColumn fx:id="colOrdId" prefWidth="100.0" text="Order ID" />
+                      <TableColumn fx:id="colOrdCustomer" prefWidth="200.0" text="Customer" />
+                      <TableColumn fx:id="colOrdProduct" prefWidth="200.0" text="Product" />
+                      <TableColumn fx:id="colOrdAmount" prefWidth="120.0" text="Amount" />
+                      <TableColumn fx:id="colOrdDate" prefWidth="120.0" text="Date" />
+                      <TableColumn fx:id="colOrdStatus" prefWidth="120.0" text="Status" />
+                    </columns>
+                  </TableView>
+
+                  <TableView fx:id="tblProducts" visible="false" style="-fx-background-color: white;">
+                    <columns>
+                      <TableColumn fx:id="colPrdId" prefWidth="100.0" text="Product ID" />
+                      <TableColumn fx:id="colPrdName" prefWidth="200.0" text="Name" />
+                      <TableColumn fx:id="colPrdCat" prefWidth="150.0" text="Category" />
+                      <TableColumn fx:id="colPrdCost" prefWidth="100.0" text="Cost" />
+                      <TableColumn fx:id="colPrdPrice" prefWidth="100.0" text="Sale Price" />
+                      <TableColumn fx:id="colPrdProfit" prefWidth="100.0" text="Profit" />
+                      <TableColumn fx:id="colPrdUnits" prefWidth="100.0" text="Units Sold" />
+                      <TableColumn fx:id="colPrdRev" prefWidth="120.0" text="Revenue" />
+                    </columns>
+                  </TableView>
+
+                  <TableView fx:id="tblCustomers" visible="false" style="-fx-background-color: white;">
+                    <columns>
+                      <TableColumn fx:id="colCstId" prefWidth="100.0" text="Customer ID" />
+                      <TableColumn fx:id="colCstName" prefWidth="200.0" text="Name" />
+                      <TableColumn fx:id="colCstType" prefWidth="120.0" text="Type" />
+                      <TableColumn fx:id="colCstCountry" prefWidth="100.0" text="Country" />
+                      <TableColumn fx:id="colCstOrders" prefWidth="100.0" text="Total Orders" />
+                      <TableColumn fx:id="colCstSpent" prefWidth="120.0" text="Total Spent" />
+                      <TableColumn fx:id="colCstAOV" prefWidth="120.0" text="Avg Order Value" />
+                      <TableColumn fx:id="colCstLast" prefWidth="120.0" text="Last Purchase" />
+                    </columns>
+                  </TableView>
+               </children>
+            </StackPane>
+
+            <HBox alignment="CENTER_LEFT" style="-fx-border-color: #E5E7EB; -fx-border-width: 1 0 0 0;">
+               <padding>
+                  <Insets bottom="16.0" left="24.0" right="24.0" top="16.0" />
+               </padding>
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="12.0">
+                     <Label text="Rows per page:" textFill="#4B5563" />
+                     <ComboBox fx:id="cmbRowsPerPage" prefWidth="80.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </HBox>
+                  <Region HBox.hgrow="ALWAYS" />
+                  <HBox alignment="CENTER_RIGHT" spacing="16.0">
+                     <Label fx:id="lblPageInfo" text="Page 1 of 10" textFill="#4B5563" />
+                     <HBox spacing="8.0">
+                        <Button fx:id="btnPrevPage" mnemonicParsing="false" onAction="#handlePrevPage" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-cursor: hand;" text="&lt;" />
+                        <Button fx:id="btnNextPage" mnemonicParsing="false" onAction="#handleNextPage" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-cursor: hand;" text="&gt;" />
+                     </HBox>
+                  </HBox>
+               </children>
+            </HBox>
+
+         </children>
+      </VBox>
+   </children>
+</VBox>
