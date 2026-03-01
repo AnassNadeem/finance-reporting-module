@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "RAEZ Finance (use this to run)",
+            "request": "launch",
+            "mainClass": "com.raez.finance.MainLauncher",
+            "projectName": "finance-reporting-app"
+        }
+    ]
+}
