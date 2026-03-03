@@ -1,6 +1,8 @@
 -- ===========================================================
 -- RAEZ Finance – SQLite schema (idempotent, reusable)
 -- Run via DatabaseBootstrap or: sqlite3 finance_raez.db < schema.sql
+-- If you have an existing DB without customerType, run once:
+--   ALTER TABLE CustomerRegistration ADD COLUMN customerType TEXT DEFAULT 'Individual';
 -- ===========================================================
 
 PRAGMA foreign_keys = ON;
@@ -66,6 +68,7 @@ CREATE TABLE IF NOT EXISTS CustomerRegistration (
   email TEXT UNIQUE NOT NULL,
   contactNumber TEXT,
   deliveryAddress TEXT,
+  customerType TEXT DEFAULT 'Individual',
   idCardImage TEXT,
   status TEXT DEFAULT 'active',
   registeredAt TEXT DEFAULT CURRENT_TIMESTAMP
