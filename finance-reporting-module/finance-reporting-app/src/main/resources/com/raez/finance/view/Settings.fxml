@@ -182,51 +182,41 @@
                      <children>
                         
                         <VBox spacing="8.0" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                           <Label text="Username *" textFill="#374151" />
-                           <TextField fx:id="txtModalUsername" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           <Label text="Username *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
+                           <TextField fx:id="txtModalUsername" prefHeight="40.0" promptText="e.g. jdoe" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
                         
                         <VBox spacing="8.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                           <Label text="Role *" textFill="#374151" />
-                           <ComboBox fx:id="cmbModalRole" maxWidth="Infinity" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           <Label text="Role *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
+                           <ComboBox fx:id="cmbModalRole" maxWidth="Infinity" prefHeight="40.0" promptText="Select role" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
 
                         <VBox spacing="8.0" GridPane.columnIndex="0" GridPane.rowIndex="1">
-                           <Label text="First Name *" textFill="#374151" />
-                           <TextField fx:id="txtModalFirstName" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           <Label text="First Name *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
+                           <TextField fx:id="txtModalFirstName" prefHeight="40.0" promptText="e.g. John" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
 
                         <VBox spacing="8.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                           <Label text="Last Name *" textFill="#374151" />
-                           <TextField fx:id="txtModalLastName" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           <Label text="Last Name *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
+                           <TextField fx:id="txtModalLastName" prefHeight="40.0" promptText="e.g. Doe" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
 
                      </children>
                   </GridPane>
 
                   <VBox spacing="8.0">
-                     <Label text="Email *" textFill="#374151" />
-                     <TextField fx:id="txtModalEmail" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <Label text="Email *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
+                     <TextField fx:id="txtModalEmail" prefHeight="40.0" promptText="e.g. john.doe@company.com" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
 
                   <VBox spacing="8.0">
-                     <Label text="Initial Password *" textFill="#374151" />
+                     <Label text="Initial Password *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
                      <PasswordField fx:id="txtModalPassword" prefHeight="40.0" promptText="Min. 8 characters" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
 
                   <VBox spacing="8.0">
-                     <Label text="Phone Number" textFill="#374151" />
-                     <TextField fx:id="txtModalPhone" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
-                  </VBox>
-
-                  <VBox spacing="8.0">
-                     <Label text="ID Card Number" textFill="#374151" />
-                     <TextField fx:id="txtModalIdCard" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
-                  </VBox>
-
-                  <VBox spacing="8.0">
-                     <Label text="Address" textFill="#374151" />
-                     <TextField fx:id="txtModalAddress" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <Label text="Phone Number" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                     <TextField fx:id="txtModalPhone" prefHeight="40.0" promptText="Optional" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
 
                   <CheckBox fx:id="chkModalActive" mnemonicParsing="false" text="Active Status" textFill="#374151" />

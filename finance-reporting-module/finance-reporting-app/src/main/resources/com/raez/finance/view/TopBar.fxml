@@ -19,7 +19,7 @@
       
       <HBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
          <children>
-            <HBox alignment="CENTER_LEFT" maxWidth="600.0" prefHeight="40.0" spacing="8.0" style="-fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+            <HBox alignment="CENTER_LEFT" maxWidth="380.0" minWidth="280.0" prefHeight="40.0" prefWidth="320.0" spacing="8.0" style="-fx-background-color: #F9FAFB; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8;">
                <padding>
                   <Insets left="12.0" right="12.0" />
                </padding>
