@@ -2,6 +2,8 @@ package com.raez.finance.controller;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
@@ -11,7 +13,11 @@ import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.TextField;
 import javafx.geometry.Side;
 
+import java.net.URL;
+
 public class TopBarController {
+
+    private static final String VIEW_PATH = "/com/raez/finance/view/";
 
     @FXML private TextField txtSearch;
     @FXML private Button btnNotifications;
@@ -21,8 +27,13 @@ public class TopBarController {
     @FXML private Label lblName;
     @FXML private Label lblRole;
 
+    private MainLayoutController mainLayoutController;
     private ContextMenu profileMenu;
     private ContextMenu notificationsMenu;
+
+    public void setMainLayoutController(MainLayoutController mainLayoutController) {
+        this.mainLayoutController = mainLayoutController;
+    }
 
     @FXML
     public void initialize() {
@@ -41,10 +52,11 @@ public class TopBarController {
         buildProfileMenu();
         buildNotificationsMenu();
         
-        // 3. Search listener setup
+        // 3. Global search: print query to console when user types
         txtSearch.textProperty().addListener((observable, oldValue, newValue) -> {
-            System.out.println("Searching for: " + newValue);
-            // Cursor will add live filtering logic here
+            if (newValue != null) {
+                System.out.println("Global search: " + newValue);
+            }
         });
     }
 
@@ -81,7 +93,11 @@ public class TopBarController {
 
         MenuItem itemLogout = new MenuItem("🚪 Logout");
         itemLogout.setStyle("-fx-text-fill: red;");
-        itemLogout.setOnAction(e -> System.out.println("Executing Logout"));
+        itemLogout.setOnAction(e -> {
+            if (mainLayoutController != null) {
+                mainLayoutController.handleLogout();
+            }
+        });
 
         profileMenu.getItems().addAll(
             itemSettings, 
@@ -102,7 +118,7 @@ public class TopBarController {
         MenuItem notif3 = new MenuItem("⚪ Monthly report is ready\n1 hour ago");
         
         MenuItem seeMore = new MenuItem("See More...");
-        seeMore.setOnAction(e -> System.out.println("Navigate to Notifications page"));
+        seeMore.setOnAction(e -> navigateToContent(VIEW_PATH + "NotificationsAlerts.fxml"));
 
         notificationsMenu.getItems().addAll(notif1, notif2, notif3, new SeparatorMenuItem(), seeMore);
     }
@@ -115,7 +131,19 @@ public class TopBarController {
 
     @FXML
     private void handleNotificationsClick(ActionEvent event) {
-        // Show the context menu directly below the notification bell
         notificationsMenu.show(btnNotifications, Side.BOTTOM, 0, 5);
+    }
+
+    private void navigateToContent(String fxmlPath) {
+        if (mainLayoutController == null) return;
+        try {
+            URL url = MainLayoutController.class.getResource(fxmlPath);
+            if (url == null) url = getClass().getResource(fxmlPath);
+            if (url == null) return;
+            Parent root = FXMLLoader.load(url);
+            mainLayoutController.setContent(root);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
 }

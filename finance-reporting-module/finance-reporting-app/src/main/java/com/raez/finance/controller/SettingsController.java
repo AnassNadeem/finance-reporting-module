@@ -13,8 +13,11 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
+import javafx.util.Callback;
 
 import org.mindrot.jbcrypt.BCrypt;
 
@@ -64,8 +67,6 @@ public class SettingsController {
     @FXML private TextField txtModalLastName;
     @FXML private TextField txtModalEmail;
     @FXML private TextField txtModalPhone;
-    @FXML private TextField txtModalIdCard;
-    @FXML private TextField txtModalAddress;
     @FXML private CheckBox chkModalActive;
     @FXML private Button btnModalSave;
 
@@ -103,7 +104,70 @@ public class SettingsController {
         colStatus.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().isActive() ? "Active" : "Inactive"));
         colLastLogin.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
                 c.getValue().getLastLogin() == null ? "—" : c.getValue().getLastLogin().format(DATE_FMT)));
-        colActions.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty("Edit"));
+        colActions.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(""));
+        colActions.setCellFactory(createActionsCellFactory());
+    }
+
+    private Callback<TableColumn<FUser, String>, TableCell<FUser, String>> createActionsCellFactory() {
+        return col -> new TableCell<>() {
+            private final HBox box = new HBox(8);
+            private final Button btnEdit = new Button();
+            private final Button btnDelete = new Button();
+
+            {
+                box.setAlignment(Pos.CENTER_LEFT);
+                btnEdit.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                btnEdit.setTooltip(new Tooltip("Edit"));
+                SVGPath editSvg = new SVGPath();
+                editSvg.setContent("M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z");
+                editSvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                editSvg.setStroke(javafx.scene.paint.Color.valueOf("#4B5563"));
+                editSvg.setStrokeWidth(2);
+                btnEdit.setGraphic(editSvg);
+
+                btnDelete.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                btnDelete.setTooltip(new Tooltip("Delete"));
+                SVGPath deleteSvg = new SVGPath();
+                deleteSvg.setContent("M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16");
+                deleteSvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                deleteSvg.setStroke(javafx.scene.paint.Color.valueOf("#DC2626"));
+                deleteSvg.setStrokeWidth(2);
+                btnDelete.setGraphic(deleteSvg);
+
+                box.getChildren().addAll(btnEdit, btnDelete);
+            }
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
+                    setGraphic(null);
+                    return;
+                }
+                FUser user = getTableRow().getItem();
+                btnEdit.setOnAction(e -> showEditModal(user));
+                btnDelete.setOnAction(e -> confirmAndDelete(user));
+                setGraphic(box);
+            }
+        };
+    }
+
+    private void confirmAndDelete(FUser user) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete User");
+        confirm.setHeaderText(null);
+        confirm.setContentText("Are you sure you want to delete user " + (user.getUsername() != null ? user.getUsername() : user.getEmail()) + "?");
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    fUserDao.deleteByUserId(user.getId());
+                    refreshUsers();
+                    showSuccessToast("User deleted.");
+                } catch (Exception ex) {
+                    new Alert(Alert.AlertType.ERROR, "Could not delete user: " + ex.getMessage()).showAndWait();
+                }
+            }
+        });
     }
 
     private void refreshUsers() {
@@ -221,12 +285,19 @@ public class SettingsController {
         modalOverlay.setManaged(true);
     }
 
-    public void showEditModal(/* Pass User Object here from TableView */) {
+    public void showEditModal(FUser user) {
         isEditMode = true;
         lblModalTitle.setText("Edit User");
         btnModalSave.setText("Update User");
-        // Populate fields with user data...
-        
+        // Populate fields with user data (optional: bind to a stored user for update)
+        txtModalUsername.setText(user.getUsername());
+        txtModalFirstName.setText(user.getFirstName() != null ? user.getFirstName() : "");
+        txtModalLastName.setText(user.getLastName() != null ? user.getLastName() : "");
+        txtModalEmail.setText(user.getEmail());
+        txtModalPhone.clear(); // FUser model does not expose phone; could be added if DB is read in DAO
+        txtModalPassword.clear();
+        cmbModalRole.setValue(user.getRole() == UserRole.ADMIN ? "Admin" : "Finance User");
+        chkModalActive.setSelected(user.isActive());
         modalOverlay.setVisible(true);
         modalOverlay.setManaged(true);
     }
@@ -254,6 +325,14 @@ public class SettingsController {
 
         if (username == null || username.isBlank()) {
             new Alert(Alert.AlertType.WARNING, "Username is required.").showAndWait();
+            return;
+        }
+        if (firstName == null || firstName.isBlank()) {
+            new Alert(Alert.AlertType.WARNING, "First Name is required.").showAndWait();
+            return;
+        }
+        if (lastName == null || lastName.isBlank()) {
+            new Alert(Alert.AlertType.WARNING, "Last Name is required.").showAndWait();
             return;
         }
         if (email == null || email.isBlank()) {
@@ -308,8 +387,6 @@ public class SettingsController {
         txtModalLastName.clear();
         txtModalEmail.clear();
         txtModalPhone.clear();
-        txtModalIdCard.clear();
-        txtModalAddress.clear();
         cmbModalRole.setValue("Finance User");
         chkModalActive.setSelected(true);
     }

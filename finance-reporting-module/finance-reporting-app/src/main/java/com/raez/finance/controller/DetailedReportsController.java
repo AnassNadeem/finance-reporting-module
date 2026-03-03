@@ -6,14 +6,21 @@ import com.raez.finance.dao.ProductDao;
 import com.raez.finance.model.CustomerReportRow;
 import com.raez.finance.model.OrderReportRow;
 import com.raez.finance.model.ProductReportRow;
+import com.raez.finance.service.ExportService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -26,6 +33,7 @@ public class DetailedReportsController {
     private final CustomerDao customerDao = new CustomerDao();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
+    @FXML private StackPane rootStackPane;
     @FXML private Button btnTabOrders;
     @FXML private Button btnTabProducts;
     @FXML private Button btnTabCustomers;
@@ -383,12 +391,86 @@ public class DetailedReportsController {
 
     @FXML
     private void handleExportCSV(ActionEvent event) {
-        System.out.println("Exporting " + activeTab + " to CSV...");
+        TableView<?> table = getCurrentTable();
+        if (table == null) return;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export to CSV");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+        fc.setInitialFileName(getExportBaseName() + ".csv");
+        File file = fc.showSaveDialog(table.getScene() != null ? table.getScene().getWindow() : null);
+        if (file == null) return;
+        try {
+            ExportService.exportToCSV(table, file);
+            showSuccessToast("CSV exported successfully to " + file.getName());
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.ERROR, "Export failed: " + e.getMessage()).showAndWait();
+        }
     }
 
     @FXML
     private void handleExportPDF(ActionEvent event) {
-        System.out.println("Exporting " + activeTab + " to PDF...");
+        TableView<?> table = getCurrentTable();
+        if (table == null) return;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export to PDF");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+        fc.setInitialFileName(getExportBaseName() + ".pdf");
+        File file = fc.showSaveDialog(table.getScene() != null ? table.getScene().getWindow() : null);
+        if (file == null) return;
+        try {
+            ExportService.exportToPDF(table, getExportTitle(), file);
+            showSuccessToast("PDF exported successfully to " + file.getName());
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.ERROR, "Export failed: " + e.getMessage()).showAndWait();
+        }
+    }
+
+    private TableView<?> getCurrentTable() {
+        switch (activeTab) {
+            case "orders": return tblOrders;
+            case "products": return tblProducts;
+            case "customers": return tblCustomers;
+            default: return tblOrders;
+        }
+    }
+
+    private String getExportTitle() {
+        switch (activeTab) {
+            case "orders": return "Order Report";
+            case "products": return "Product Report";
+            case "customers": return "Customer Report";
+            default: return "Report";
+        }
+    }
+
+    private String getExportBaseName() {
+        switch (activeTab) {
+            case "orders": return "orders_export";
+            case "products": return "products_export";
+            case "customers": return "customers_export";
+            default: return "export";
+        }
+    }
+
+    private void showSuccessToast(String message) {
+        if (rootStackPane == null) return;
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/raez/finance/view/NotificationToast.fxml"));
+            Node toastNode = loader.load();
+            NotificationToastController c = loader.getController();
+            if (c != null) {
+                c.setNotification("success", message, () -> {
+                    if (rootStackPane.getChildren().contains(toastNode)) {
+                        rootStackPane.getChildren().remove(toastNode);
+                    }
+                });
+            }
+            rootStackPane.getChildren().add(toastNode);
+            StackPane.setAlignment(toastNode, Pos.TOP_RIGHT);
+            StackPane.setMargin(toastNode, new javafx.geometry.Insets(24, 24, 0, 24));
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.INFORMATION, message).showAndWait();
+        }
     }
 
     @FXML

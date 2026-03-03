@@ -5,6 +5,8 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 
 import java.net.URL;
 
@@ -27,7 +29,7 @@ public class SidebarController {
 
     @FXML
     public void initialize() {
-        // User Management tab visibility is controlled in SettingsController by SessionManager.getRole().
+        setActiveButton(btnDashboard);
     }
 
     @FXML
@@ -88,10 +90,17 @@ public class SidebarController {
     private void setActiveButton(Button active) {
         String activeStyle = "-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;";
         String inactiveStyle = "-fx-background-color: transparent; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;";
-        if (btnDashboard != null) btnDashboard.setStyle(btnDashboard == active ? activeStyle : inactiveStyle);
-        if (btnReports != null) btnReports.setStyle(btnReports == active ? activeStyle : inactiveStyle);
-        if (btnInsights != null) btnInsights.setStyle(btnInsights == active ? activeStyle : inactiveStyle);
-        if (btnProfitability != null) btnProfitability.setStyle(btnProfitability == active ? activeStyle : inactiveStyle);
-        if (btnSettings != null) btnSettings.setStyle(btnSettings == active ? activeStyle : inactiveStyle);
+        Button[] navButtons = { btnDashboard, btnReports, btnInsights, btnProfitability, btnSettings };
+        for (Button btn : navButtons) {
+            if (btn == null) continue;
+            btn.setStyle(btn == active ? activeStyle : inactiveStyle);
+            setNavButtonIconFill(btn, btn == active);
+        }
+    }
+
+    private void setNavButtonIconFill(Button btn, boolean active) {
+        if (btn.getGraphic() instanceof SVGPath) {
+            ((SVGPath) btn.getGraphic()).setFill(active ? Color.WHITE : Color.web("#374151"));
+        }
     }
 }

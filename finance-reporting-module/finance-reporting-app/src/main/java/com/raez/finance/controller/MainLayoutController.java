@@ -37,7 +37,12 @@ public class MainLayoutController {
 
             URL topBarUrl = getClass().getResource(VIEW_PATH + "TopBar.fxml");
             if (topBarUrl != null) {
-                Parent topBarRoot = FXMLLoader.load(topBarUrl);
+                FXMLLoader topBarLoader = new FXMLLoader(topBarUrl);
+                Parent topBarRoot = topBarLoader.load();
+                TopBarController topBarController = topBarLoader.getController();
+                if (topBarController != null) {
+                    topBarController.setMainLayoutController(this);
+                }
                 topBarContainer.getChildren().clear();
                 topBarContainer.getChildren().add(topBarRoot);
             }
@@ -51,7 +56,12 @@ public class MainLayoutController {
 
             URL overviewUrl = getClass().getResource(VIEW_PATH + "Overview.fxml");
             if (overviewUrl != null) {
-                Parent overviewRoot = FXMLLoader.load(overviewUrl);
+                FXMLLoader overviewLoader = new FXMLLoader(overviewUrl);
+                Parent overviewRoot = overviewLoader.load();
+                OverviewController overviewController = overviewLoader.getController();
+                if (overviewController != null) {
+                    overviewController.setMainLayoutController(this);
+                }
                 contentArea.getChildren().clear();
                 contentArea.getChildren().add(overviewRoot);
             }
