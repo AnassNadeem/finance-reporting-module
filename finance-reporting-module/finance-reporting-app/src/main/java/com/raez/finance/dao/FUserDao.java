@@ -84,6 +84,21 @@ public class FUserDao {
     }
 
     /**
+     * Deletes a user by ID. Caller should confirm with the user before invoking.
+     */
+    public void deleteByUserId(int userId) throws Exception {
+        String sql = "DELETE FROM FUser WHERE userID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            int deleted = ps.executeUpdate();
+            if (deleted == 0) {
+                throw new IllegalArgumentException("User not found");
+            }
+        }
+    }
+
+    /**
      * Updates the password hash for the given user (e.g. after "Update Password" in My Account).
      */
     public void updatePasswordByUserId(int userId, String newPasswordHash) throws Exception {

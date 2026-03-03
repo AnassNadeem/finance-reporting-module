@@ -23,7 +23,7 @@ public class CustomerDao {
      */
     public List<CustomerReportRow> findReportRows(String typeFilter, String countryFilter, String search) throws SQLException {
         StringBuilder sql = new StringBuilder(
-                "SELECT c.customerID, c.name, c.deliveryAddress, " +
+                "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
                 "COUNT(o.orderID) AS totalOrders, " +
                 "COALESCE(SUM(o.totalAmount), 0) AS totalSpent, " +
                 "COALESCE(MAX(o.orderDate), '') AS lastPurchase " +
@@ -31,7 +31,6 @@ public class CustomerDao {
                 "LEFT JOIN \"Order\" o ON o.customerID = c.customerID " +
                 "WHERE 1=1");
         List<Object> params = new ArrayList<>();
-        int idx = 1;
 
         if (search != null && !search.isBlank()) {
             sql.append(" AND (c.name LIKE ? OR c.email LIKE ? OR CAST(c.customerID AS TEXT) LIKE ?)");
@@ -39,14 +38,16 @@ public class CustomerDao {
             params.add(term);
             params.add(term);
             params.add(term);
-            idx += 3;
+        }
+        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim())) {
+            sql.append(" AND COALESCE(c.customerType, 'Individual') = ?");
+            params.add(typeFilter.trim());
         }
         if (countryFilter != null && !countryFilter.isBlank() && !"All".equalsIgnoreCase(countryFilter.trim())) {
             sql.append(" AND c.deliveryAddress LIKE ?");
             params.add("%" + countryFilter.trim() + "%");
-            idx++;
         }
-        sql.append(" GROUP BY c.customerID, c.name, c.deliveryAddress ORDER BY totalSpent DESC");
+        sql.append(" GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress ORDER BY totalSpent DESC");
 
         List<CustomerReportRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
@@ -65,7 +66,7 @@ public class CustomerDao {
                 rows.add(new CustomerReportRow(
                         String.valueOf(rs.getInt("customerID")),
                         rs.getString("name"),
-                        "Individual",
+                        rs.getString("customerType") != null ? rs.getString("customerType") : "Individual",
                         rs.getString("deliveryAddress") != null ? rs.getString("deliveryAddress") : "—",
                         totalOrders,
                         totalSpent,
@@ -81,12 +82,12 @@ public class CustomerDao {
      * Top buyers by total spent (for Customer Insights). Sorted descending by totalSpent.
      */
     public List<TopBuyerRow> findTopBuyers(int limit) throws SQLException {
-        String sql = "SELECT c.customerID, c.name, c.deliveryAddress, " +
+        String sql = "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
                 "COUNT(o.orderID) AS totalOrders, COALESCE(SUM(o.totalAmount), 0) AS totalSpent, " +
                 "COALESCE(MAX(o.orderDate), '') AS lastPurchase " +
                 "FROM CustomerRegistration c " +
                 "LEFT JOIN \"Order\" o ON o.customerID = c.customerID " +
-                "GROUP BY c.customerID, c.name, c.deliveryAddress " +
+                "GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress " +
                 "ORDER BY totalSpent DESC LIMIT ?";
         List<TopBuyerRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
@@ -101,7 +102,8 @@ public class CustomerDao {
                 String last = rs.getString("lastPurchase");
                 if (last != null && last.length() >= 10) last = last.substring(0, 10);
                 else if (last == null || last.isEmpty()) last = "—";
-                rows.add(new TopBuyerRow(rank++, rs.getString("name"), "Individual",
+                rows.add(new TopBuyerRow(rank++, rs.getString("name"),
+                        rs.getString("customerType") != null ? rs.getString("customerType") : "Individual",
                         rs.getString("deliveryAddress") != null ? rs.getString("deliveryAddress") : "—",
                         totalSpent, totalOrders, aov, last));
             }
