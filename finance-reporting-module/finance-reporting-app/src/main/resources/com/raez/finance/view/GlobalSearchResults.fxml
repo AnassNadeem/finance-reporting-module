@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<StackPane style="-fx-background-color: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.GlobalSearchResultsController">
+    <children>
+        <VBox spacing="24.0" StackPane.alignment="TOP_LEFT">
+            <padding>
+                <Insets top="32.0" right="32.0" bottom="32.0" left="32.0"/>
+            </padding>
+            <children>
+
+                <VBox spacing="4.0">
+                    <Label text="Global Search" textFill="#111827">
+                        <font>
+                            <Font name="System Bold" size="24.0"/>
+                        </font>
+                    </Label>
+                    <Label fx:id="lblQuery" text="Results" textFill="#4B5563">
+                        <font>
+                            <Font size="14.0"/>
+                        </font>
+                    </Label>
+                </VBox>
+
+                <HBox spacing="24.0">
+                    <Label fx:id="lblOrdersCount" text="0 Orders" textFill="#4B5563">
+                        <font>
+                            <Font size="12.0"/>
+                        </font>
+                    </Label>
+                    <Label fx:id="lblProductsCount" text="0 Products" textFill="#4B5563">
+                        <font>
+                            <Font size="12.0"/>
+                        </font>
+                    </Label>
+                    <Label fx:id="lblCustomersCount" text="0 Customers" textFill="#4B5563">
+                        <font>
+                            <Font size="12.0"/>
+                        </font>
+                    </Label>
+                </HBox>
+
+                <TabPane tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+                    <tabs>
+                        <Tab text="Orders">
+                            <content>
+                                <TableView fx:id="tblOrders">
+                                    <columns>
+                                        <TableColumn fx:id="colOrdId" prefWidth="100.0" text="Order ID"/>
+                                        <TableColumn fx:id="colOrdCustomer" prefWidth="200.0" text="Customer"/>
+                                        <TableColumn fx:id="colOrdProduct" prefWidth="220.0" text="Product"/>
+                                        <TableColumn fx:id="colOrdAmount" prefWidth="120.0" text="Amount"/>
+                                        <TableColumn fx:id="colOrdDate" prefWidth="120.0" text="Date"/>
+                                        <TableColumn fx:id="colOrdStatus" prefWidth="120.0" text="Status"/>
+                                    </columns>
+                                </TableView>
+                            </content>
+                        </Tab>
+                        <Tab text="Products">
+                            <content>
+                                <TableView fx:id="tblProducts">
+                                    <columns>
+                                        <TableColumn fx:id="colPrdId" prefWidth="100.0" text="Product ID"/>
+                                        <TableColumn fx:id="colPrdName" prefWidth="220.0" text="Name"/>
+                                        <TableColumn fx:id="colPrdCat" prefWidth="160.0" text="Category"/>
+                                        <TableColumn fx:id="colPrdUnits" prefWidth="120.0" text="Units Sold"/>
+                                        <TableColumn fx:id="colPrdRev" prefWidth="140.0" text="Revenue"/>
+                                        <TableColumn fx:id="colPrdProfit" prefWidth="140.0" text="Profit"/>
+                                    </columns>
+                                </TableView>
+                            </content>
+                        </Tab>
+                        <Tab text="Customers">
+                            <content>
+                                <TableView fx:id="tblCustomers">
+                                    <columns>
+                                        <TableColumn fx:id="colCstId" prefWidth="100.0" text="Customer ID"/>
+                                        <TableColumn fx:id="colCstName" prefWidth="220.0" text="Name"/>
+                                        <TableColumn fx:id="colCstType" prefWidth="140.0" text="Type"/>
+                                        <TableColumn fx:id="colCstCountry" prefWidth="180.0" text="Country / Address"/>
+                                        <TableColumn fx:id="colCstOrders" prefWidth="120.0" text="Total Orders"/>
+                                        <TableColumn fx:id="colCstSpent" prefWidth="140.0" text="Total Spent"/>
+                                    </columns>
+                                </TableView>
+                            </content>
+                        </Tab>
+                    </tabs>
+                </TabPane>
+
+            </children>
+        </VBox>
+    </children>
+</StackPane>
+

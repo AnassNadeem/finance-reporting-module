@@ -1,0 +1,15 @@
+# General AI Behavior
+- You are an expert in Java, JavaFX 21, and SQLite.
+- NEVER generate placeholder comments like `// implement logic here`. Always write the actual, complete code.
+- ALWAYS read the existing FXML and Controller files before modifying them or writing DAOs to ensure variable names match perfectly.
+
+# JavaFX UI Rules
+- Do NOT use `<VBox.margin>` or `<HBox.margin>` inside of `<StackPane>`, `<Circle>`, or `<SVGPath>` tags in FXML, as this causes Scene Builder to crash with a PropertyNotFoundException. Use `<Region>` or `translateY`/`translateX` for spacing instead.
+- All database calls or heavy logic MUST be done on a background thread (e.g., using `Task` or `CompletableFuture`).
+- Any updates to the UI after a database call MUST be wrapped in `Platform.runLater(() -> { ... });`.
+
+# Database & Architecture Rules
+- Use pure JDBC for SQLite (`java.sql.*`). Do not introduce heavy ORMs like Hibernate unless explicitly asked.
+- Follow the DAO (Data Access Object) pattern. Keep SQL queries out of the Controllers. 
+- Use standard Java classes (DTOs) to bind data to TableViews via `PropertyValueFactory`.
+- Always close database connections, ResultSets, and PreparedStatements in a `finally` block or use try-with-resources.
