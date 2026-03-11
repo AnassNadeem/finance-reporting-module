@@ -17,11 +17,16 @@ import java.sql.Statement;
 public class DatabaseBootstrap {
 
     public static void main(String[] args) throws Exception {
+        bootstrap();
+        System.out.println("DatabaseBootstrap: schema.sql and seed.sql applied to finance_raez.db");
+    }
+
+    /** Applies schema and seed to the DB used by DBConnection. Called automatically when the DB has no FUser table. */
+    public static void bootstrap() throws Exception {
         try (Connection conn = DBConnection.getConnection()) {
             runSqlFromResource(conn, "/database/schema.sql");
             runSqlFromResource(conn, "/database/seed.sql");
         }
-        System.out.println("DatabaseBootstrap: schema.sql and seed.sql applied to finance_raez.db");
     }
 
     private static void runSqlFromResource(Connection conn, String resourcePath) throws Exception {
