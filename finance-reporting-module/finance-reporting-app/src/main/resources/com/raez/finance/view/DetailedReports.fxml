@@ -28,7 +28,7 @@
 
       <HBox alignment="CENTER_LEFT">
          <children>
-            <VBox>
+            <VBox spacing="4.0">
                <children>
                   <Label text="Reports" textFill="#111827">
                      <font><Font name="System Bold" size="24.0" /></font>
@@ -39,13 +39,21 @@
                </children>
             </VBox>
             <Region HBox.hgrow="ALWAYS" />
-            <MenuButton mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export Reports">
+            <MenuButton mnemonicParsing="false" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export">
               <items>
-                <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV" />
-                <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF" />
+                <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV">
+                  <graphic>
+                    <StackPane prefWidth="20.0" prefHeight="20.0" style="-fx-background-color: #10B981; -fx-background-radius: 4;" />
+                  </graphic>
+                </MenuItem>
+                <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF">
+                  <graphic>
+                    <StackPane prefWidth="20.0" prefHeight="20.0" style="-fx-background-color: #EF4444; -fx-background-radius: 4;" />
+                  </graphic>
+                </MenuItem>
               </items>
                <graphic>
-                  <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m4 4V4" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                  <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m4 4V4" fill="TRANSPARENT" stroke="white" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
                </graphic>
             </MenuButton>
          </children>
@@ -74,21 +82,15 @@
                </children>
             </HBox>
 
-            <FlowPane hgap="16.0" vgap="16.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
+            <HBox alignment="CENTER_LEFT" spacing="24.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
                <padding>
                   <Insets bottom="24.0" left="24.0" right="24.0" top="24.0" />
                </padding>
                <children>
-                  <VBox spacing="8.0" prefWidth="250.0">
+                  <VBox spacing="8.0" HBox.hgrow="ALWAYS" maxWidth="Infinity">
                      <Label text="Search" textFill="#374151" />
-                     <TextField fx:id="txtSearch" prefHeight="40.0" promptText="Search..." style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <TextField fx:id="txtSearch" prefHeight="40.0" promptText="Search orders..." style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-prompt-text-fill: #9CA3AF;" />
                   </VBox>
-
-                  <VBox spacing="8.0" prefWidth="150.0">
-                     <Label text="Date Range" textFill="#374151" />
-                     <ComboBox fx:id="cmbDateRange" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
-                  </VBox>
-
                   <VBox fx:id="boxCustomDate" managed="false" visible="false" spacing="8.0">
                      <children>
                         <HBox spacing="16.0">
@@ -103,32 +105,32 @@
                         </HBox>
                      </children>
                   </VBox>
-
-                  <VBox fx:id="boxOrderStatus" spacing="8.0" prefWidth="150.0">
+                  <VBox spacing="8.0" prefWidth="160.0">
+                     <Label text="Date Range" textFill="#374151" />
+                     <ComboBox fx:id="cmbDateRange" prefHeight="40.0" prefWidth="160.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+                  <VBox fx:id="boxOrderStatus" spacing="8.0" prefWidth="140.0">
                      <Label text="Status" textFill="#374151" />
-                     <ComboBox fx:id="cmbOrderStatus" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <ComboBox fx:id="cmbOrderStatus" prefHeight="40.0" prefWidth="140.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
-
-                  <VBox fx:id="boxProductCategory" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                  <VBox fx:id="boxProductCategory" managed="false" visible="false" spacing="8.0" prefWidth="160.0">
                      <Label text="Category" textFill="#374151" />
-                     <ComboBox fx:id="cmbProductCategory" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <ComboBox fx:id="cmbProductCategory" prefHeight="40.0" prefWidth="160.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
-
-                  <VBox fx:id="boxCustomerType" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                  <VBox fx:id="boxCustomerType" managed="false" visible="false" spacing="8.0" prefWidth="140.0">
                      <Label text="Customer Type" textFill="#374151" />
-                     <ComboBox fx:id="cmbCustomerType" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <ComboBox fx:id="cmbCustomerType" prefHeight="40.0" prefWidth="140.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
-                  <VBox fx:id="boxCustomerCompany" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                  <VBox fx:id="boxCustomerCompany" managed="false" visible="false" spacing="8.0" prefWidth="160.0">
                      <Label text="Company" textFill="#374151" />
-                     <ComboBox fx:id="cmbCustomerCompany" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <ComboBox fx:id="cmbCustomerCompany" prefHeight="40.0" prefWidth="160.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
-                  <VBox fx:id="boxCustomerCountry" managed="false" visible="false" spacing="8.0" prefWidth="150.0">
+                  <VBox fx:id="boxCustomerCountry" managed="false" visible="false" spacing="8.0" prefWidth="120.0">
                      <Label text="Country" textFill="#374151" />
-                     <ComboBox fx:id="cmbCustomerCountry" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <ComboBox fx:id="cmbCustomerCountry" prefHeight="40.0" prefWidth="120.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
-
                </children>
-            </FlowPane>
+            </HBox>
 
             <StackPane VBox.vgrow="ALWAYS" minHeight="400.0">
                <children>
@@ -193,5 +195,7 @@
 
          </children>
       </VBox>
+   </children>
+   </VBox>
    </children>
 </StackPane>
