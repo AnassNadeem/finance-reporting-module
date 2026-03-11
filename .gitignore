@@ -2,3 +2,5 @@
 *.db
 *.db-shm
 *.db-wal
+# Allow the main application database to be committed
+!finance-reporting-module/finance-reporting-app/finance_raez.db
