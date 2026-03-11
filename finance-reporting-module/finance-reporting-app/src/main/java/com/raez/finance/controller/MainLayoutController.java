@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
@@ -33,6 +34,7 @@ public class MainLayoutController {
                 }
                 sidebarContainer.getChildren().clear();
                 sidebarContainer.getChildren().add(sidebarRoot);
+                VBox.setVgrow(sidebarRoot, Priority.ALWAYS);
             }
 
             URL topBarUrl = getClass().getResource(VIEW_PATH + "TopBar.fxml");
@@ -61,6 +63,7 @@ public class MainLayoutController {
                 OverviewController overviewController = overviewLoader.getController();
                 if (overviewController != null) {
                     overviewController.setMainLayoutController(this);
+                    overviewRoot.setUserData(overviewController);
                 }
                 contentArea.getChildren().clear();
                 contentArea.getChildren().add(overviewRoot);
@@ -73,6 +76,17 @@ public class MainLayoutController {
     /** Swaps the center content area to the given node. */
     public void setContent(Node node) {
         if (contentArea != null) {
+            if (!contentArea.getChildren().isEmpty()) {
+                Node current = contentArea.getChildren().get(0);
+                Object userData = current.getUserData();
+                if (userData instanceof GlobalSearchResultsController) {
+                    ((GlobalSearchResultsController) userData).shutdown();
+                } else if (userData instanceof DetailedReportsController) {
+                    ((DetailedReportsController) userData).shutdown();
+                } else if (userData instanceof OverviewController) {
+                    ((OverviewController) userData).shutdown();
+                }
+            }
             contentArea.getChildren().clear();
             contentArea.getChildren().add(node);
         }
@@ -93,6 +107,65 @@ public class MainLayoutController {
             stage.show();
         } catch (Exception e) {
             throw new RuntimeException("Failed to navigate to RoleSelection", e);
+        }
+    }
+
+    /**
+     * Navigates to Detailed Reports, switches to the given tab, and triggers export (CSV or PDF).
+     * @param reportType "orders", "products", or "customers"
+     * @param format "csv" or "pdf"
+     */
+    public void navigateToReportsAndExport(String reportType, String format) {
+        try {
+            URL url = getClass().getResource(VIEW_PATH + "DetailedReports.fxml");
+            if (url == null) return;
+            FXMLLoader loader = new FXMLLoader(url);
+            Parent root = loader.load();
+            DetailedReportsController controller = loader.getController();
+            if (controller != null) {
+                controller.setMainLayoutController(this);
+                root.setUserData(controller);
+                final String fmt = format;
+                controller.setAfterLoadCallback(() -> {
+                    if ("pdf".equalsIgnoreCase(fmt)) {
+                        controller.performExportPDF();
+                    } else {
+                        controller.performExportCSV();
+                    }
+                });
+            }
+            setContent(root);
+            if (controller != null) {
+                controller.switchToTab(reportType != null ? reportType : "orders");
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to navigate and export", e);
+        }
+    }
+
+    /**
+     * Shows the unified global search results view for the given query.
+     */
+    public void showGlobalSearch(String query) {
+        if (query == null || query.isBlank()) {
+            return;
+        }
+        try {
+            URL url = getClass().getResource(VIEW_PATH + "GlobalSearchResults.fxml");
+            if (url == null) {
+                return;
+            }
+            FXMLLoader loader = new FXMLLoader(url);
+            Parent root = loader.load();
+            GlobalSearchResultsController controller = loader.getController();
+            if (controller != null) {
+                controller.setMainLayoutController(this);
+                controller.setQuery(query);
+                root.setUserData(controller);
+            }
+            setContent(root);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to show global search results", e);
         }
     }
 }
