@@ -66,6 +66,75 @@ public class ExportService {
     }
 
     /**
+     * Exports raw rows (header + data) to a CSV file.
+     * Each element of {@code data} is a String array representing one row.
+     */
+    public static void exportRowsToCSV(List<String[]> data, File file) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        for (String[] row : data) {
+            List<String> escaped = new ArrayList<>();
+            for (String cell : row) {
+                escaped.add(escapeCsv(cell != null ? cell : ""));
+            }
+            sb.append(String.join(",", escaped)).append("\n");
+        }
+        try (Writer w = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
+            w.write(sb.toString());
+        }
+    }
+
+    /**
+     * Exports raw rows (header + data) to a PDF file with the given title.
+     * Each element of {@code data} is a String array representing one row.
+     */
+    public static void exportRowsToPDF(String title, List<String[]> data, File file) throws Exception {
+        int cols = data.isEmpty() ? 1 : data.get(0).length;
+        try (PDDocument doc = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            doc.addPage(page);
+            float margin = 50;
+            float pageHeight = page.getMediaBox().getHeight();
+            float pageWidth = page.getMediaBox().getWidth();
+            float y = pageHeight - margin;
+            float leading = 14f;
+            float colWidth = (pageWidth - 2 * margin) / Math.max(1, cols);
+            PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+            PDType1Font fontBold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+
+            PDPageContentStream cs = new PDPageContentStream(doc, page);
+            cs.beginText();
+            cs.setFont(fontBold, 14);
+            cs.newLineAtOffset(margin, y);
+            cs.showText(trimForPdf(title != null ? title : "Report", 80));
+            cs.endText();
+            y -= leading * 2;
+
+            float bottomY = margin + leading;
+            for (int r = 0; r < data.size(); r++) {
+                if (y < bottomY) {
+                    cs.close();
+                    page = new PDPage(PDRectangle.A4);
+                    doc.addPage(page);
+                    y = pageHeight - margin;
+                    cs = new PDPageContentStream(doc, page);
+                }
+                String[] rowData = data.get(r);
+                cs.beginText();
+                cs.setFont(r == 0 ? fontBold : font, 10);
+                cs.newLineAtOffset(margin, y);
+                for (String cell : rowData) {
+                    cs.showText(trimForPdf(cell, 28));
+                    cs.newLineAtOffset(colWidth, 0);
+                }
+                cs.endText();
+                y -= leading;
+            }
+            cs.close();
+            doc.save(file);
+        }
+    }
+
+    /**
      * Exports the given TableView to a PDF file with the given title.
      */
     public static void exportToPDF(TableView<?> table, String title, File file) throws Exception {
