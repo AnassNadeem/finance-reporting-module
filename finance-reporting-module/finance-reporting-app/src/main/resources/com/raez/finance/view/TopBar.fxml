@@ -19,16 +19,47 @@
       
       <HBox alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
          <children>
-            <HBox alignment="CENTER_LEFT" maxWidth="380.0" minWidth="280.0" prefHeight="40.0" prefWidth="320.0" spacing="8.0" style="-fx-background-color: #F9FAFB; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8;">
+            <HBox alignment="CENTER_LEFT"
+                  maxWidth="420.0"
+                  minWidth="280.0"
+                  prefHeight="40.0"
+                  prefWidth="360.0"
+                  spacing="8.0"
+                  style="-fx-background-color: #F9FAFB; -fx-border-color: #D1D5DB; -fx-border-radius: 999; -fx-background-radius: 999;">
                <padding>
-                  <Insets left="12.0" right="12.0" />
+                  <Insets left="14.0" right="14.0" />
                </padding>
                <children>
-                  <SVGPath content="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" fill="TRANSPARENT" stroke="#9CA3AF" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
-                  
-                  <TextField fx:id="txtSearch" promptText="Search transactions, customers, products..." style="-fx-background-color: transparent; -fx-prompt-text-fill: #9CA3AF;" HBox.hgrow="ALWAYS">
-                     <font><Font size="14.0" /></font>
+                  <SVGPath content="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                           fill="TRANSPARENT"
+                           stroke="#9CA3AF"
+                           strokeLineCap="ROUND"
+                           strokeLineJoin="ROUND"
+                           strokeWidth="2.0" />
+
+                  <TextField fx:id="txtSearch"
+                             promptText="Search transactions, customers, products..."
+                             style="-fx-background-color: transparent; -fx-prompt-text-fill: #9CA3AF; -fx-text-fill: #111827; -fx-focus-color: transparent; -fx-faint-focus-color: transparent;"
+                             HBox.hgrow="ALWAYS">
+                     <font>
+                        <Font size="14.0" />
+                     </font>
                   </TextField>
+
+                  <Button fx:id="btnClearSearch"
+                          mnemonicParsing="false"
+                          visible="false"
+                          managed="false"
+                          style="-fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 0 0 0 4;">
+                     <graphic>
+                        <SVGPath content="M6 18L18 6M6 6l12 12"
+                                 fill="TRANSPARENT"
+                                 stroke="#9CA3AF"
+                                 strokeLineCap="ROUND"
+                                 strokeLineJoin="ROUND"
+                                 strokeWidth="2.0" />
+                     </graphic>
+                  </Button>
                </children>
             </HBox>
          </children>
