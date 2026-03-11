@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class DetailedReportsController {
 
@@ -95,6 +96,42 @@ public class DetailedReportsController {
     private final ObservableList<CustomerReportRow> customerItems = FXCollections.observableArrayList();
 
     private String activeTab = "orders";
+    private MainLayoutController mainLayoutController;
+    /** One-shot callback run when the current tab's data load completes (for export-after-navigate). */
+    private Runnable afterLoadCallback;
+
+    public void setMainLayoutController(MainLayoutController mainLayoutController) {
+        this.mainLayoutController = mainLayoutController;
+    }
+
+    /**
+     * Shuts down the executor so the application can terminate gracefully.
+     * Call this when the controller is no longer needed (e.g. when navigating away).
+     */
+    public void shutdown() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** Runs the given callback once when the current tab's data has finished loading. Used by navigateToReportsAndExport. */
+    public void setAfterLoadCallback(Runnable runnable) {
+        this.afterLoadCallback = runnable;
+    }
+
+    private void runAfterLoadCallback() {
+        if (afterLoadCallback != null) {
+            Runnable r = afterLoadCallback;
+            afterLoadCallback = null;
+            r.run();
+        }
+    }
 
     @FXML
     public void initialize() {
@@ -248,6 +285,7 @@ public class DetailedReportsController {
                 orderItems.clear();
                 orderItems.addAll(task.getValue());
             }
+            runAfterLoadCallback();
         });
         task.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
         executor.execute(task);
@@ -267,6 +305,7 @@ public class DetailedReportsController {
                 productItems.clear();
                 productItems.addAll(task.getValue());
             }
+            runAfterLoadCallback();
         });
         task.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
         executor.execute(task);
@@ -285,6 +324,7 @@ public class DetailedReportsController {
                 customerItems.clear();
                 customerItems.addAll(task.getValue());
             }
+            runAfterLoadCallback();
         });
         task.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
         executor.execute(task);
@@ -330,6 +370,11 @@ public class DetailedReportsController {
 
     // --- Helper Logic ---
 
+    /** Public for navigation/export from TopBar: switch to Orders, Products, or Customers tab. */
+    public void switchToTab(String tab) {
+        switchTab(tab);
+    }
+
     private void switchTab(String tab) {
         activeTab = tab;
         
@@ -351,6 +396,16 @@ public class DetailedReportsController {
         boxCustomerType.setVisible(false); boxCustomerType.setManaged(false);
         boxCustomerCompany.setVisible(false); boxCustomerCompany.setManaged(false);
         boxCustomerCountry.setVisible(false); boxCustomerCountry.setManaged(false);
+
+        // Update search placeholder per tab
+        if (txtSearch != null) {
+            switch (tab) {
+                case "orders":   txtSearch.setPromptText("Search orders..."); break;
+                case "products": txtSearch.setPromptText("Search products..."); break;
+                case "customers": txtSearch.setPromptText("Search customers..."); break;
+                default:        txtSearch.setPromptText("Search..."); break;
+            }
+        }
 
         // Apply Active State
         switch (tab) {
@@ -391,13 +446,27 @@ public class DetailedReportsController {
 
     @FXML
     private void handleExportCSV(ActionEvent event) {
+        performExportCSV();
+    }
+
+    @FXML
+    private void handleExportPDF(ActionEvent event) {
+        performExportPDF();
+    }
+
+    /** Called from profile Export menu: show save dialog and export current tab to CSV. */
+    public void performExportCSV() {
         TableView<?> table = getCurrentTable();
         if (table == null) return;
+        javafx.stage.Window window = table.getScene() != null ? table.getScene().getWindow() : null;
+        if (window == null && rootStackPane != null && rootStackPane.getScene() != null) {
+            window = rootStackPane.getScene().getWindow();
+        }
         FileChooser fc = new FileChooser();
         fc.setTitle("Export to CSV");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
         fc.setInitialFileName(getExportBaseName() + ".csv");
-        File file = fc.showSaveDialog(table.getScene() != null ? table.getScene().getWindow() : null);
+        File file = fc.showSaveDialog(window);
         if (file == null) return;
         try {
             ExportService.exportToCSV(table, file);
@@ -407,15 +476,19 @@ public class DetailedReportsController {
         }
     }
 
-    @FXML
-    private void handleExportPDF(ActionEvent event) {
+    /** Called from profile Export menu: show save dialog and export current tab to PDF. */
+    public void performExportPDF() {
         TableView<?> table = getCurrentTable();
         if (table == null) return;
+        javafx.stage.Window window = table.getScene() != null ? table.getScene().getWindow() : null;
+        if (window == null && rootStackPane != null && rootStackPane.getScene() != null) {
+            window = rootStackPane.getScene().getWindow();
+        }
         FileChooser fc = new FileChooser();
         fc.setTitle("Export to PDF");
         fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
         fc.setInitialFileName(getExportBaseName() + ".pdf");
-        File file = fc.showSaveDialog(table.getScene() != null ? table.getScene().getWindow() : null);
+        File file = fc.showSaveDialog(window);
         if (file == null) return;
         try {
             ExportService.exportToPDF(table, getExportTitle(), file);
