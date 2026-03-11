@@ -3,8 +3,10 @@ package com.raez.finance.controller;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 
@@ -30,40 +32,48 @@ public class SidebarController {
     @FXML
     public void initialize() {
         setActiveButton(btnDashboard);
+        // Ensure Reports button opens Reports even if FXML onAction fails to bind
+        if (btnReports != null) {
+            btnReports.setOnAction(e -> {
+                loadContent("DetailedReports.fxml");
+                setActiveButton(btnReports);
+            });
+            btnReports.setFocusTraversable(true);
+        }
     }
 
     @FXML
-    private void handleNavDashboard(ActionEvent event) {
+    public void handleNavDashboard(ActionEvent event) {
         loadContent("Overview.fxml");
         setActiveButton(btnDashboard);
     }
 
     @FXML
-    private void handleNavReports(ActionEvent event) {
+    public void handleNavReports(ActionEvent event) {
         loadContent("DetailedReports.fxml");
         setActiveButton(btnReports);
     }
 
     @FXML
-    private void handleNavInsights(ActionEvent event) {
+    public void handleNavInsights(ActionEvent event) {
         loadContent("CustomerInsights.fxml");
         setActiveButton(btnInsights);
     }
 
     @FXML
-    private void handleNavProfitability(ActionEvent event) {
+    public void handleNavProfitability(ActionEvent event) {
         loadContent("ProductProfitability.fxml");
         setActiveButton(btnProfitability);
     }
 
     @FXML
-    private void handleNavSettings(ActionEvent event) {
+    public void handleNavSettings(ActionEvent event) {
         loadContent("Settings.fxml");
         setActiveButton(btnSettings);
     }
 
     @FXML
-    private void handleLogout(ActionEvent event) {
+    public void handleLogout(ActionEvent event) {
         if (mainLayoutController != null) {
             mainLayoutController.handleLogout();
         }
@@ -72,15 +82,27 @@ public class SidebarController {
     private void loadContent(String fxmlName) {
         if (mainLayoutController == null) return;
         try {
+            // Use same class loader as MainLayoutController so the view is always found
             URL url = MainLayoutController.class.getResource(VIEW_PATH + fxmlName);
             if (url == null) {
                 url = getClass().getResource(VIEW_PATH + fxmlName);
+            }
+            if (url == null) {
+                url = getClass().getClassLoader().getResource("com/raez/finance/view/" + fxmlName);
             }
             if (url == null) {
                 throw new IllegalStateException("Resource not found: " + VIEW_PATH + fxmlName);
             }
             FXMLLoader loader = new FXMLLoader(url);
             Parent root = loader.load();
+            Object ctrl = loader.getController();
+            if (ctrl instanceof OverviewController) {
+                ((OverviewController) ctrl).setMainLayoutController(mainLayoutController);
+                root.setUserData(ctrl);
+            } else if (ctrl instanceof DetailedReportsController) {
+                ((DetailedReportsController) ctrl).setMainLayoutController(mainLayoutController);
+                root.setUserData(ctrl);
+            }
             mainLayoutController.setContent(root);
         } catch (Exception e) {
             throw new RuntimeException("Failed to load " + fxmlName, e);
@@ -99,8 +121,14 @@ public class SidebarController {
     }
 
     private void setNavButtonIconFill(Button btn, boolean active) {
-        if (btn.getGraphic() instanceof SVGPath) {
-            ((SVGPath) btn.getGraphic()).setFill(active ? Color.WHITE : Color.web("#374151"));
+        Node graphic = btn.getGraphic();
+        if (graphic instanceof SVGPath) {
+            ((SVGPath) graphic).setFill(active ? Color.WHITE : Color.web("#374151"));
+        } else if (graphic instanceof StackPane && !((StackPane) graphic).getChildren().isEmpty()) {
+            Node icon = ((StackPane) graphic).getChildren().get(0);
+            if (icon instanceof SVGPath) {
+                ((SVGPath) icon).setStroke(active ? Color.WHITE : Color.web("#374151"));
+            }
         }
     }
 }
