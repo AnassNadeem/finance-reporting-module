@@ -2,6 +2,7 @@ package com.raez.finance.controller;
 
 import com.raez.finance.dao.ProductDao;
 import com.raez.finance.model.ProductReportRow;
+import com.raez.finance.service.ExportService;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -16,7 +17,10 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 
+import java.io.File;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -159,11 +163,35 @@ public class ProductProfitabilityController {
 
     @FXML
     private void handleExportCSV(ActionEvent event) {
-        System.out.println("Exporting Product Profitability to CSV...");
+        Window window = tblProducts != null && tblProducts.getScene() != null
+                ? tblProducts.getScene().getWindow() : null;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export Product Profitability to CSV");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+        fc.setInitialFileName("product_profitability.csv");
+        File file = fc.showSaveDialog(window);
+        if (file == null) return;
+        try {
+            ExportService.exportToCSV(tblProducts, file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
     private void handleExportPDF(ActionEvent event) {
-        System.out.println("Exporting Product Profitability to PDF...");
+        Window window = tblProducts != null && tblProducts.getScene() != null
+                ? tblProducts.getScene().getWindow() : null;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export Product Profitability to PDF");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+        fc.setInitialFileName("product_profitability.pdf");
+        File file = fc.showSaveDialog(window);
+        if (file == null) return;
+        try {
+            ExportService.exportToPDF(tblProducts, "Product Profitability Report", file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

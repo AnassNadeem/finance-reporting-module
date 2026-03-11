@@ -43,13 +43,21 @@
                   </VBox>
                   <Region HBox.hgrow="ALWAYS" />
                   
-                  <MenuButton mnemonicParsing="false" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export Reports">
+                  <MenuButton mnemonicParsing="false" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export">
                     <items>
-                      <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV" />
-                      <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF" />
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV">
+                        <graphic>
+                          <StackPane prefWidth="20.0" prefHeight="20.0" style="-fx-background-color: #10B981; -fx-background-radius: 4;" />
+                        </graphic>
+                      </MenuItem>
+                      <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" text="Export as PDF">
+                        <graphic>
+                          <StackPane prefWidth="20.0" prefHeight="20.0" style="-fx-background-color: #EF4444; -fx-background-radius: 4;" />
+                        </graphic>
+                      </MenuItem>
                     </items>
                      <graphic>
-                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" fill="TRANSPARENT" stroke="#374151" strokeWidth="1.5" />
+                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0l-4-4m4 4V4" fill="TRANSPARENT" stroke="white" strokeWidth="1.5" />
                      </graphic>
                   </MenuButton>
                </children>
