@@ -2,6 +2,7 @@ package com.raez.finance.controller;
 
 import com.raez.finance.dao.CustomerDao;
 import com.raez.finance.model.TopBuyerRow;
+import com.raez.finance.service.ExportService;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -14,7 +15,10 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
 
+import java.io.File;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -102,11 +106,35 @@ public class CustomerInsightsController {
 
     @FXML
     private void handleExportCSV(ActionEvent event) {
-        System.out.println("Exporting Customer Insights to CSV...");
+        Window window = tblTopBuyers != null && tblTopBuyers.getScene() != null
+                ? tblTopBuyers.getScene().getWindow() : null;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export Customer Insights to CSV");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+        fc.setInitialFileName("customer_insights.csv");
+        File file = fc.showSaveDialog(window);
+        if (file == null) return;
+        try {
+            ExportService.exportToCSV(tblTopBuyers, file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
     private void handleExportPDF(ActionEvent event) {
-        System.out.println("Exporting Customer Insights to PDF...");
+        Window window = tblTopBuyers != null && tblTopBuyers.getScene() != null
+                ? tblTopBuyers.getScene().getWindow() : null;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export Customer Insights to PDF");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+        fc.setInitialFileName("customer_insights.pdf");
+        File file = fc.showSaveDialog(window);
+        if (file == null) return;
+        try {
+            ExportService.exportToPDF(tblTopBuyers, "Customer Insights — Top Buyers", file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
