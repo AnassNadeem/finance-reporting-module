@@ -25,6 +25,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class OverviewController {
 
@@ -35,6 +36,26 @@ public class OverviewController {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private MainLayoutController mainLayoutController;
+
+    public void setMainLayoutController(MainLayoutController mainLayoutController) {
+        this.mainLayoutController = mainLayoutController;
+    }
+
+    /**
+     * Shuts down the executor so the application can terminate gracefully.
+     * Call this when the controller is no longer needed (e.g. when navigating away).
+     */
+    public void shutdown() {
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
 
     // --- Filters ---
     @FXML private ComboBox<String> cmbDateRange;
@@ -59,10 +80,6 @@ public class OverviewController {
     @FXML private PieChart chartRevenue;
     @FXML private VBox vboxTopProducts;
     @FXML private VBox vboxAlerts;
-
-    public void setMainLayoutController(MainLayoutController mainLayoutController) {
-        this.mainLayoutController = mainLayoutController;
-    }
 
     @FXML
     public void initialize() {
@@ -273,12 +290,60 @@ public class OverviewController {
 
     @FXML
     private void handleExportCSV(ActionEvent event) {
-        System.out.println("Exporting Dashboard to CSV...");
-        // Cursor will connect this to your Report generation logic
+        List<String[]> data = buildKpiExportData();
+        javafx.stage.Window window = getWindow();
+        javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
+        fc.setTitle("Export Dashboard to CSV");
+        fc.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("CSV", "*.csv"));
+        fc.setInitialFileName("dashboard_summary.csv");
+        java.io.File file = fc.showSaveDialog(window);
+        if (file == null) return;
+        try {
+            com.raez.finance.service.ExportService.exportRowsToCSV(data, file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @FXML
     private void handleExportPDF(ActionEvent event) {
-        System.out.println("Exporting Dashboard to PDF...");
+        List<String[]> data = buildKpiExportData();
+        javafx.stage.Window window = getWindow();
+        javafx.stage.FileChooser fc = new javafx.stage.FileChooser();
+        fc.setTitle("Export Dashboard to PDF");
+        fc.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("PDF", "*.pdf"));
+        fc.setInitialFileName("dashboard_summary.pdf");
+        java.io.File file = fc.showSaveDialog(window);
+        if (file == null) return;
+        try {
+            com.raez.finance.service.ExportService.exportRowsToPDF("Dashboard Summary", data, file);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private List<String[]> buildKpiExportData() {
+        List<String[]> rows = new java.util.ArrayList<>();
+        rows.add(new String[]{"Metric", "Value"});
+        rows.add(new String[]{"Total Sales", getText(lblTotalSales)});
+        rows.add(new String[]{"Total Profit", getText(lblTotalProfit)});
+        rows.add(new String[]{"Outstanding Payments", getText(lblOutstanding)});
+        rows.add(new String[]{"Refunds / Returns", getText(lblRefunds)});
+        rows.add(new String[]{"Total Customers", getText(lblCustomers)});
+        rows.add(new String[]{"Total Number of Orders", getText(lblOrders)});
+        rows.add(new String[]{"Average Order Value", getText(lblAOV)});
+        rows.add(new String[]{"Most Popular Product", getText(lblPopular)});
+        return rows;
+    }
+
+    private String getText(javafx.scene.control.Label lbl) {
+        return lbl != null && lbl.getText() != null ? lbl.getText() : "";
+    }
+
+    private javafx.stage.Window getWindow() {
+        if (lblTotalSales != null && lblTotalSales.getScene() != null) {
+            return lblTotalSales.getScene().getWindow();
+        }
+        return null;
     }
 }
