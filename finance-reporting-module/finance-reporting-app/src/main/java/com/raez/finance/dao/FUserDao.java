@@ -16,7 +16,7 @@ import java.util.List;
 public class FUserDao {
 
     public List<FUser> findAll() throws Exception {
-        String sql = "SELECT userID, email, username, passwordHash, role, firstName, lastName, isActive, lastLogin " +
+        String sql = "SELECT userID, email, username, passwordHash, role, firstName, lastName, phone, isActive, lastLogin " +
                 "FROM FUser ORDER BY username";
         List<FUser> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
@@ -29,6 +29,31 @@ public class FUserDao {
         return list;
     }
 
+    /** Finds a user by email (case-insensitive trim). Returns null if not found. */
+    public FUser findByEmail(String email) throws Exception {
+        if (email == null || email.isBlank()) return null;
+        String sql = "SELECT userID, email, username, passwordHash, role, firstName, lastName, phone, isActive, lastLogin " +
+                "FROM FUser WHERE TRIM(LOWER(email)) = TRIM(LOWER(?))";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? mapRow(rs) : null;
+        }
+    }
+
+    /** Finds a user by ID. Returns null if not found. */
+    public FUser findById(int userId) throws Exception {
+        String sql = "SELECT userID, email, username, passwordHash, role, firstName, lastName, phone, isActive, lastLogin " +
+                "FROM FUser WHERE userID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? mapRow(rs) : null;
+        }
+    }
+
     private FUser mapRow(ResultSet rs) throws Exception {
         int id = rs.getInt("userID");
         String email = rs.getString("email");
@@ -38,9 +63,10 @@ public class FUserDao {
         UserRole role = roleStr == null ? UserRole.FINANCE_USER : UserRole.valueOf(roleStr.trim().toUpperCase().replace(" ", "_"));
         String firstName = rs.getString("firstName");
         String lastName = rs.getString("lastName");
+        String phone = rs.getString("phone");
         boolean active = rs.getInt("isActive") == 1;
         LocalDateTime lastLogin = parseLastLogin(rs.getString("lastLogin"));
-        return new FUser(id, email, username, passwordHash, role, firstName, lastName, active, lastLogin);
+        return new FUser(id, email, username, passwordHash, role, firstName, lastName, phone, active, lastLogin);
     }
 
     private static LocalDateTime parseLastLogin(String lastLoginStr) {
@@ -67,7 +93,7 @@ public class FUserDao {
             boolean isActive
     ) throws Exception {
         String sql = "INSERT INTO FUser (email, username, passwordHash, role, firstName, lastName, phone, isActive, lastLogin) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -107,6 +133,30 @@ public class FUserDao {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newPasswordHash);
             ps.setInt(2, userId);
+            int updated = ps.executeUpdate();
+            if (updated == 0) {
+                throw new IllegalArgumentException("User not found");
+            }
+        }
+    }
+
+    /**
+     * Updates user profile fields (email, username, firstName, lastName, phone, role, isActive).
+     * Does not change password or lastLogin.
+     */
+    public void updateUser(int userId, String email, String username, String firstName, String lastName,
+                           String phone, UserRole role, boolean isActive) throws Exception {
+        String sql = "UPDATE FUser SET email = ?, username = ?, firstName = ?, lastName = ?, phone = ?, role = ?, isActive = ? WHERE userID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setString(2, username);
+            ps.setString(3, firstName);
+            ps.setString(4, lastName);
+            ps.setString(5, phone);
+            ps.setString(6, role.name());
+            ps.setInt(7, isActive ? 1 : 0);
+            ps.setInt(8, userId);
             int updated = ps.executeUpdate();
             if (updated == 0) {
                 throw new IllegalArgumentException("User not found");
