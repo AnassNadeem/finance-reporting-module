@@ -1,10 +1,13 @@
 package com.raez.finance.controller;
 
 import com.raez.finance.dao.FUserDao;
+import com.raez.finance.dao.PasswordResetTokenDao;
+import com.raez.finance.dao.RolePermissionDao;
 import com.raez.finance.model.FUser;
 import com.raez.finance.model.UserRole;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.service.UserService;
+import com.raez.finance.util.PasswordGenerator;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -16,6 +19,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.shape.SVGPath;
 import javafx.util.Callback;
 
@@ -29,6 +34,8 @@ import java.util.concurrent.Executors;
 public class SettingsController {
 
     private final FUserDao fUserDao = new FUserDao();
+    private final PasswordResetTokenDao resetTokenDao = new PasswordResetTokenDao();
+    private final RolePermissionDao rolePermissionDao = new RolePermissionDao();
     private final UserService userService = new UserService();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -79,7 +86,7 @@ public class SettingsController {
 
         bindUserColumns();
 
-        if (SessionManager.getRole() == UserRole.FINANCE_USER) {
+        if (!rolePermissionDao.hasPermission(SessionManager.getRole(), "MANAGE_USERS")) {
             btnTabUsers.setVisible(false);
             btnTabUsers.setManaged(false);
             viewUsers.setVisible(false);
@@ -112,6 +119,7 @@ public class SettingsController {
         return col -> new TableCell<>() {
             private final HBox box = new HBox(8);
             private final Button btnEdit = new Button();
+            private final Button btnToggle = new Button();
             private final Button btnDelete = new Button();
 
             {
@@ -125,6 +133,13 @@ public class SettingsController {
                 editSvg.setStrokeWidth(2);
                 btnEdit.setGraphic(editSvg);
 
+                btnToggle.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                SVGPath toggleSvg = new SVGPath();
+                toggleSvg.setContent("M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z");
+                toggleSvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                toggleSvg.setStrokeWidth(2);
+                btnToggle.setGraphic(toggleSvg);
+
                 btnDelete.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
                 btnDelete.setTooltip(new Tooltip("Delete"));
                 SVGPath deleteSvg = new SVGPath();
@@ -134,7 +149,7 @@ public class SettingsController {
                 deleteSvg.setStrokeWidth(2);
                 btnDelete.setGraphic(deleteSvg);
 
-                box.getChildren().addAll(btnEdit, btnDelete);
+                box.getChildren().addAll(btnEdit, btnToggle, btnDelete);
             }
 
             @Override
@@ -146,10 +161,28 @@ public class SettingsController {
                 }
                 FUser user = getTableRow().getItem();
                 btnEdit.setOnAction(e -> showEditModal(user));
+                btnToggle.setTooltip(new Tooltip(user.isActive() ? "Deactivate" : "Activate"));
+                Node g = btnToggle.getGraphic();
+                if (g instanceof SVGPath) {
+                    ((SVGPath) g).setStroke(user.isActive() ? javafx.scene.paint.Color.valueOf("#059669") : javafx.scene.paint.Color.valueOf("#6B7280"));
+                }
+                btnToggle.setOnAction(e -> toggleUserActive(user));
                 btnDelete.setOnAction(e -> confirmAndDelete(user));
                 setGraphic(box);
             }
         };
+    }
+
+    private void toggleUserActive(FUser user) {
+        try {
+            fUserDao.updateUser(user.getId(), user.getEmail(), user.getUsername(),
+                    user.getFirstName(), user.getLastName(), user.getPhone(),
+                    user.getRole(), !user.isActive());
+            refreshUsers();
+            showSuccessToast(user.isActive() ? "User deactivated." : "User activated.");
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.ERROR, "Could not update user: " + ex.getMessage()).showAndWait();
+        }
     }
 
     private void confirmAndDelete(FUser user) {
@@ -198,7 +231,7 @@ public class SettingsController {
     @FXML
     private void handleTabUsers(ActionEvent event) {
         switchTab("users");
-        if (SessionManager.getRole() == UserRole.ADMIN) {
+        if (rolePermissionDao.hasPermission(SessionManager.getRole(), "MANAGE_USERS")) {
             refreshUsers();
         }
     }
@@ -269,33 +302,71 @@ public class SettingsController {
 
     @FXML
     private void handleResetPassword(ActionEvent event) {
-        System.out.println("Sending reset email to: " + txtForgotEmail.getText());
+        String email = txtForgotEmail.getText();
+        if (email == null || email.trim().isEmpty()) {
+            new Alert(Alert.AlertType.WARNING, "Enter the user's email address.").showAndWait();
+            return;
+        }
+        try {
+            FUser user = fUserDao.findByEmail(email.trim());
+            if (user == null) {
+                new Alert(Alert.AlertType.WARNING, "No user found with that email.").showAndWait();
+                return;
+            }
+            String token = resetTokenDao.createToken(user.getId());
+            showResetTokenDialog(email.trim(), token);
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.ERROR, "Could not create reset token: " + e.getMessage()).showAndWait();
+        }
+    }
+
+    private void showResetTokenDialog(String email, String token) {
+        Alert dialog = new Alert(Alert.AlertType.INFORMATION);
+        dialog.setTitle("Password Reset Token");
+        dialog.setHeaderText("Share this one-time token with the user");
+        dialog.setContentText("The user must use this token on the login screen (Forgot password) to set a new password.\n\nToken expires in 24 hours.\n\nEmail: " + email + "\nToken: " + token);
+
+        ButtonType copyButton = new ButtonType("Copy Token", ButtonBar.ButtonData.APPLY);
+        dialog.getButtonTypes().setAll(copyButton, ButtonType.OK);
+
+        java.util.Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == copyButton) {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString(token);
+            clipboard.setContent(content);
+            showSuccessToast("Token copied to clipboard.");
+        }
     }
 
     // --- Modal Logic ---
 
     @FXML
     private void handleShowCreateModal(ActionEvent event) {
+        storedEditUser = null;
         isEditMode = false;
         lblModalTitle.setText("Create New User");
         btnModalSave.setText("Create User");
         clearModal();
-        
+        txtModalPassword.setDisable(true);
+        txtModalPassword.setPromptText("(auto-generated)");
+
         modalOverlay.setVisible(true);
         modalOverlay.setManaged(true);
     }
 
     public void showEditModal(FUser user) {
+        storedEditUser = user;
         isEditMode = true;
         lblModalTitle.setText("Edit User");
         btnModalSave.setText("Update User");
-        // Populate fields with user data (optional: bind to a stored user for update)
         txtModalUsername.setText(user.getUsername());
         txtModalFirstName.setText(user.getFirstName() != null ? user.getFirstName() : "");
         txtModalLastName.setText(user.getLastName() != null ? user.getLastName() : "");
         txtModalEmail.setText(user.getEmail());
-        txtModalPhone.clear(); // FUser model does not expose phone; could be added if DB is read in DAO
+        txtModalPhone.setText(user.getPhone() != null ? user.getPhone() : "");
         txtModalPassword.clear();
+        txtModalPassword.setDisable(true);
         cmbModalRole.setValue(user.getRole() == UserRole.ADMIN ? "Admin" : "Finance User");
         chkModalActive.setSelected(user.isActive());
         modalOverlay.setVisible(true);
@@ -311,12 +382,11 @@ public class SettingsController {
     @FXML
     private void handleSaveUser(ActionEvent event) {
         if (isEditMode) {
-            new Alert(Alert.AlertType.INFORMATION, "Edit user will be implemented in a later phase.").showAndWait();
+            saveEditUser();
             return;
         }
         String username = txtModalUsername.getText();
         String email = txtModalEmail.getText();
-        String password = txtModalPassword.getText();
         String roleStr = cmbModalRole.getValue();
         String firstName = txtModalFirstName.getText();
         String lastName = txtModalLastName.getText();
@@ -339,14 +409,11 @@ public class SettingsController {
             new Alert(Alert.AlertType.WARNING, "Email is required.").showAndWait();
             return;
         }
-        if (password == null || password.length() < 8) {
-            new Alert(Alert.AlertType.WARNING, "Initial password must be at least 8 characters.").showAndWait();
-            return;
-        }
         UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
 
+        String tempPassword = PasswordGenerator.generate();
         try {
-            userService.createUser(email.trim(), username.trim(), password, role,
+            userService.createUser(email.trim(), username.trim(), tempPassword, role,
                     firstName != null ? firstName.trim() : null,
                     lastName != null ? lastName.trim() : null,
                     phone != null && !phone.isBlank() ? phone.trim() : null,
@@ -354,9 +421,66 @@ public class SettingsController {
             refreshUsers();
             handleCloseModal(null);
             showSuccessToast("User created successfully.");
+            showTempPasswordDialog(email.trim(), tempPassword);
         } catch (Exception e) {
             new Alert(Alert.AlertType.ERROR, "Could not create user: " + e.getMessage()).showAndWait();
         }
+    }
+
+    private void showTempPasswordDialog(String email, String tempPassword) {
+        Alert dialog = new Alert(Alert.AlertType.INFORMATION);
+        dialog.setTitle("Temporary Password");
+        dialog.setHeaderText("Share this temporary password with the user");
+        dialog.setContentText("The user must log in and set a new password on first login.\n\nEmail/Username: " + email + "\nTemporary password: " + tempPassword);
+
+        ButtonType copyButton = new ButtonType("Copy to Clipboard", ButtonBar.ButtonData.APPLY);
+        dialog.getButtonTypes().setAll(copyButton, ButtonType.OK);
+
+        java.util.Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == copyButton) {
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
+            content.putString(tempPassword);
+            clipboard.setContent(content);
+            showSuccessToast("Password copied to clipboard.");
+        }
+    }
+
+    private void saveEditUser() {
+        FUser current = getStoredEditUser();
+        if (current == null) return;
+        String username = txtModalUsername.getText();
+        String email = txtModalEmail.getText();
+        String firstName = txtModalFirstName.getText();
+        String lastName = txtModalLastName.getText();
+        String phone = txtModalPhone.getText();
+        String roleStr = cmbModalRole.getValue();
+        boolean active = chkModalActive.isSelected();
+
+        if (username == null || username.isBlank() || email == null || email.isBlank()) {
+            new Alert(Alert.AlertType.WARNING, "Username and email are required.").showAndWait();
+            return;
+        }
+        UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
+        try {
+            fUserDao.updateUser(current.getId(), email.trim(), username.trim(),
+                    firstName != null ? firstName.trim() : null,
+                    lastName != null ? lastName.trim() : null,
+                    phone != null && !phone.isBlank() ? phone.trim() : null,
+                    role, active);
+            storedEditUser = null;
+            refreshUsers();
+            handleCloseModal(null);
+            showSuccessToast("User updated.");
+        } catch (Exception e) {
+            new Alert(Alert.AlertType.ERROR, "Could not update user: " + e.getMessage()).showAndWait();
+        }
+    }
+
+    private FUser storedEditUser = null;
+
+    private FUser getStoredEditUser() {
+        return storedEditUser;
     }
 
     private void showSuccessToast(String message) {
@@ -383,6 +507,8 @@ public class SettingsController {
     private void clearModal() {
         txtModalUsername.clear();
         txtModalPassword.clear();
+        txtModalPassword.setDisable(false);
+        txtModalPassword.setPromptText("");
         txtModalFirstName.clear();
         txtModalLastName.clear();
         txtModalEmail.clear();
