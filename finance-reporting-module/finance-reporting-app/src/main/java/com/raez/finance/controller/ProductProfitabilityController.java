@@ -3,6 +3,8 @@ package com.raez.finance.controller;
 import com.raez.finance.dao.ProductDao;
 import com.raez.finance.model.ProductReportRow;
 import com.raez.finance.service.ExportService;
+import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.controller.MainLayoutController;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,6 +34,11 @@ public class ProductProfitabilityController {
     private final ProductDao productDao = new ProductDao();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ObservableList<ProductReportRow> productItems = FXCollections.observableArrayList();
+    private MainLayoutController mainLayoutController;
+
+    public void setMainLayoutController(MainLayoutController mainLayoutController) {
+        this.mainLayoutController = mainLayoutController;
+    }
 
     @FXML private ComboBox<String> cmbCategoryFilter;
 
@@ -59,8 +66,11 @@ public class ProductProfitabilityController {
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
         colRevenue.setCellValueFactory(new PropertyValueFactory<>("revenue"));
+        colRevenue.setCellFactory(CurrencyUtil.currencyCellFactory());
         colCost.setCellValueFactory(new PropertyValueFactory<>("cost"));
+        colCost.setCellFactory(CurrencyUtil.currencyCellFactory());
         colProfit.setCellValueFactory(new PropertyValueFactory<>("profit"));
+        colProfit.setCellFactory(CurrencyUtil.currencyCellFactory());
         colMargin.setCellValueFactory(new PropertyValueFactory<>("marginPercent"));
         colUnits.setCellValueFactory(new PropertyValueFactory<>("unitsSold"));
         colTrend.setCellValueFactory(new PropertyValueFactory<>("trend"));
@@ -112,8 +122,8 @@ public class ProductProfitabilityController {
                         .toList();
 
                 Platform.runLater(() -> {
-                    lblTotalRevenue.setText(String.format("$%,.2f", totalRevenue));
-                    lblTotalProfit.setText(String.format("$%,.2f", totalProfit));
+                    lblTotalRevenue.setText(CurrencyUtil.formatCurrency(totalRevenue));
+                    lblTotalProfit.setText(CurrencyUtil.formatCurrency(totalProfit));
                     lblAvgMargin.setText(String.format("%.1f%%", avgMargin));
                     lblLowMarginCount.setText(String.valueOf(lowMarginCount));
 
@@ -173,8 +183,15 @@ public class ProductProfitabilityController {
         if (file == null) return;
         try {
             ExportService.exportToCSV(tblProducts, file);
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("success", "CSV exported to " + file.getName());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -190,8 +207,15 @@ public class ProductProfitabilityController {
         if (file == null) return;
         try {
             ExportService.exportToPDF(tblProducts, "Product Profitability Report", file);
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("success", "PDF exported to " + file.getName());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 }
