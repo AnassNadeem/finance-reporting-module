@@ -6,6 +6,7 @@ import com.raez.finance.dao.ProductDao;
 import com.raez.finance.model.CustomerReportRow;
 import com.raez.finance.model.OrderReportRow;
 import com.raez.finance.model.ProductReportRow;
+import com.raez.finance.util.CurrencyUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -109,6 +110,7 @@ public class GlobalSearchResultsController {
             colOrdCustomer.setCellValueFactory(new PropertyValueFactory<>("customer"));
             colOrdProduct.setCellValueFactory(new PropertyValueFactory<>("product"));
             colOrdAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
+            colOrdAmount.setCellFactory(CurrencyUtil.currencyCellFactory());
             colOrdDate.setCellValueFactory(new PropertyValueFactory<>("date"));
             colOrdStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
             tblOrders.setPlaceholder(new Label("No orders match this search."));
@@ -120,7 +122,9 @@ public class GlobalSearchResultsController {
             colPrdCat.setCellValueFactory(new PropertyValueFactory<>("category"));
             colPrdUnits.setCellValueFactory(new PropertyValueFactory<>("unitsSold"));
             colPrdRev.setCellValueFactory(new PropertyValueFactory<>("revenue"));
+            colPrdRev.setCellFactory(CurrencyUtil.currencyCellFactory());
             colPrdProfit.setCellValueFactory(new PropertyValueFactory<>("profit"));
+            colPrdProfit.setCellFactory(CurrencyUtil.currencyCellFactory());
             tblProducts.setPlaceholder(new Label("No products match this search."));
         }
         if (tblCustomers != null) {
@@ -131,6 +135,7 @@ public class GlobalSearchResultsController {
             colCstCountry.setCellValueFactory(new PropertyValueFactory<>("country"));
             colCstOrders.setCellValueFactory(new PropertyValueFactory<>("totalOrders"));
             colCstSpent.setCellValueFactory(new PropertyValueFactory<>("totalSpent"));
+            colCstSpent.setCellFactory(CurrencyUtil.currencyCellFactory());
             tblCustomers.setPlaceholder(new Label("No customers match this search."));
         }
 
@@ -169,9 +174,9 @@ public class GlobalSearchResultsController {
                 LocalDate to = LocalDate.now();
                 LocalDate from = to.minusYears(1);
 
-                List<OrderReportRow> orders = orderDao.findReportRows(from, to, "All Status", trimmed);
+                List<OrderReportRow> orders = orderDao.findReportRows(from, to, "All Status", trimmed, 0, 0);
                 List<ProductReportRow> products = productDao.findReportRows(from, to, "All Categories", trimmed);
-                List<CustomerReportRow> customers = customerDao.findReportRows("All", "All", trimmed);
+                List<CustomerReportRow> customers = customerDao.findReportRows("All", "All", trimmed, 0, 0);
 
                 javafx.application.Platform.runLater(() -> {
                     orderItems.setAll(orders);
