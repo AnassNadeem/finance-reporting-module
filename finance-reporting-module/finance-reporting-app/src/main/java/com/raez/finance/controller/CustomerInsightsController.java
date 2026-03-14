@@ -3,6 +3,7 @@ package com.raez.finance.controller;
 import com.raez.finance.dao.CustomerDao;
 import com.raez.finance.model.TopBuyerRow;
 import com.raez.finance.service.ExportService;
+import com.raez.finance.util.CurrencyUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -28,6 +29,11 @@ public class CustomerInsightsController {
     private final CustomerDao customerDao = new CustomerDao();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ObservableList<TopBuyerRow> topBuyerItems = FXCollections.observableArrayList();
+    private MainLayoutController mainLayoutController;
+
+    public void setMainLayoutController(MainLayoutController mainLayoutController) {
+        this.mainLayoutController = mainLayoutController;
+    }
 
     @FXML private ComboBox<String> cmbCustomerFilter;
 
@@ -57,8 +63,10 @@ public class CustomerInsightsController {
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colCountry.setCellValueFactory(new PropertyValueFactory<>("country"));
         colSpent.setCellValueFactory(new PropertyValueFactory<>("totalSpent"));
+        colSpent.setCellFactory(CurrencyUtil.currencyCellFactory());
         colOrders.setCellValueFactory(new PropertyValueFactory<>("orderCount"));
         colAOV.setCellValueFactory(new PropertyValueFactory<>("avgOrderValue"));
+        colAOV.setCellFactory(CurrencyUtil.currencyCellFactory());
         colLastPurchase.setCellValueFactory(new PropertyValueFactory<>("lastPurchase"));
 
         tblTopBuyers.setItems(topBuyerItems);
@@ -83,7 +91,7 @@ public class CustomerInsightsController {
 
                 javafx.application.Platform.runLater(() -> {
                     lblTotalCustomers.setText(String.format("%,d", totalCustomers));
-                    lblAvgSpending.setText(String.format("$%,.2f", avgSpending));
+                    lblAvgSpending.setText(CurrencyUtil.formatCurrency(avgSpending));
                     lblAvgFrequency.setText(String.format("%.1f / month", avgFrequency));
                     lblCompanyCustomers.setText("0");
 
@@ -116,8 +124,15 @@ public class CustomerInsightsController {
         if (file == null) return;
         try {
             ExportService.exportToCSV(tblTopBuyers, file);
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("success", "CSV exported to " + file.getName());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -133,8 +148,15 @@ public class CustomerInsightsController {
         if (file == null) return;
         try {
             ExportService.exportToPDF(tblTopBuyers, "Customer Insights — Top Buyers", file);
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("success", "PDF exported to " + file.getName());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 }

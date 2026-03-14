@@ -57,4 +57,20 @@ public final class SessionManager {
         }
         return Instant.now().isAfter(lastActivity.plus(TIMEOUT));
     }
+
+    /** Seconds until expiry, or 0 if already expired / not logged in. */
+    public static long getRemainingSeconds() {
+        if (currentUser == null || lastActivity == null) {
+            return 0;
+        }
+        long secs = Duration.between(Instant.now(), lastActivity.plus(TIMEOUT)).getSeconds();
+        return Math.max(0, secs);
+    }
+
+    /** Call to extend the session (e.g. when user clicks "Stay logged in"). */
+    public static void extendSession() {
+        if (currentUser != null) {
+            lastActivity = Instant.now();
+        }
+    }
 }

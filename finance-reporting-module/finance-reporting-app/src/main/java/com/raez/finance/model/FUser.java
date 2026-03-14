@@ -11,6 +11,7 @@ public class FUser {
     private final UserRole role;
     private final String firstName;
     private final String lastName;
+    private final String phone;
     private final boolean active;
     private final LocalDateTime lastLogin;
 
@@ -25,6 +26,21 @@ public class FUser {
             boolean active,
             LocalDateTime lastLogin
     ) {
+        this(id, email, username, passwordHash, role, firstName, lastName, null, active, lastLogin);
+    }
+
+    public FUser(
+            int id,
+            String email,
+            String username,
+            String passwordHash,
+            UserRole role,
+            String firstName,
+            String lastName,
+            String phone,
+            boolean active,
+            LocalDateTime lastLogin
+    ) {
         this.id = id;
         this.email = email;
         this.username = username;
@@ -32,6 +48,7 @@ public class FUser {
         this.role = role;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.phone = phone;
         this.active = active;
         this.lastLogin = lastLogin;
     }
@@ -62,6 +79,10 @@ public class FUser {
 
     public String getLastName() {
         return lastName;
+    }
+
+    public String getPhone() {
+        return phone;
     }
 
     public boolean isActive() {

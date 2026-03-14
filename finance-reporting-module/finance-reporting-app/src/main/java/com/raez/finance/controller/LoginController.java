@@ -117,9 +117,9 @@ public class LoginController {
     }
 
     private void navigateToDashboard(ActionEvent event) throws Exception {
-        java.net.URL fxmlUrl = getClass().getResource("/com/raez/finance/view/Dashboard.fxml");
+        java.net.URL fxmlUrl = getClass().getResource("/com/raez/finance/view/MainLayout.fxml");
         if (fxmlUrl == null) {
-            throw new IllegalStateException("Dashboard.fxml not found on classpath (resource path: /com/raez/finance/view/Dashboard.fxml)");
+            throw new IllegalStateException("MainLayout.fxml not found on classpath");
         }
         FXMLLoader loader = new FXMLLoader(fxmlUrl);
         Parent root = loader.load();
@@ -132,6 +132,7 @@ public class LoginController {
 
         Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
         stage.setScene(scene);
+        stage.setTitle("RAEZ Finance – Main");
         stage.show();
     }
 }

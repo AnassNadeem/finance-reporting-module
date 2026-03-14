@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.AuditLogController">
+   <content>
+      <VBox spacing="24.0" style="-fx-background-color: #F9FAFB;">
+         <padding>
+            <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
+         </padding>
+         <children>
+            <VBox>
+               <children>
+                  <Label text="Audit Log" textFill="#111827">
+                     <font><Font name="System Bold" size="24.0" /></font>
+                  </Label>
+                  <Label text="Customer updates and stock movements" textFill="#4B5563">
+                     <font><Font size="14.0" /></font>
+                  </Label>
+               </children>
+            </VBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding><Insets bottom="16.0" left="24.0" right="24.0" top="16.0" /></padding>
+               <children>
+                  <Label text="Customer Updates" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font></Label>
+                  <TableView fx:id="tblCustomerUpdates" prefHeight="200.0" VBox.vgrow="NEVER">
+                     <columns>
+                        <TableColumn fx:id="colUpdateId" prefWidth="80" text="ID" />
+                        <TableColumn fx:id="colCustomerId" prefWidth="80" text="Customer ID" />
+                        <TableColumn fx:id="colField" prefWidth="120" text="Field" />
+                        <TableColumn fx:id="colOldVal" prefWidth="150" text="Old Value" />
+                        <TableColumn fx:id="colNewVal" prefWidth="150" text="New Value" />
+                        <TableColumn fx:id="colUpdateDate" prefWidth="140" text="Date" />
+                     </columns>
+                  </TableView>
+               </children>
+            </VBox>
+
+            <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding><Insets bottom="16.0" left="24.0" right="24.0" top="16.0" /></padding>
+               <children>
+                  <Label text="Stock Movements" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font></Label>
+                  <TableView fx:id="tblStockMovements" prefHeight="200.0" VBox.vgrow="NEVER">
+                     <columns>
+                        <TableColumn fx:id="colMovementId" prefWidth="80" text="ID" />
+                        <TableColumn fx:id="colInventoryId" prefWidth="90" text="Inventory ID" />
+                        <TableColumn fx:id="colQty" prefWidth="80" text="Qty" />
+                        <TableColumn fx:id="colType" prefWidth="120" text="Type" />
+                        <TableColumn fx:id="colMovementDate" prefWidth="140" text="Date" />
+                     </columns>
+                  </TableView>
+               </children>
+            </VBox>
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>

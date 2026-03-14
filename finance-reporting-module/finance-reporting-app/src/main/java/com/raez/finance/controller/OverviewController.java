@@ -285,7 +285,12 @@ public class OverviewController {
     }
 
     private static String formatCurrency(double value) {
-        return String.format("$%,.2f", value);
+        return com.raez.finance.util.CurrencyUtil.formatCurrency(value);
+    }
+
+    @FXML
+    private void handleRefresh(ActionEvent event) {
+        loadDashboardData();
     }
 
     @FXML
@@ -300,8 +305,15 @@ public class OverviewController {
         if (file == null) return;
         try {
             com.raez.finance.service.ExportService.exportRowsToCSV(data, file);
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("success", "CSV exported to " + file.getName());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -317,8 +329,15 @@ public class OverviewController {
         if (file == null) return;
         try {
             com.raez.finance.service.ExportService.exportRowsToPDF("Dashboard Summary", data, file);
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("success", "PDF exported to " + file.getName());
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 

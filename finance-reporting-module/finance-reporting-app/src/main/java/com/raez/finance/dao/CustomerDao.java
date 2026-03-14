@@ -18,10 +18,9 @@ import java.util.List;
 public class CustomerDao {
 
     /**
-     * Fetch customers with order aggregates: totalOrders, totalSpent, avgOrderValue, lastPurchase.
-     * Optional filters: type (not in schema – can filter by name/address), country (deliveryAddress).
+     * Fetch customers with order aggregates. Optional filters. Use limit &lt;= 0 for no limit.
      */
-    public List<CustomerReportRow> findReportRows(String typeFilter, String countryFilter, String search) throws SQLException {
+    public List<CustomerReportRow> findReportRows(String typeFilter, String countryFilter, String search, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder(
                 "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
                 "COUNT(o.orderID) AS totalOrders, " +
@@ -48,10 +47,17 @@ public class CustomerDao {
             params.add("%" + countryFilter.trim() + "%");
         }
         sql.append(" GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress ORDER BY totalSpent DESC");
+        if (limit > 0) {
+            params.add(limit);
+            params.add(offset);
+        }
+        String fullSql = (limit > 0)
+                ? "SELECT * FROM (" + sql + ") AS sub LIMIT ? OFFSET ?"
+                : sql.toString();
 
         List<CustomerReportRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+             PreparedStatement ps = conn.prepareStatement(fullSql)) {
             for (int i = 0; i < params.size(); i++) {
                 ps.setObject(i + 1, params.get(i));
             }
@@ -76,6 +82,36 @@ public class CustomerDao {
             }
         }
         return rows;
+    }
+
+    /** Count customer report rows with same filters (for pagination). */
+    public int countReportRows(String typeFilter, String countryFilter, String search) throws SQLException {
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(*) FROM (SELECT c.customerID FROM CustomerRegistration c " +
+                "LEFT JOIN \"Order\" o ON o.customerID = c.customerID WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        if (search != null && !search.isBlank()) {
+            sql.append(" AND (c.name LIKE ? OR c.email LIKE ? OR CAST(c.customerID AS TEXT) LIKE ?)");
+            String term = "%" + search.trim() + "%";
+            params.add(term);
+            params.add(term);
+            params.add(term);
+        }
+        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim())) {
+            sql.append(" AND COALESCE(c.customerType, 'Individual') = ?");
+            params.add(typeFilter.trim());
+        }
+        if (countryFilter != null && !countryFilter.isBlank() && !"All".equalsIgnoreCase(countryFilter.trim())) {
+            sql.append(" AND c.deliveryAddress LIKE ?");
+            params.add("%" + countryFilter.trim() + "%");
+        }
+        sql.append(" GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress) AS sub");
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
+        }
     }
 
     /**

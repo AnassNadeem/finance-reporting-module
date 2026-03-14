@@ -7,6 +7,7 @@ import com.raez.finance.model.CustomerReportRow;
 import com.raez.finance.model.OrderReportRow;
 import com.raez.finance.model.ProductReportRow;
 import com.raez.finance.service.ExportService;
+import com.raez.finance.util.CurrencyUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -100,6 +101,9 @@ public class DetailedReportsController {
     /** One-shot callback run when the current tab's data load completes (for export-after-navigate). */
     private Runnable afterLoadCallback;
 
+    private int currentPage = 1;
+    private int totalRows = 0;
+
     public void setMainLayoutController(MainLayoutController mainLayoutController) {
         this.mainLayoutController = mainLayoutController;
     }
@@ -159,21 +163,27 @@ public class DetailedReportsController {
 
         cmbRowsPerPage.setItems(FXCollections.observableArrayList(10, 20, 30, 40, 50));
         cmbRowsPerPage.setValue(10);
+        cmbRowsPerPage.valueProperty().addListener((obs, o, n) -> {
+            currentPage = 1;
+            loadCurrentTabData();
+        });
 
         cmbDateRange.valueProperty().addListener((obs, oldV, newV) -> {
             toggleCustomDate("Custom".equals(newV));
+            currentPage = 1;
             loadCurrentTabData();
         });
-        dpStartDate.valueProperty().addListener((obs, o, n) -> loadCurrentTabData());
-        dpEndDate.valueProperty().addListener((obs, o, n) -> loadCurrentTabData());
-        cmbOrderStatus.valueProperty().addListener((obs, o, n) -> loadOrders());
-        cmbProductCategory.valueProperty().addListener((obs, o, n) -> loadProducts());
+        dpStartDate.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
+        dpEndDate.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
+        cmbOrderStatus.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadOrders(); });
+        cmbProductCategory.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadProducts(); });
         cmbCustomerType.valueProperty().addListener((obs, oldV, newV) -> {
             toggleCustomerCompany("Company".equals(newV));
+            currentPage = 1;
             loadCustomers();
         });
-        cmbCustomerCountry.valueProperty().addListener((obs, o, n) -> loadCustomers());
-        txtSearch.textProperty().addListener((obs, o, n) -> loadCurrentTabData());
+        cmbCustomerCountry.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCustomers(); });
+        txtSearch.textProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
 
         switchTab("orders");
     }
@@ -183,6 +193,7 @@ public class DetailedReportsController {
         colOrdCustomer.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("customer"));
         colOrdProduct.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("product"));
         colOrdAmount.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("amount"));
+        colOrdAmount.setCellFactory(CurrencyUtil.currencyCellFactory());
         colOrdDate.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("date"));
         colOrdStatus.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("status"));
     }
@@ -192,10 +203,14 @@ public class DetailedReportsController {
         colPrdName.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("name"));
         colPrdCat.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("category"));
         colPrdCost.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("cost"));
+        colPrdCost.setCellFactory(CurrencyUtil.currencyCellFactory());
         colPrdPrice.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("salePrice"));
+        colPrdPrice.setCellFactory(CurrencyUtil.currencyCellFactory());
         colPrdProfit.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("profit"));
+        colPrdProfit.setCellFactory(CurrencyUtil.currencyCellFactory());
         colPrdUnits.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unitsSold"));
         colPrdRev.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("revenue"));
+        colPrdRev.setCellFactory(CurrencyUtil.currencyCellFactory());
     }
 
     private void bindCustomerColumns() {
@@ -205,7 +220,9 @@ public class DetailedReportsController {
         colCstCountry.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("country"));
         colCstOrders.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalOrders"));
         colCstSpent.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalSpent"));
+        colCstSpent.setCellFactory(CurrencyUtil.currencyCellFactory());
         colCstAOV.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("avgOrderValue"));
+        colCstAOV.setCellFactory(CurrencyUtil.currencyCellFactory());
         colCstLast.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("lastPurchase"));
     }
 
@@ -271,63 +288,118 @@ public class DetailedReportsController {
         }
     }
 
+    private void updatePaginationUI() {
+        javafx.application.Platform.runLater(() -> {
+            if (lblPageInfo == null || btnPrevPage == null || btnNextPage == null) return;
+            int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+            int totalPages = pageSize > 0 ? Math.max(1, (int) Math.ceil((double) totalRows / pageSize)) : 1;
+            lblPageInfo.setText("Page " + currentPage + " of " + totalPages + " (" + totalRows + " rows)");
+            btnPrevPage.setDisable(currentPage <= 1);
+            btnNextPage.setDisable(currentPage >= totalPages || totalPages == 0);
+        });
+    }
+
     private void loadOrders() {
-        Task<List<OrderReportRow>> task = new Task<>() {
+        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+        int offset = (currentPage - 1) * pageSize;
+        LocalDate[] range = resolveDateRange();
+        Task<List<OrderReportRow>> dataTask = new Task<>() {
             @Override
             protected List<OrderReportRow> call() throws Exception {
-                LocalDate[] range = resolveDateRange();
                 return orderDao.findReportRows(range[0], range[1],
+                        cmbOrderStatus.getValue(), txtSearch.getText(), pageSize, offset);
+            }
+        };
+        Task<Integer> countTask = new Task<>() {
+            @Override
+            protected Integer call() throws Exception {
+                return orderDao.countReportRows(range[0], range[1],
                         cmbOrderStatus.getValue(), txtSearch.getText());
             }
         };
-        task.setOnSucceeded(e -> {
-            if (task.getValue() != null) {
+        countTask.setOnSucceeded(ev -> {
+            totalRows = countTask.getValue() != null ? countTask.getValue() : 0;
+            updatePaginationUI();
+        });
+        dataTask.setOnSucceeded(e -> {
+            if (dataTask.getValue() != null) {
                 orderItems.clear();
-                orderItems.addAll(task.getValue());
+                orderItems.addAll(dataTask.getValue());
             }
             runAfterLoadCallback();
         });
-        task.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
-        executor.execute(task);
+        dataTask.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
+        countTask.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
+        executor.execute(countTask);
+        executor.execute(dataTask);
     }
 
     private void loadProducts() {
-        Task<List<ProductReportRow>> task = new Task<>() {
+        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+        int offset = (currentPage - 1) * pageSize;
+        LocalDate[] range = resolveDateRange();
+        Task<Integer> countTask = new Task<>() {
             @Override
-            protected List<ProductReportRow> call() throws Exception {
-                LocalDate[] range = resolveDateRange();
-                return productDao.findReportRows(range[0], range[1],
+            protected Integer call() throws Exception {
+                return productDao.countReportRows(range[0], range[1],
                         cmbProductCategory.getValue(), txtSearch.getText());
             }
         };
-        task.setOnSucceeded(e -> {
-            if (task.getValue() != null) {
+        Task<List<ProductReportRow>> dataTask = new Task<>() {
+            @Override
+            protected List<ProductReportRow> call() throws Exception {
+                return productDao.findReportRows(range[0], range[1],
+                        cmbProductCategory.getValue(), txtSearch.getText(), pageSize, offset);
+            }
+        };
+        countTask.setOnSucceeded(ev -> {
+            totalRows = countTask.getValue() != null ? countTask.getValue() : 0;
+            updatePaginationUI();
+        });
+        dataTask.setOnSucceeded(e -> {
+            if (dataTask.getValue() != null) {
                 productItems.clear();
-                productItems.addAll(task.getValue());
+                productItems.addAll(dataTask.getValue());
             }
             runAfterLoadCallback();
         });
-        task.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
-        executor.execute(task);
+        dataTask.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
+        countTask.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
+        executor.execute(countTask);
+        executor.execute(dataTask);
     }
 
     private void loadCustomers() {
-        Task<List<CustomerReportRow>> task = new Task<>() {
+        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+        int offset = (currentPage - 1) * pageSize;
+        String country = cmbCustomerCountry.getValue();
+        Task<Integer> countTask = new Task<>() {
             @Override
-            protected List<CustomerReportRow> call() throws Exception {
-                String country = cmbCustomerCountry.getValue();
-                return customerDao.findReportRows(cmbCustomerType.getValue(), country, txtSearch.getText());
+            protected Integer call() throws Exception {
+                return customerDao.countReportRows(cmbCustomerType.getValue(), country, txtSearch.getText());
             }
         };
-        task.setOnSucceeded(e -> {
-            if (task.getValue() != null) {
+        Task<List<CustomerReportRow>> dataTask = new Task<>() {
+            @Override
+            protected List<CustomerReportRow> call() throws Exception {
+                return customerDao.findReportRows(cmbCustomerType.getValue(), country, txtSearch.getText(), pageSize, offset);
+            }
+        };
+        countTask.setOnSucceeded(ev -> {
+            totalRows = countTask.getValue() != null ? countTask.getValue() : 0;
+            updatePaginationUI();
+        });
+        dataTask.setOnSucceeded(e -> {
+            if (dataTask.getValue() != null) {
                 customerItems.clear();
-                customerItems.addAll(task.getValue());
+                customerItems.addAll(dataTask.getValue());
             }
             runAfterLoadCallback();
         });
-        task.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
-        executor.execute(task);
+        dataTask.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
+        countTask.exceptionProperty().addListener((o, p, ex) -> { if (ex != null) ex.printStackTrace(); });
+        executor.execute(countTask);
+        executor.execute(dataTask);
     }
 
     private LocalDate[] resolveDateRange() {
@@ -407,6 +479,7 @@ public class DetailedReportsController {
             }
         }
 
+        currentPage = 1;
         // Apply Active State
         switch (tab) {
             case "orders":
@@ -472,7 +545,11 @@ public class DetailedReportsController {
             ExportService.exportToCSV(table, file);
             showSuccessToast("CSV exported successfully to " + file.getName());
         } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "Export failed: " + e.getMessage()).showAndWait();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                new Alert(Alert.AlertType.ERROR, "Export failed: " + e.getMessage()).showAndWait();
+            }
         }
     }
 
@@ -494,7 +571,11 @@ public class DetailedReportsController {
             ExportService.exportToPDF(table, getExportTitle(), file);
             showSuccessToast("PDF exported successfully to " + file.getName());
         } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "Export failed: " + e.getMessage()).showAndWait();
+            if (mainLayoutController != null) {
+                mainLayoutController.showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
+            } else {
+                new Alert(Alert.AlertType.ERROR, "Export failed: " + e.getMessage()).showAndWait();
+            }
         }
     }
 
@@ -548,11 +629,19 @@ public class DetailedReportsController {
 
     @FXML
     private void handlePrevPage(ActionEvent event) {
-        System.out.println("Loading previous page...");
+        if (currentPage > 1) {
+            currentPage--;
+            loadCurrentTabData();
+        }
     }
 
     @FXML
     private void handleNextPage(ActionEvent event) {
-        System.out.println("Loading next page...");
+        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+        int totalPages = pageSize > 0 ? Math.max(1, (int) Math.ceil((double) totalRows / pageSize)) : 1;
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadCurrentTabData();
+        }
     }
 }

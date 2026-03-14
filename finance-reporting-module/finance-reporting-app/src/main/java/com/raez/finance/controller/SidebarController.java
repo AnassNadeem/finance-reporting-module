@@ -23,6 +23,7 @@ public class SidebarController {
     @FXML private Button btnInsights;
     @FXML private Button btnProfitability;
     @FXML private Button btnSettings;
+    @FXML private Button btnAuditLog;
     @FXML private Button btnLogout;
 
     public void setMainLayoutController(MainLayoutController mainLayoutController) {
@@ -73,6 +74,12 @@ public class SidebarController {
     }
 
     @FXML
+    public void handleNavAuditLog(ActionEvent event) {
+        loadContent("AuditLog.fxml");
+        setActiveButton(btnAuditLog);
+    }
+
+    @FXML
     public void handleLogout(ActionEvent event) {
         if (mainLayoutController != null) {
             mainLayoutController.handleLogout();
@@ -102,6 +109,10 @@ public class SidebarController {
             } else if (ctrl instanceof DetailedReportsController) {
                 ((DetailedReportsController) ctrl).setMainLayoutController(mainLayoutController);
                 root.setUserData(ctrl);
+            } else if (ctrl instanceof CustomerInsightsController) {
+                ((CustomerInsightsController) ctrl).setMainLayoutController(mainLayoutController);
+            } else if (ctrl instanceof ProductProfitabilityController) {
+                ((ProductProfitabilityController) ctrl).setMainLayoutController(mainLayoutController);
             }
             mainLayoutController.setContent(root);
         } catch (Exception e) {
@@ -112,7 +123,7 @@ public class SidebarController {
     private void setActiveButton(Button active) {
         String activeStyle = "-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;";
         String inactiveStyle = "-fx-background-color: transparent; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;";
-        Button[] navButtons = { btnDashboard, btnReports, btnInsights, btnProfitability, btnSettings };
+        Button[] navButtons = { btnDashboard, btnReports, btnInsights, btnProfitability, btnSettings, btnAuditLog };
         for (Button btn : navButtons) {
             if (btn == null) continue;
             btn.setStyle(btn == active ? activeStyle : inactiveStyle);

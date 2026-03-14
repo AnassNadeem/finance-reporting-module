@@ -43,7 +43,7 @@
                      </children>
                   </VBox>
                   <Region HBox.hgrow="ALWAYS" />
-                  
+                  <Button mnemonicParsing="false" onAction="#handleRefresh" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-text-fill: #374151;" text="Refresh" />
                   <MenuButton mnemonicParsing="false" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand;" text="Export">
                     <items>
                       <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" text="Export as CSV">

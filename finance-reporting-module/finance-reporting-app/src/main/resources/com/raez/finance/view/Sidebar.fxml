@@ -77,6 +77,13 @@
                <font><Font size="14.0" /></font>
             </Button>
 
+            <Button fx:id="btnAuditLog" alignment="BASELINE_LEFT" graphicTextGap="12.0" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleNavAuditLog" prefHeight="45.0" style="-fx-background-color: transparent; -fx-text-fill: #374151; -fx-background-radius: 8; -fx-cursor: hand;" text="Audit Log">
+               <graphic>
+                  <SVGPath content="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" fill="TRANSPARENT" stroke="#374151" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+               </graphic>
+               <font><Font size="14.0" /></font>
+            </Button>
+
          </children>
       </VBox>
 
