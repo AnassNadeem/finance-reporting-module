@@ -5,6 +5,7 @@ import com.raez.finance.dao.PasswordResetTokenDao;
 import com.raez.finance.model.FUser;
 import com.raez.finance.model.UserRole;
 import com.raez.finance.util.DBConnection;
+import com.raez.finance.util.PasswordGenerator;
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.sql.Connection;
@@ -243,6 +244,35 @@ public class AuthService {
 
     private final FUserDao fUserDao = new FUserDao();
     private final PasswordResetTokenDao resetTokenDao = new PasswordResetTokenDao();
+
+    /**
+     * Forgot-password (login screen): request a temporary password for the given email.
+     * Generates a temp password, stores it, clears lastLogin so next login triggers first-time password change.
+     * Only applies to FINANCE_USER accounts. For security, always shows the same success message.
+     * In production you would send the temp password by email; here we log it to console.
+     */
+    public void requestTemporaryPassword(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required.");
+        }
+        String trimmed = email.trim();
+        try {
+            FUser user = fUserDao.findByEmail(trimmed);
+            if (user == null || user.getRole() != UserRole.FINANCE_USER || !user.isActive()) {
+                // Do not reveal whether the account exists; same message either way
+                return;
+            }
+            String tempPassword = PasswordGenerator.generate();
+            String hash = BCrypt.hashpw(tempPassword, BCrypt.gensalt(12));
+            fUserDao.setTemporaryPasswordAndClearLastLogin(user.getId(), hash);
+            // In production: send email. For now log so admin can communicate it if needed.
+            System.out.println("[Forgot password] Temporary password for " + trimmed + ": " + tempPassword);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Could not process request: " + e.getMessage(), e);
+        }
+    }
 
     /**
      * Resets password using a one-time token (from admin). Validates token, updates password, marks token used.

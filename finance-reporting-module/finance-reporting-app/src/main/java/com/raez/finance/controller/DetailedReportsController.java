@@ -7,90 +7,95 @@ import com.raez.finance.model.CustomerReportRow;
 import com.raez.finance.model.OrderReportRow;
 import com.raez.finance.model.ProductReportRow;
 import com.raez.finance.service.ExportService;
+import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+import java.net.URL;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.ResourceBundle;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class DetailedReportsController {
+public class DetailedReportsController implements Initializable {
 
     private final OrderDao orderDao = new OrderDao();
     private final ProductDao productDao = new ProductDao();
     private final CustomerDao customerDao = new CustomerDao();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
-    @FXML private StackPane rootStackPane;
-    @FXML private Button btnTabOrders;
-    @FXML private Button btnTabProducts;
-    @FXML private Button btnTabCustomers;
+    @FXML private VBox rootContainer;
+    @FXML private ScrollPane pageScrollPane;
+    @FXML private Button tabOrders;
+    @FXML private Button tabProducts;
+    @FXML private Button tabCustomers;
 
-    @FXML private TextField txtSearch;
-    @FXML private ComboBox<String> cmbDateRange;
-    @FXML private VBox boxCustomDate;
-    @FXML private DatePicker dpStartDate;
-    @FXML private DatePicker dpEndDate;
+    @FXML private TextField searchField;
+    @FXML private ComboBox<String> dateRangeCombo;
+    @FXML private VBox customStartDateBox;
+    @FXML private VBox customEndDateBox;
+    @FXML private DatePicker startDatePicker;
+    @FXML private DatePicker endDatePicker;
 
-    @FXML private VBox boxOrderStatus;
-    @FXML private ComboBox<String> cmbOrderStatus;
+    @FXML private VBox orderStatusBox;
+    @FXML private ComboBox<String> orderStatusCombo;
 
-    @FXML private VBox boxProductCategory;
-    @FXML private ComboBox<String> cmbProductCategory;
+    @FXML private VBox productCategoryBox;
+    @FXML private ComboBox<String> productCategoryCombo;
 
-    @FXML private VBox boxCustomerType;
-    @FXML private ComboBox<String> cmbCustomerType;
-    @FXML private VBox boxCustomerCompany;
-    @FXML private ComboBox<String> cmbCustomerCompany;
-    @FXML private VBox boxCustomerCountry;
-    @FXML private ComboBox<String> cmbCustomerCountry;
+    @FXML private VBox customerTypeBox;
+    @FXML private ComboBox<String> customerTypeCombo;
+    @FXML private VBox customerCountryBox;
+    @FXML private ComboBox<String> customerCountryCombo;
 
-    @FXML private TableView<OrderReportRow> tblOrders;
-    @FXML private TableColumn<OrderReportRow, String> colOrdId;
-    @FXML private TableColumn<OrderReportRow, String> colOrdCustomer;
-    @FXML private TableColumn<OrderReportRow, String> colOrdProduct;
-    @FXML private TableColumn<OrderReportRow, Number> colOrdAmount;
-    @FXML private TableColumn<OrderReportRow, String> colOrdDate;
-    @FXML private TableColumn<OrderReportRow, String> colOrdStatus;
+    @FXML private TableView<OrderReportRow> ordersTable;
+    @FXML private TableColumn<OrderReportRow, String> orderIdCol;
+    @FXML private TableColumn<OrderReportRow, String> orderCustomerCol;
+    @FXML private TableColumn<OrderReportRow, String> orderProductCol;
+    @FXML private TableColumn<OrderReportRow, Number> orderAmountCol;
+    @FXML private TableColumn<OrderReportRow, String> orderDateCol;
+    @FXML private TableColumn<OrderReportRow, String> orderStatusCol;
 
-    @FXML private TableView<ProductReportRow> tblProducts;
-    @FXML private TableColumn<ProductReportRow, String> colPrdId;
-    @FXML private TableColumn<ProductReportRow, String> colPrdName;
-    @FXML private TableColumn<ProductReportRow, String> colPrdCat;
-    @FXML private TableColumn<ProductReportRow, Number> colPrdCost;
-    @FXML private TableColumn<ProductReportRow, Number> colPrdPrice;
-    @FXML private TableColumn<ProductReportRow, Number> colPrdProfit;
-    @FXML private TableColumn<ProductReportRow, Number> colPrdUnits;
-    @FXML private TableColumn<ProductReportRow, Number> colPrdRev;
+    @FXML private TableView<ProductReportRow> productsTable;
+    @FXML private TableColumn<ProductReportRow, String> productIdCol;
+    @FXML private TableColumn<ProductReportRow, String> productNameCol;
+    @FXML private TableColumn<ProductReportRow, String> productCategoryCol;
+    @FXML private TableColumn<ProductReportRow, Number> productCostCol;
+    @FXML private TableColumn<ProductReportRow, Number> productSalePriceCol;
+    @FXML private TableColumn<ProductReportRow, Number> productProfitCol;
+    @FXML private TableColumn<ProductReportRow, Number> productUnitsCol;
+    @FXML private TableColumn<ProductReportRow, Number> productRevenueCol;
 
-    @FXML private TableView<CustomerReportRow> tblCustomers;
-    @FXML private TableColumn<CustomerReportRow, String> colCstId;
-    @FXML private TableColumn<CustomerReportRow, String> colCstName;
-    @FXML private TableColumn<CustomerReportRow, String> colCstType;
-    @FXML private TableColumn<CustomerReportRow, String> colCstCountry;
-    @FXML private TableColumn<CustomerReportRow, Number> colCstOrders;
-    @FXML private TableColumn<CustomerReportRow, Number> colCstSpent;
-    @FXML private TableColumn<CustomerReportRow, Number> colCstAOV;
-    @FXML private TableColumn<CustomerReportRow, String> colCstLast;
+    @FXML private TableView<CustomerReportRow> customersTable;
+    @FXML private TableColumn<CustomerReportRow, String> custIdCol;
+    @FXML private TableColumn<CustomerReportRow, String> custNameCol;
+    @FXML private TableColumn<CustomerReportRow, String> custTypeCol;
+    @FXML private TableColumn<CustomerReportRow, String> custCountryCol;
+    @FXML private TableColumn<CustomerReportRow, Number> custOrdersCol;
+    @FXML private TableColumn<CustomerReportRow, Number> custSpentCol;
+    @FXML private TableColumn<CustomerReportRow, Number> custAvgOrderCol;
+    @FXML private TableColumn<CustomerReportRow, String> custLastPurchaseCol;
 
-    @FXML private ComboBox<Integer> cmbRowsPerPage;
-    @FXML private Label lblPageInfo;
-    @FXML private Button btnPrevPage;
-    @FXML private Button btnNextPage;
+    @FXML private ComboBox<String> rowsPerPageCombo;
+    @FXML private Label pageInfoLabel;
+    @FXML private Button prevPageBtn;
+    @FXML private Button nextPageBtn;
+
+    @FXML private MenuButton exportMenuButton;
+    @FXML private MenuItem exportCsvItem;
+    @FXML private MenuItem exportPdfItem;
 
     private final ObservableList<OrderReportRow> orderItems = FXCollections.observableArrayList();
     private final ObservableList<ProductReportRow> productItems = FXCollections.observableArrayList();
@@ -98,7 +103,6 @@ public class DetailedReportsController {
 
     private String activeTab = "orders";
     private MainLayoutController mainLayoutController;
-    /** One-shot callback run when the current tab's data load completes (for export-after-navigate). */
     private Runnable afterLoadCallback;
 
     private int currentPage = 1;
@@ -108,10 +112,6 @@ public class DetailedReportsController {
         this.mainLayoutController = mainLayoutController;
     }
 
-    /**
-     * Shuts down the executor so the application can terminate gracefully.
-     * Call this when the controller is no longer needed (e.g. when navigating away).
-     */
     public void shutdown() {
         executor.shutdown();
         try {
@@ -124,7 +124,6 @@ public class DetailedReportsController {
         }
     }
 
-    /** Runs the given callback once when the current tab's data has finished loading. Used by navigateToReportsAndExport. */
     public void setAfterLoadCallback(Runnable runnable) {
         this.afterLoadCallback = runnable;
     }
@@ -137,93 +136,235 @@ public class DetailedReportsController {
         }
     }
 
-    @FXML
-    public void initialize() {
+    private int getPageSize() {
+        String v = rowsPerPageCombo.getValue();
+        if (v == null || v.isBlank()) return 10;
+        try {
+            return Integer.parseInt(v.trim());
+        } catch (NumberFormatException e) {
+            return 10;
+        }
+    }
+
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
         bindOrderColumns();
         bindProductColumns();
         bindCustomerColumns();
 
-        tblOrders.setItems(orderItems);
-        tblProducts.setItems(productItems);
-        tblCustomers.setItems(customerItems);
+        ordersTable.setItems(orderItems);
+        productsTable.setItems(productItems);
+        customersTable.setItems(customerItems);
 
-        cmbDateRange.setItems(FXCollections.observableArrayList("Last 7 Days", "Last 30 Days", "Last 1 Year", "Year to Date", "Custom"));
-        cmbDateRange.setValue("Last 30 Days");
+        // Constrained resize: columns share the full table width — no horizontal scroll.
+        ordersTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        productsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        customersTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+
+        // Row hover highlight (alternating + hover).
+        applyRowFactory(ordersTable);
+        applyRowFactory(productsTable);
+        applyRowFactory(customersTable);
+
+        dateRangeCombo.setItems(FXCollections.observableArrayList("Last 7 Days", "Last 30 Days", "Last 1 Year", "Year to Date", "Custom"));
+        dateRangeCombo.setValue("Last 30 Days");
 
         loadOrderStatusOptions();
-        cmbOrderStatus.setValue("All Status");
+        orderStatusCombo.setValue("All Status");
 
         loadCategoryOptions();
-        cmbProductCategory.setValue("All Categories");
+        productCategoryCombo.setValue("All Categories");
 
-        cmbCustomerType.setItems(FXCollections.observableArrayList("All Types", "Company", "Individual"));
-        cmbCustomerType.setValue("All Types");
+        customerTypeCombo.setItems(FXCollections.observableArrayList("All Types", "Company", "Individual"));
+        customerTypeCombo.setValue("All Types");
         loadCountryOptions();
-        cmbCustomerCountry.setValue("All");
+        customerCountryCombo.setValue("All");
 
-        cmbRowsPerPage.setItems(FXCollections.observableArrayList(10, 20, 30, 40, 50));
-        cmbRowsPerPage.setValue(10);
-        cmbRowsPerPage.valueProperty().addListener((obs, o, n) -> {
+        rowsPerPageCombo.setValue("10");
+        rowsPerPageCombo.valueProperty().addListener((obs, o, n) -> {
             currentPage = 1;
             loadCurrentTabData();
         });
 
-        cmbDateRange.valueProperty().addListener((obs, oldV, newV) -> {
-            toggleCustomDate("Custom".equals(newV));
+        dateRangeCombo.valueProperty().addListener((obs, oldV, newV) -> {
+            boolean isCustom = "Custom".equals(newV);
+            customStartDateBox.setVisible(isCustom);
+            customStartDateBox.setManaged(isCustom);
+            customEndDateBox.setVisible(isCustom);
+            customEndDateBox.setManaged(isCustom);
             currentPage = 1;
             loadCurrentTabData();
         });
-        dpStartDate.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
-        dpEndDate.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
-        cmbOrderStatus.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadOrders(); });
-        cmbProductCategory.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadProducts(); });
-        cmbCustomerType.valueProperty().addListener((obs, oldV, newV) -> {
-            toggleCustomerCompany("Company".equals(newV));
-            currentPage = 1;
-            loadCustomers();
-        });
-        cmbCustomerCountry.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCustomers(); });
-        txtSearch.textProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
+        startDatePicker.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
+        endDatePicker.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
+        orderStatusCombo.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadOrders(); });
+        productCategoryCombo.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadProducts(); });
+        customerTypeCombo.valueProperty().addListener((obs, oldV, newV) -> { currentPage = 1; loadCustomers(); });
+        customerCountryCombo.valueProperty().addListener((obs, o, n) -> { currentPage = 1; loadCustomers(); });
+        searchField.textProperty().addListener((obs, o, n) -> { currentPage = 1; loadCurrentTabData(); });
 
-        switchTab("orders");
+        if (exportMenuButton != null && !SessionManager.isAdmin()) {
+            exportMenuButton.setVisible(false);
+            exportMenuButton.setManaged(false);
+        }
+
+        showTab("orders");
+        updateTablePreferredHeight();
+    }
+
+    /** Sets table preferred height to show exactly rows-per-page rows (no table scroll; page scrolls). */
+    private void updateTablePreferredHeight() {
+        int pageSize = getPageSize();
+        double rowHeight = 44;   // matches -fx-fixed-cell-size: 44 in FXML
+        double headerHeight = 38;
+        double h = headerHeight + pageSize * rowHeight;
+        if (ordersTable != null) ordersTable.setPrefHeight(h);
+        if (productsTable != null) productsTable.setPrefHeight(h);
+        if (customersTable != null) customersTable.setPrefHeight(h);
+    }
+
+    /**
+     * Applies a row factory that gives each table:
+     *   • alternating stripe colour (even rows: white, odd rows: #F9FAFB)
+     *   • a subtle blue-grey hover highlight
+     * Works for any TableView type, hence the raw-type suppression.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void applyRowFactory(TableView table) {
+        table.setRowFactory(tv -> {
+            TableRow row = new TableRow() {
+                @Override
+                protected void updateItem(Object item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setStyle("-fx-background-color: transparent;");
+                    } else {
+                        String base = getIndex() % 2 == 0
+                                ? "-fx-background-color: white;"
+                                : "-fx-background-color: #F9FAFB;";
+                        setStyle(base);
+                    }
+                }
+            };
+            row.setOnMouseEntered(e -> {
+                if (!row.isEmpty()) {
+                    row.setStyle("-fx-background-color: #EFF6FF; -fx-cursor: hand;");
+                }
+            });
+            row.setOnMouseExited(e -> {
+                if (!row.isEmpty()) {
+                    String base = row.getIndex() % 2 == 0
+                            ? "-fx-background-color: white;"
+                            : "-fx-background-color: #F9FAFB;";
+                    row.setStyle(base);
+                }
+            });
+            return row;
+        });
     }
 
     private void bindOrderColumns() {
-        colOrdId.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("orderId"));
-        colOrdCustomer.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("customer"));
-        colOrdProduct.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("product"));
-        colOrdAmount.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("amount"));
-        colOrdAmount.setCellFactory(CurrencyUtil.currencyCellFactory());
-        colOrdDate.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("date"));
-        colOrdStatus.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("status"));
+        orderIdCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("orderId"));
+        orderCustomerCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("customer"));
+        orderProductCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("product"));
+        orderAmountCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("amount"));
+        orderAmountCol.setCellFactory(CurrencyUtil.currencyCellFactory());
+        orderDateCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("date"));
+        orderStatusCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("status"));
+        orderStatusCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(null);
+                setText(null);
+                if (empty || item == null) return;
+
+                Label badge = new Label(item);
+                badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700; " +
+                               "-fx-padding: 2 8 2 8; -fx-background-radius: 999;");
+
+                String s = item.trim().toLowerCase();
+                if (s.contains("completed")) {
+                    badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;");
+                } else if (s.contains("pending")) {
+                    badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: #FEF9C3; -fx-text-fill: #92400E;");
+                } else if (s.contains("cancelled")) {
+                    badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: #FEE2E2; -fx-text-fill: #991B1B;");
+                } else {
+                    badge.setStyle(badge.getStyle() +
+                        "-fx-background-color: #F3F4F6; -fx-text-fill: #6B7280;");
+                }
+                HBox wrapper = new HBox(badge);
+                wrapper.setAlignment(Pos.CENTER_LEFT);
+                setGraphic(wrapper);
+            }
+        });
     }
 
     private void bindProductColumns() {
-        colPrdId.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("productId"));
-        colPrdName.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("name"));
-        colPrdCat.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("category"));
-        colPrdCost.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("cost"));
-        colPrdCost.setCellFactory(CurrencyUtil.currencyCellFactory());
-        colPrdPrice.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("salePrice"));
-        colPrdPrice.setCellFactory(CurrencyUtil.currencyCellFactory());
-        colPrdProfit.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("profit"));
-        colPrdProfit.setCellFactory(CurrencyUtil.currencyCellFactory());
-        colPrdUnits.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unitsSold"));
-        colPrdRev.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("revenue"));
-        colPrdRev.setCellFactory(CurrencyUtil.currencyCellFactory());
+        productIdCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("productId"));
+        productNameCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("name"));
+        productCategoryCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("category"));
+        productCostCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("cost"));
+        productCostCol.setCellFactory(CurrencyUtil.currencyCellFactory());
+        productSalePriceCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("salePrice"));
+        productSalePriceCol.setCellFactory(CurrencyUtil.currencyCellFactory());
+        productProfitCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("profit"));
+        productProfitCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(Number item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+                setText(CurrencyUtil.formatCurrency(item.doubleValue()));
+                setStyle(item.doubleValue() >= 0 ? "-fx-text-fill: #16A34A;" : "-fx-text-fill: #991B1B;");
+            }
+        });
+        productUnitsCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("unitsSold"));
+        productRevenueCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("revenue"));
+        productRevenueCol.setCellFactory(CurrencyUtil.currencyCellFactory());
     }
 
     private void bindCustomerColumns() {
-        colCstId.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("customerId"));
-        colCstName.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("name"));
-        colCstType.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("type"));
-        colCstCountry.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("country"));
-        colCstOrders.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalOrders"));
-        colCstSpent.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalSpent"));
-        colCstSpent.setCellFactory(CurrencyUtil.currencyCellFactory());
-        colCstAOV.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("avgOrderValue"));
-        colCstAOV.setCellFactory(CurrencyUtil.currencyCellFactory());
-        colCstLast.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("lastPurchase"));
+        custIdCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("customerId"));
+        custNameCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("name"));
+        custTypeCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("type"));
+        custTypeCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                setGraphic(null);
+                setText(null);
+                if (empty || item == null) return;
+
+                Label badge = new Label(item);
+                if ("Company".equalsIgnoreCase(item.trim())) {
+                    badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;" +
+                        "-fx-padding: 2 8 2 8; -fx-background-radius: 999;" +
+                        "-fx-background-color: #DBEAFE; -fx-text-fill: #1E40AF;");
+                } else {
+                    badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;" +
+                        "-fx-padding: 2 8 2 8; -fx-background-radius: 999;" +
+                        "-fx-background-color: #F3F4F6; -fx-text-fill: #4B5563;");
+                }
+                HBox wrapper = new HBox(badge);
+                wrapper.setAlignment(Pos.CENTER_LEFT);
+                setGraphic(wrapper);
+            }
+        });
+        custCountryCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("country"));
+        custOrdersCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalOrders"));
+        custSpentCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("totalSpent"));
+        custSpentCol.setCellFactory(CurrencyUtil.currencyCellFactory());
+        custAvgOrderCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("avgOrderValue"));
+        custAvgOrderCol.setCellFactory(CurrencyUtil.currencyCellFactory());
+        custLastPurchaseCol.setCellValueFactory(new javafx.scene.control.cell.PropertyValueFactory<>("lastPurchase"));
     }
 
     private void loadOrderStatusOptions() {
@@ -234,12 +375,13 @@ public class DetailedReportsController {
             }
         };
         task.setOnSucceeded(e -> {
-            if (task.getValue() != null) {
-                ObservableList<String> items = FXCollections.observableArrayList("All Status");
-                items.addAll(task.getValue());
-                cmbOrderStatus.setItems(items);
-                cmbOrderStatus.setValue("All Status");
-            }
+            ObservableList<String> items = FXCollections.observableArrayList("All Status");
+            if (task.getValue() != null) items.addAll(task.getValue());
+            if (!items.contains("Completed")) items.add("Completed");
+            if (!items.contains("Pending")) items.add("Pending");
+            if (!items.contains("Cancelled")) items.add("Cancelled");
+            orderStatusCombo.setItems(items);
+            orderStatusCombo.setValue("All Status");
         });
         executor.execute(task);
     }
@@ -255,8 +397,8 @@ public class DetailedReportsController {
             if (task.getValue() != null) {
                 ObservableList<String> items = FXCollections.observableArrayList("All Categories");
                 items.addAll(task.getValue());
-                cmbProductCategory.setItems(items);
-                cmbProductCategory.setValue("All Categories");
+                productCategoryCombo.setItems(items);
+                productCategoryCombo.setValue("All Categories");
             }
         });
         executor.execute(task);
@@ -273,8 +415,8 @@ public class DetailedReportsController {
             if (task.getValue() != null) {
                 ObservableList<String> items = FXCollections.observableArrayList("All");
                 items.addAll(task.getValue());
-                cmbCustomerCountry.setItems(items);
-                if (cmbCustomerCountry.getValue() == null) cmbCustomerCountry.setValue("All");
+                customerCountryCombo.setItems(items);
+                if (customerCountryCombo.getValue() == null) customerCountryCombo.setValue("All");
             }
         });
         executor.execute(task);
@@ -290,31 +432,31 @@ public class DetailedReportsController {
 
     private void updatePaginationUI() {
         javafx.application.Platform.runLater(() -> {
-            if (lblPageInfo == null || btnPrevPage == null || btnNextPage == null) return;
-            int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+            if (pageInfoLabel == null || prevPageBtn == null || nextPageBtn == null) return;
+            int pageSize = getPageSize();
             int totalPages = pageSize > 0 ? Math.max(1, (int) Math.ceil((double) totalRows / pageSize)) : 1;
-            lblPageInfo.setText("Page " + currentPage + " of " + totalPages + " (" + totalRows + " rows)");
-            btnPrevPage.setDisable(currentPage <= 1);
-            btnNextPage.setDisable(currentPage >= totalPages || totalPages == 0);
+            pageInfoLabel.setText("Page " + currentPage + " of " + totalPages);
+            prevPageBtn.setDisable(currentPage <= 1);
+            nextPageBtn.setDisable(currentPage >= totalPages || totalPages == 0);
         });
     }
 
     private void loadOrders() {
-        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+        int pageSize = getPageSize();
         int offset = (currentPage - 1) * pageSize;
         LocalDate[] range = resolveDateRange();
         Task<List<OrderReportRow>> dataTask = new Task<>() {
             @Override
             protected List<OrderReportRow> call() throws Exception {
                 return orderDao.findReportRows(range[0], range[1],
-                        cmbOrderStatus.getValue(), txtSearch.getText(), pageSize, offset);
+                        orderStatusCombo.getValue(), searchField.getText(), pageSize, offset);
             }
         };
         Task<Integer> countTask = new Task<>() {
             @Override
             protected Integer call() throws Exception {
                 return orderDao.countReportRows(range[0], range[1],
-                        cmbOrderStatus.getValue(), txtSearch.getText());
+                        orderStatusCombo.getValue(), searchField.getText());
             }
         };
         countTask.setOnSucceeded(ev -> {
@@ -335,21 +477,21 @@ public class DetailedReportsController {
     }
 
     private void loadProducts() {
-        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+        int pageSize = getPageSize();
         int offset = (currentPage - 1) * pageSize;
         LocalDate[] range = resolveDateRange();
         Task<Integer> countTask = new Task<>() {
             @Override
             protected Integer call() throws Exception {
                 return productDao.countReportRows(range[0], range[1],
-                        cmbProductCategory.getValue(), txtSearch.getText());
+                        productCategoryCombo.getValue(), searchField.getText());
             }
         };
         Task<List<ProductReportRow>> dataTask = new Task<>() {
             @Override
             protected List<ProductReportRow> call() throws Exception {
                 return productDao.findReportRows(range[0], range[1],
-                        cmbProductCategory.getValue(), txtSearch.getText(), pageSize, offset);
+                        productCategoryCombo.getValue(), searchField.getText(), pageSize, offset);
             }
         };
         countTask.setOnSucceeded(ev -> {
@@ -370,19 +512,24 @@ public class DetailedReportsController {
     }
 
     private void loadCustomers() {
-        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
+        int pageSize = getPageSize();
         int offset = (currentPage - 1) * pageSize;
-        String country = cmbCustomerCountry.getValue();
+        String countryRaw = customerCountryCombo.getValue() != null ? customerCountryCombo.getValue() : "All";
+        final String country = "All Countries".equals(countryRaw) ? "All" : countryRaw;
+        String typeFilter = customerTypeCombo.getValue();
+        if ("All Types".equals(typeFilter)) typeFilter = "All";
+        String type = typeFilter;
+        String company = null;
         Task<Integer> countTask = new Task<>() {
             @Override
             protected Integer call() throws Exception {
-                return customerDao.countReportRows(cmbCustomerType.getValue(), country, txtSearch.getText());
+                return customerDao.countReportRows(type, country, company, searchField.getText());
             }
         };
         Task<List<CustomerReportRow>> dataTask = new Task<>() {
             @Override
             protected List<CustomerReportRow> call() throws Exception {
-                return customerDao.findReportRows(cmbCustomerType.getValue(), country, txtSearch.getText(), pageSize, offset);
+                return customerDao.findReportRows(type, country, company, searchField.getText(), pageSize, offset);
             }
         };
         countTask.setOnSucceeded(ev -> {
@@ -405,12 +552,12 @@ public class DetailedReportsController {
     private LocalDate[] resolveDateRange() {
         LocalDate to = LocalDate.now();
         LocalDate from;
-        String val = cmbDateRange.getValue();
+        String val = dateRangeCombo.getValue();
         if (val == null) val = "Last 30 Days";
         switch (val) {
             case "Custom":
-                from = dpStartDate.getValue() != null ? dpStartDate.getValue() : to.minusDays(30);
-                to = dpEndDate.getValue() != null ? dpEndDate.getValue() : to;
+                from = startDatePicker.getValue() != null ? startDatePicker.getValue() : to.minusDays(30);
+                to = endDatePicker.getValue() != null ? endDatePicker.getValue() : to;
                 if (from.isAfter(to)) from = to;
                 break;
             case "Last 7 Days":
@@ -429,111 +576,168 @@ public class DetailedReportsController {
         return new LocalDate[]{ from, to };
     }
 
-    // --- Tab Navigation Handlers ---
+    // --- Tab handlers (FXML: handleTabOrders, handleTabProducts, handleTabCustomers) ---
 
     @FXML
-    private void handleTabOrders(ActionEvent event) { switchTab("orders"); }
+    private void handleTabOrders() {
+        showTab("orders");
+    }
 
     @FXML
-    private void handleTabProducts(ActionEvent event) { switchTab("products"); }
+    private void handleTabProducts() {
+        showTab("products");
+    }
 
     @FXML
-    private void handleTabCustomers(ActionEvent event) { switchTab("customers"); }
+    private void handleTabCustomers() {
+        showTab("customers");
+    }
 
-    // --- Helper Logic ---
-
-    /** Public for navigation/export from TopBar: switch to Orders, Products, or Customers tab. */
     public void switchToTab(String tab) {
-        switchTab(tab);
+        showTab(tab);
     }
 
-    private void switchTab(String tab) {
+    private void showTab(String tab) {
         activeTab = tab;
-        
-        // Reset Tab Styles
-        String activeStyle = "-fx-background-color: transparent; -fx-border-color: #1E2939; -fx-border-width: 0 0 2 0; -fx-text-fill: #1E2939; -fx-cursor: hand; -fx-font-weight: bold;";
-        String inactiveStyle = "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;";
-        
-        btnTabOrders.setStyle(inactiveStyle);
-        btnTabProducts.setStyle(inactiveStyle);
-        btnTabCustomers.setStyle(inactiveStyle);
-
-        // Reset Table & Filter Visibility
-        tblOrders.setVisible(false);
-        tblProducts.setVisible(false);
-        tblCustomers.setVisible(false);
-        
-        boxOrderStatus.setVisible(false); boxOrderStatus.setManaged(false);
-        boxProductCategory.setVisible(false); boxProductCategory.setManaged(false);
-        boxCustomerType.setVisible(false); boxCustomerType.setManaged(false);
-        boxCustomerCompany.setVisible(false); boxCustomerCompany.setManaged(false);
-        boxCustomerCountry.setVisible(false); boxCustomerCountry.setManaged(false);
-
-        // Update search placeholder per tab
-        if (txtSearch != null) {
-            switch (tab) {
-                case "orders":   txtSearch.setPromptText("Search orders..."); break;
-                case "products": txtSearch.setPromptText("Search products..."); break;
-                case "customers": txtSearch.setPromptText("Search customers..."); break;
-                default:        txtSearch.setPromptText("Search..."); break;
-            }
-        }
-
         currentPage = 1;
-        // Apply Active State
+
+        ordersTable.setVisible(tab.equals("orders"));
+        ordersTable.setManaged(tab.equals("orders"));
+        productsTable.setVisible(tab.equals("products"));
+        productsTable.setManaged(tab.equals("products"));
+        customersTable.setVisible(tab.equals("customers"));
+        customersTable.setManaged(tab.equals("customers"));
+
+        orderStatusBox.setVisible(tab.equals("orders"));
+        orderStatusBox.setManaged(tab.equals("orders"));
+        productCategoryBox.setVisible(tab.equals("products"));
+        productCategoryBox.setManaged(tab.equals("products"));
+        customerTypeBox.setVisible(tab.equals("customers"));
+        customerTypeBox.setManaged(tab.equals("customers"));
+        customerCountryBox.setVisible(tab.equals("customers"));
+        customerCountryBox.setManaged(tab.equals("customers"));
+
+        if (searchField != null) {
+            searchField.setPromptText("Search " + tab + "...");
+        }
+
+        styleTabButton(tabOrders, tab.equals("orders"));
+        styleTabButton(tabProducts, tab.equals("products"));
+        styleTabButton(tabCustomers, tab.equals("customers"));
+
+        updateTablePreferredHeight();
         switch (tab) {
-            case "orders":
-                btnTabOrders.setStyle(activeStyle);
-                tblOrders.setVisible(true);
-                boxOrderStatus.setVisible(true); boxOrderStatus.setManaged(true);
-                loadOrders();
-                break;
-            case "products":
-                btnTabProducts.setStyle(activeStyle);
-                tblProducts.setVisible(true);
-                boxProductCategory.setVisible(true); boxProductCategory.setManaged(true);
-                loadProducts();
-                break;
-            case "customers":
-                btnTabCustomers.setStyle(activeStyle);
-                tblCustomers.setVisible(true);
-                boxCustomerType.setVisible(true); boxCustomerType.setManaged(true);
-                boxCustomerCountry.setVisible(true); boxCustomerCountry.setManaged(true);
-                toggleCustomerCompany(cmbCustomerType.getValue() != null && cmbCustomerType.getValue().equals("Company"));
-                loadCustomers();
-                break;
+            case "orders": loadOrders(); break;
+            case "products": loadProducts(); break;
+            case "customers": loadCustomers(); break;
         }
     }
 
-    private void toggleCustomDate(boolean show) {
-        boxCustomDate.setVisible(show);
-        boxCustomDate.setManaged(show);
+    private void styleTabButton(Button btn, boolean active) {
+        if (active) {
+            btn.setStyle(
+                "-fx-background-color: transparent; -fx-cursor: hand;" +
+                "-fx-padding: 16 0 12 0; -fx-font-size: 14px;" +
+                "-fx-text-fill: #1E2939;" +
+                "-fx-border-color: transparent transparent #1E2939 transparent;" +
+                "-fx-border-width: 0 0 2 0;");
+        } else {
+            btn.setStyle(
+                "-fx-background-color: transparent; -fx-cursor: hand;" +
+                "-fx-padding: 16 0 12 0; -fx-font-size: 14px;" +
+                "-fx-text-fill: #6B7280; -fx-border-color: transparent;" +
+                "-fx-border-width: 0 0 2 0;");
+        }
     }
 
-    private void toggleCustomerCompany(boolean show) {
-        boxCustomerCompany.setVisible(show);
-        boxCustomerCompany.setManaged(show);
-    }
-
-    // --- Export & Pagination Actions ---
+    // --- Filter handlers (FXML) ---
 
     @FXML
-    private void handleExportCSV(ActionEvent event) {
+    private void handleSearch() {
+        currentPage = 1;
+        loadCurrentTabData();
+    }
+
+    @FXML
+    private void handleDateRangeChange() {
+        boolean isCustom = "Custom".equals(dateRangeCombo.getValue());
+        customStartDateBox.setVisible(isCustom);
+        customStartDateBox.setManaged(isCustom);
+        customEndDateBox.setVisible(isCustom);
+        customEndDateBox.setManaged(isCustom);
+        currentPage = 1;
+        loadCurrentTabData();
+    }
+
+    @FXML
+    private void handleOrderStatusChange() {
+        currentPage = 1;
+        loadOrders();
+    }
+
+    @FXML
+    private void handleProductCategoryChange() {
+        currentPage = 1;
+        loadProducts();
+    }
+
+    @FXML
+    private void handleCustomerTypeChange() {
+        currentPage = 1;
+        loadCustomers();
+    }
+
+    @FXML
+    private void handleCustomerCountryChange() {
+        currentPage = 1;
+        loadCustomers();
+    }
+
+    // --- Pagination handlers (FXML) ---
+
+    @FXML
+    private void handleRowsPerPageChange() {
+        currentPage = 1;
+        updateTablePreferredHeight();
+        loadCurrentTabData();
+    }
+
+    @FXML
+    private void handlePrevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            loadCurrentTabData();
+        }
+    }
+
+    @FXML
+    private void handleNextPage() {
+        int pageSize = getPageSize();
+        int totalPages = pageSize > 0 ? Math.max(1, (int) Math.ceil((double) totalRows / pageSize)) : 1;
+        if (currentPage < totalPages) {
+            currentPage++;
+            loadCurrentTabData();
+        }
+    }
+
+    // --- Export handlers (FXML: handleExportCsv, handleExportPdf) ---
+
+    @FXML
+    private void handleExportCsv() {
         performExportCSV();
     }
 
     @FXML
-    private void handleExportPDF(ActionEvent event) {
+    private void handleExportPdf() {
         performExportPDF();
     }
 
-    /** Called from profile Export menu: show save dialog and export current tab to CSV. */
     public void performExportCSV() {
         TableView<?> table = getCurrentTable();
         if (table == null) return;
         javafx.stage.Window window = table.getScene() != null ? table.getScene().getWindow() : null;
-        if (window == null && rootStackPane != null && rootStackPane.getScene() != null) {
-            window = rootStackPane.getScene().getWindow();
+        if (window == null && rootContainer != null && rootContainer.getScene() != null) {
+            window = rootContainer.getScene().getWindow();
         }
         FileChooser fc = new FileChooser();
         fc.setTitle("Export to CSV");
@@ -553,13 +757,12 @@ public class DetailedReportsController {
         }
     }
 
-    /** Called from profile Export menu: show save dialog and export current tab to PDF. */
     public void performExportPDF() {
         TableView<?> table = getCurrentTable();
         if (table == null) return;
         javafx.stage.Window window = table.getScene() != null ? table.getScene().getWindow() : null;
-        if (window == null && rootStackPane != null && rootStackPane.getScene() != null) {
-            window = rootStackPane.getScene().getWindow();
+        if (window == null && rootContainer != null && rootContainer.getScene() != null) {
+            window = rootContainer.getScene().getWindow();
         }
         FileChooser fc = new FileChooser();
         fc.setTitle("Export to PDF");
@@ -581,10 +784,10 @@ public class DetailedReportsController {
 
     private TableView<?> getCurrentTable() {
         switch (activeTab) {
-            case "orders": return tblOrders;
-            case "products": return tblProducts;
-            case "customers": return tblCustomers;
-            default: return tblOrders;
+            case "orders": return ordersTable;
+            case "products": return productsTable;
+            case "customers": return customersTable;
+            default: return ordersTable;
         }
     }
 
@@ -607,41 +810,10 @@ public class DetailedReportsController {
     }
 
     private void showSuccessToast(String message) {
-        if (rootStackPane == null) return;
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/raez/finance/view/NotificationToast.fxml"));
-            Node toastNode = loader.load();
-            NotificationToastController c = loader.getController();
-            if (c != null) {
-                c.setNotification("success", message, () -> {
-                    if (rootStackPane.getChildren().contains(toastNode)) {
-                        rootStackPane.getChildren().remove(toastNode);
-                    }
-                });
-            }
-            rootStackPane.getChildren().add(toastNode);
-            StackPane.setAlignment(toastNode, Pos.TOP_RIGHT);
-            StackPane.setMargin(toastNode, new javafx.geometry.Insets(24, 24, 0, 24));
-        } catch (Exception e) {
+        if (mainLayoutController != null) {
+            mainLayoutController.showToast("success", message);
+        } else {
             new Alert(Alert.AlertType.INFORMATION, message).showAndWait();
-        }
-    }
-
-    @FXML
-    private void handlePrevPage(ActionEvent event) {
-        if (currentPage > 1) {
-            currentPage--;
-            loadCurrentTabData();
-        }
-    }
-
-    @FXML
-    private void handleNextPage(ActionEvent event) {
-        int pageSize = cmbRowsPerPage.getValue() != null ? cmbRowsPerPage.getValue() : 10;
-        int totalPages = pageSize > 0 ? Math.max(1, (int) Math.ceil((double) totalRows / pageSize)) : 1;
-        if (currentPage < totalPages) {
-            currentPage++;
-            loadCurrentTabData();
         }
     }
 }

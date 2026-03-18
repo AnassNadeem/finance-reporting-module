@@ -1,10 +1,12 @@
 package com.raez.finance;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 
 /**
  * Single entry point for the RAEZ Finance application.
@@ -17,17 +19,29 @@ public class MainApp extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
+        // Ensure decorated window so the user can drag the window and use the close button
+        primaryStage.initStyle(StageStyle.DECORATED);
+        primaryStage.setResizable(true);
+
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource("/com/raez/finance/view/RoleSelection.fxml")
         );
         Parent root = loader.load();
-        Scene scene = new Scene(root);
+        double width = 1000;
+        double height = 700;
+        Scene scene = new Scene(root, width, height);
         java.net.URL cssUrl = getClass().getResource("/css/app.css");
         if (cssUrl != null) {
             scene.getStylesheets().add(cssUrl.toExternalForm());
         }
         primaryStage.setTitle("RAEZ Finance Portal");
         primaryStage.setScene(scene);
+        primaryStage.setMinWidth(800);
+        primaryStage.setMinHeight(600);
+
+        primaryStage.setOnCloseRequest(e -> Platform.exit());
+
+        primaryStage.setMaximized(true);
         primaryStage.show();
     }
 

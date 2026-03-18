@@ -35,6 +35,7 @@ public final class DBConnection {
     }
     private static boolean printedPath = false;
     private static boolean bootstrapping = false;
+    private static boolean integrityChecked = false;
 
     private DBConnection() {
     }
@@ -74,6 +75,21 @@ public final class DBConnection {
             stmt.execute("PRAGMA synchronous = NORMAL;");
         }
 
+        if (!integrityChecked) {
+            integrityChecked = true;
+            try (Statement icStmt = conn.createStatement();
+                 ResultSet icRs = icStmt.executeQuery("PRAGMA integrity_check")) {
+                if (icRs.next()) {
+                    String result = icRs.getString(1);
+                    if ("ok".equalsIgnoreCase(result)) {
+                        System.out.println("[DB] Integrity check: OK");
+                    } else {
+                        System.err.println("[DB] Integrity check FAILED: " + result);
+                    }
+                }
+            } catch (SQLException ignored) {}
+        }
+
         if (!bootstrapping) {
             try (Statement stmt = conn.createStatement();
                  ResultSet rs = stmt.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='FUser' LIMIT 1")) {
@@ -81,9 +97,9 @@ public final class DBConnection {
                     conn.close();
                     bootstrapping = true;
                     try {
-                        DatabaseBootstrap.bootstrap();
+                        DatabaseInitialiser.initialise();
                     } catch (Exception ex) {
-                        throw new SQLException("Failed to bootstrap database", ex);
+                        throw new SQLException("Failed to initialise database", ex);
                     } finally {
                         bootstrapping = false;
                     }

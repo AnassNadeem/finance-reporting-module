@@ -25,30 +25,56 @@ public final class SessionManager {
         return currentUser != null && !isExpired();
     }
 
-    /** Returns the current user's role, or null if not logged in or session expired. */
     public static UserRole getRole() {
         if (currentUser == null || isExpired()) {
             return null;
         }
-        touch();
         return currentUser.getRole();
+    }
+
+    public static boolean isAdmin() {
+        return getRole() == UserRole.ADMIN;
+    }
+
+    public static boolean isFinanceUser() {
+        return getRole() == UserRole.FINANCE_USER;
     }
 
     public static FUser getCurrentUser() {
         if (!isLoggedIn()) {
             throw new IllegalStateException("Session expired or not logged in");
         }
-        touch();
         return currentUser;
+    }
+
+    public static FUser getCurrentUserOrNull() {
+        if (!isLoggedIn()) return null;
+        return currentUser;
+    }
+
+    public static String getDisplayName() {
+        FUser user = getCurrentUserOrNull();
+        if (user == null) return "User";
+        String first = user.getFirstName() != null ? user.getFirstName() : "";
+        String last = user.getLastName() != null ? user.getLastName() : "";
+        String full = (first + " " + last).trim();
+        if (!full.isEmpty()) return full;
+        if (user.getUsername() != null && !user.getUsername().isBlank()) return user.getUsername();
+        return user.getEmail() != null ? user.getEmail() : "User";
+    }
+
+    public static String getInitials() {
+        String name = getDisplayName();
+        if (name == null || name.isEmpty()) return "U";
+        String[] parts = name.split("\\s+");
+        String initials = parts[0].substring(0, 1);
+        if (parts.length > 1) initials += parts[1].substring(0, 1);
+        return initials.toUpperCase();
     }
 
     public static void logout() {
         currentUser = null;
         lastActivity = null;
-    }
-
-    private static void touch() {
-        lastActivity = Instant.now();
     }
 
     private static boolean isExpired() {
@@ -58,7 +84,6 @@ public final class SessionManager {
         return Instant.now().isAfter(lastActivity.plus(TIMEOUT));
     }
 
-    /** Seconds until expiry, or 0 if already expired / not logged in. */
     public static long getRemainingSeconds() {
         if (currentUser == null || lastActivity == null) {
             return 0;
@@ -67,7 +92,6 @@ public final class SessionManager {
         return Math.max(0, secs);
     }
 
-    /** Call to extend the session (e.g. when user clicks "Stay logged in"). */
     public static void extendSession() {
         if (currentUser != null) {
             lastActivity = Instant.now();

@@ -3,6 +3,7 @@ package com.raez.finance.controller;
 import com.raez.finance.model.FUser;
 import com.raez.finance.model.UserRole;
 import com.raez.finance.service.AuthService;
+import com.raez.finance.util.ValidationUtils;
 import com.raez.finance.service.AuthService.FirstLoginRequiredException;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -40,9 +41,18 @@ public class AdminLoginController {
         hideError();
     }
 
+    private static final String DEMO_EMAIL = "j.carter@raez.org.uk";
+    private static final String DEMO_PASSWORD = "Admin123!";
+
     @FXML
     private void handleBack(ActionEvent event) {
         navigateTo(VIEW_PATH + "RoleSelection.fxml", event);
+    }
+
+    @FXML
+    private void handleAddDemoCredentials(ActionEvent event) {
+        txtEmail.setText(DEMO_EMAIL);
+        txtPassword.setText(DEMO_PASSWORD);
     }
 
     @FXML
@@ -54,12 +64,16 @@ public class AdminLoginController {
             showError("Please fill in all fields");
             return;
         }
+        if (!ValidationUtils.isRaezEmail(email)) {
+            showError("Email must be a valid @raez.org.uk address.");
+            return;
+        }
         hideError();
 
         try {
             FUser user = authService.login(email, password);
             if (user.getRole() != UserRole.ADMIN) {
-                showError("You do not have access to this area with this account.");
+                new Alert(Alert.AlertType.WARNING, "This login is for administrators only. Use Finance Admin Login for other accounts.").showAndWait();
                 return;
             }
             com.raez.finance.service.SessionManager.startSession(user);
@@ -146,12 +160,15 @@ public class AdminLoginController {
             URL url = getClass().getResource(resourcePath);
             if (url == null) throw new IllegalStateException("Resource not found: " + resourcePath);
             Parent root = FXMLLoader.load(url);
-            Scene scene = new Scene(root);
+            Scene scene = new Scene(root, 1200, 800);
             URL cssUrl = getClass().getResource("/css/app.css");
             if (cssUrl != null) scene.getStylesheets().add(cssUrl.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             stage.setScene(scene);
             stage.setTitle("RAEZ Finance – Main");
+            stage.setResizable(true);
+            stage.setMinWidth(800);
+            stage.setMinHeight(600);
             stage.show();
         } catch (Exception e) {
             throw new RuntimeException("Navigation failed: " + resourcePath, e);
@@ -163,7 +180,7 @@ public class AdminLoginController {
             URL url = getClass().getResource(resourcePath);
             if (url == null) throw new IllegalStateException("Resource not found: " + resourcePath);
             Parent root = FXMLLoader.load(url);
-            Scene scene = new Scene(root);
+            Scene scene = new Scene(root, 1000, 700);
             URL cssUrl = getClass().getResource("/css/app.css");
             if (cssUrl != null) scene.getStylesheets().add(cssUrl.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
@@ -205,12 +222,13 @@ public class AdminLoginController {
                 controller.prepareForFirstLogin(identifier);
             }
 
-            Scene scene = new Scene(root);
+            Scene scene = new Scene(root, 1000, 700);
             URL cssUrl = getClass().getResource("/css/app.css");
             if (cssUrl != null) scene.getStylesheets().add(cssUrl.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             stage.setScene(scene);
             stage.setTitle("RAEZ Finance – First-time Login");
+            stage.setResizable(true);
             stage.show();
         } catch (Exception e) {
             throw new RuntimeException("Navigation failed: " + resourcePath, e);

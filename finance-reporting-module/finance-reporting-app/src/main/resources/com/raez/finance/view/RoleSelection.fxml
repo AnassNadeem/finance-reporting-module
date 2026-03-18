@@ -9,9 +9,9 @@
 <?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.Font?>
 
-<StackPane style="-fx-background-color: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.RoleSelectionController">
+<StackPane style="-fx-background-color: #F9FAFB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.RoleSelectionController">
    <children>
-      <VBox alignment="CENTER" maxWidth="450.0" spacing="20.0" style="-fx-background-color: white; -fx-background-radius: 8;">
+      <VBox alignment="CENTER" maxWidth="504.0" prefHeight="792.0" prefWidth="504.0" spacing="20.0" style="-fx-background-color: white; -fx-background-radius: 8;">
          <padding>
             <Insets bottom="48.0" left="48.0" right="48.0" top="48.0" />
          </padding>
@@ -42,14 +42,14 @@
                </VBox.margin>
             </VBox>
 
-            <VBox spacing="16.0">
+            <VBox alignment="CENTER" spacing="16.0">
                <children>
                   <Button fx:id="btnSuperAdmin" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleSuperAdminSelect" prefHeight="50.0" style="-fx-background-color: #1E293B; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-weight: bold; -fx-cursor: hand;" text="Super Admin Login">
                      <font>
                         <Font size="14.0" />
                      </font>
                   </Button>
-                  <Button fx:id="btnFinanceAdmin" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleFinanceAdminSelect" prefHeight="50.0" style="-fx-background-color: white; -fx-border-color: #111827; -fx-border-width: 2; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #111827; -fx-font-weight: bold; -fx-cursor: hand;" text="Finance Admin Login">
+                  <Button fx:id="btnFinanceAdmin" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleFinanceAdminSelect" prefHeight="50.0" style="-fx-background-color: white; -fx-border-color: #1E293B; -fx-border-width: 2; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: #1E293B; -fx-font-weight: bold; -fx-cursor: hand;" text="Finance Admin Login">
                      <font>
                         <Font size="14.0" />
                      </font>
@@ -57,33 +57,6 @@
                </children>
             </VBox>
 
-            <VBox spacing="8.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 1 0 0 0;">
-               <VBox.margin>
-                  <Insets top="30.0" />
-               </VBox.margin>
-               <padding>
-                  <Insets top="20.0" />
-               </padding>
-               <children>
-                  <Label alignment="CENTER" maxWidth="Infinity" text="Demo Credentials:" textFill="#4B5563" />
-                  <Label text="Super Admin: admin@raez.com / admin123" textFill="#374151">
-                     <font>
-                        <Font name="System Bold" size="12.0" />
-                     </font>
-                  </Label>
-                  <Label text="Finance Admin: finance@raez.com / password123" textFill="#374151">
-                     <font>
-                        <Font name="System Bold" size="12.0" />
-                     </font>
-                  </Label>
-                  <Label text="First Time User: new.user@raez.com / temp123" textFill="#374151">
-                     <font>
-                        <Font name="System Bold" size="12.0" />
-                     </font>
-                  </Label>
-               </children>
-            </VBox>
-            
          </children>
       </VBox>
    </children>

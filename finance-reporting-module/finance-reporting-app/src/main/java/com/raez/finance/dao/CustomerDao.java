@@ -20,7 +20,7 @@ public class CustomerDao {
     /**
      * Fetch customers with order aggregates. Optional filters. Use limit &lt;= 0 for no limit.
      */
-    public List<CustomerReportRow> findReportRows(String typeFilter, String countryFilter, String search, int limit, int offset) throws SQLException {
+    public List<CustomerReportRow> findReportRows(String typeFilter, String countryFilter, String companyName, String search, int limit, int offset) throws SQLException {
         StringBuilder sql = new StringBuilder(
                 "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
                 "COUNT(o.orderID) AS totalOrders, " +
@@ -38,9 +38,13 @@ public class CustomerDao {
             params.add(term);
             params.add(term);
         }
-        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim())) {
+        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim()) && !"All Types".equalsIgnoreCase(typeFilter.trim())) {
             sql.append(" AND COALESCE(c.customerType, 'Individual') = ?");
             params.add(typeFilter.trim());
+        }
+        if (companyName != null && !companyName.isBlank()) {
+            sql.append(" AND c.name = ?");
+            params.add(companyName.trim());
         }
         if (countryFilter != null && !countryFilter.isBlank() && !"All".equalsIgnoreCase(countryFilter.trim())) {
             sql.append(" AND c.deliveryAddress LIKE ?");
@@ -84,8 +88,20 @@ public class CustomerDao {
         return rows;
     }
 
+    /** Distinct company names (customer name where customerType = 'Company') for Company filter dropdown. */
+    public List<String> findCompanyNames() throws SQLException {
+        String sql = "SELECT DISTINCT name FROM CustomerRegistration WHERE COALESCE(customerType, 'Individual') = 'Company' AND name IS NOT NULL ORDER BY name";
+        List<String> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) list.add(rs.getString("name"));
+        }
+        return list;
+    }
+
     /** Count customer report rows with same filters (for pagination). */
-    public int countReportRows(String typeFilter, String countryFilter, String search) throws SQLException {
+    public int countReportRows(String typeFilter, String countryFilter, String companyName, String search) throws SQLException {
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) FROM (SELECT c.customerID FROM CustomerRegistration c " +
                 "LEFT JOIN \"Order\" o ON o.customerID = c.customerID WHERE 1=1");
@@ -97,9 +113,13 @@ public class CustomerDao {
             params.add(term);
             params.add(term);
         }
-        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim())) {
+        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim()) && !"All Types".equalsIgnoreCase(typeFilter.trim())) {
             sql.append(" AND COALESCE(c.customerType, 'Individual') = ?");
             params.add(typeFilter.trim());
+        }
+        if (companyName != null && !companyName.isBlank()) {
+            sql.append(" AND c.name = ?");
+            params.add(companyName.trim());
         }
         if (countryFilter != null && !countryFilter.isBlank() && !"All".equalsIgnoreCase(countryFilter.trim())) {
             sql.append(" AND c.deliveryAddress LIKE ?");
@@ -182,6 +202,16 @@ public class CustomerDao {
         }
     }
 
+    /** Count customers where customerType = 'Company'. */
+    public int getCompanyCustomerCount() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM CustomerRegistration WHERE COALESCE(customerType, 'Individual') = 'Company'";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
     /** Sum of all order amounts (for avg spending per customer). */
     public double getTotalRevenue() throws SQLException {
         String sql = "SELECT COALESCE(SUM(totalAmount), 0) FROM \"Order\"";
@@ -190,6 +220,60 @@ public class CustomerDao {
              ResultSet rs = ps.executeQuery()) {
             return rs.next() ? rs.getDouble(1) : 0;
         }
+    }
+
+    /**
+     * Refund alert strings for Customer Insights (simple dev-friendly heuristics).
+     * Uses Refund + Order + CustomerRegistration to produce human-readable alerts.
+     */
+    public List<String> findRefundAlerts() throws SQLException {
+        String sql =
+                "SELECT c.name, COUNT(r.refundID) AS refundCount, COALESCE(SUM(r.refundAmount), 0) AS totalRefunded " +
+                "FROM Refund r " +
+                "JOIN \"Order\" o ON r.orderID = o.orderID " +
+                "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+                "WHERE r.status IN ('REQUESTED','APPROVED','PROCESSED') " +
+                "GROUP BY c.customerID, c.name " +
+                "HAVING refundCount >= 2 OR totalRefunded >= 500 " +
+                "ORDER BY totalRefunded DESC LIMIT 10";
+        List<String> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String name = rs.getString(1);
+                int cnt = rs.getInt(2);
+                double amt = rs.getDouble(3);
+                list.add(String.format("%s has %d refunds totalling %s", name, cnt, com.raez.finance.util.CurrencyUtil.formatCurrency(amt)));
+            }
+        }
+        return list;
+    }
+
+    /**
+     * Product issue alert strings for Customer Insights (heuristic: products with high refunds).
+     */
+    public List<String> findProductIssueAlerts() throws SQLException {
+        String sql =
+                "SELECT p.name, COUNT(r.refundID) AS refundCount, COALESCE(SUM(r.refundAmount), 0) AS totalRefunded " +
+                "FROM Refund r " +
+                "JOIN Product p ON r.productID = p.productID " +
+                "WHERE r.productID IS NOT NULL " +
+                "GROUP BY p.productID, p.name " +
+                "HAVING refundCount >= 2 OR totalRefunded >= 500 " +
+                "ORDER BY refundCount DESC, totalRefunded DESC LIMIT 10";
+        List<String> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String name = rs.getString(1);
+                int cnt = rs.getInt(2);
+                double amt = rs.getDouble(3);
+                list.add(String.format("Product \"%s\" has %d refunds totalling %s", name, cnt, com.raez.finance.util.CurrencyUtil.formatCurrency(amt)));
+            }
+        }
+        return list;
     }
 
     /**

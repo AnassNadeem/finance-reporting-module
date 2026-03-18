@@ -24,8 +24,15 @@ public class DatabaseBootstrap {
     /** Applies schema and seed to the DB used by DBConnection. Called automatically when the DB has no FUser table. */
     public static void bootstrap() throws Exception {
         try (Connection conn = DBConnection.getConnection()) {
+            try (Statement pragma = conn.createStatement()) {
+                // Disable foreign key enforcement during bootstrap so schema/seed can be applied idempotently.
+                pragma.execute("PRAGMA foreign_keys = OFF;");
+            }
             runSqlFromResource(conn, "/database/schema.sql");
             runSqlFromResource(conn, "/database/seed.sql");
+            try (Statement pragma = conn.createStatement()) {
+                pragma.execute("PRAGMA foreign_keys = ON;");
+            }
         }
     }
 

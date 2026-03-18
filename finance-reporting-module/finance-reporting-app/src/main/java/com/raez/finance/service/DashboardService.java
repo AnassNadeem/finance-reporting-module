@@ -64,6 +64,49 @@ public class DashboardService {
         return querySingleDoubleWithCategory(sql, from, to, category);
     }
 
+    /**
+     * Approximate COGS for orders in range. The current schema does not store product cost,
+     * so this uses a simple heuristic (60% of line revenue) to provide a consistent value
+     * for dashboards; detailed profitability is handled by mock data.
+     */
+    public double getTotalCogs(LocalDate from, LocalDate to, String category) throws SQLException {
+        String sql = "SELECT COALESCE(SUM(oi.quantity * COALESCE(p2.unitCost, oi.unitPrice * 0.6)), 0) " +
+                "FROM OrderItem oi JOIN \"Order\" o ON oi.orderID = o.orderID " +
+                "JOIN Product p2 ON oi.productID = p2.productID ";
+        if (hasCategoryFilter(category)) {
+            sql += "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
+        }
+        sql += "WHERE 1=1 ";
+        sql = appendDateFilter(sql, "o.orderDate", from, to);
+        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
+        return querySingleDoubleWithCategory(sql, from, to, category);
+    }
+
+    /**
+     * Total VAT collected from successful payments in period (gross amounts converted using global VAT rate).
+     */
+    public double getTotalVatCollected(LocalDate from, LocalDate to, String category) throws SQLException {
+        String sql = "SELECT p.amountPaid FROM Payment p JOIN \"Order\" o ON p.orderID = o.orderID ";
+        if (hasCategoryFilter(category)) {
+            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
+                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
+        }
+        sql += "WHERE p.paymentStatus = 'SUCCESS' ";
+        sql = appendDateFilter(sql, "p.paymentDate", from, to);
+        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
+        List<Double> amounts = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int idx = bindDateFilter(ps, 1, from, to);
+            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) amounts.add(rs.getDouble(1));
+        }
+        double vat = 0;
+        for (Double gross : amounts) vat += GlobalSettingsService.getInstance().vatFromGross(gross);
+        return vat;
+    }
+
     public int getTotalCustomers() throws SQLException {
         String sql = "SELECT COUNT(*) FROM CustomerRegistration";
         try (Connection conn = DBConnection.getConnection();

@@ -1,12 +1,31 @@
 package com.raez.finance.controller;
 
+import com.raez.finance.dao.CustomerDao;
+import com.raez.finance.dao.OrderDao;
+import com.raez.finance.dao.ProductDao;
+import com.raez.finance.model.CustomerReportRow;
+import com.raez.finance.model.OrderReportRow;
+import com.raez.finance.model.ProductReportRow;
+import com.raez.finance.service.DashboardService;
+import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
+import com.raez.finance.util.CurrencyUtil;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+
+import java.io.File;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
@@ -90,9 +109,18 @@ public class MainLayoutController {
             }
 
             startSessionTimeoutChecker();
+            Platform.runLater(this::attachSessionActivityListeners);
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize MainLayout", e);
         }
+    }
+
+    /** Extend session only on user input (mouse/key) in the main window; do not extend from the periodic checker. */
+    private void attachSessionActivityListeners() {
+        Node root = contentArea != null && contentArea.getScene() != null ? contentArea.getScene().getRoot() : null;
+        if (root == null) return;
+        root.addEventFilter(MouseEvent.ANY, e -> SessionManager.extendSession());
+        root.addEventFilter(KeyEvent.ANY, e -> SessionManager.extendSession());
     }
 
     private void startSessionTimeoutChecker() {
@@ -157,11 +185,14 @@ public class MainLayoutController {
             URL url = getClass().getResource(VIEW_PATH + "RoleSelection.fxml");
             if (url == null) return;
             Parent root = FXMLLoader.load(url);
-            Scene scene = new Scene(root);
+            Scene scene = new Scene(root, 1000, 700);
             URL cssUrl = getClass().getResource("/css/app.css");
             if (cssUrl != null) scene.getStylesheets().add(cssUrl.toExternalForm());
             Stage stage = (Stage) contentArea.getScene().getWindow();
             stage.setScene(scene);
+            stage.setResizable(true);
+            stage.setMinWidth(800);
+            stage.setMinHeight(600);
             stage.show();
         } catch (Exception e) {
             throw new RuntimeException("Failed to navigate to RoleSelection", e);
@@ -224,6 +255,134 @@ public class MainLayoutController {
             StackPane.setMargin(toastNode, new Insets(24, 24, 0, 24));
         } catch (Exception ignored) {
         }
+    }
+
+    /**
+     * Export dashboard (overview) data to file without navigating. Stays on current page.
+     */
+    public void exportDashboardReport(String format) {
+        Window window = contentArea != null && contentArea.getScene() != null ? contentArea.getScene().getWindow() : null;
+        if (window == null) return;
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                DashboardService ds = new DashboardService();
+                LocalDate to = LocalDate.now();
+                LocalDate from = to.minusDays(30);
+                String cat = "All Categories";
+                List<String[]> rows = new ArrayList<>();
+                rows.add(new String[]{"Metric", "Value"});
+                rows.add(new String[]{"Total Sales", CurrencyUtil.formatCurrency(ds.getTotalSales(from, to, cat))});
+                rows.add(new String[]{"Total Profit", CurrencyUtil.formatCurrency(ds.getTotalProfit(from, to, cat))});
+                rows.add(new String[]{"Outstanding Payments", CurrencyUtil.formatCurrency(ds.getOutstandingPayments(from, to, cat))});
+                rows.add(new String[]{"Refunds", CurrencyUtil.formatCurrency(ds.getRefunds(from, to, cat))});
+                rows.add(new String[]{"Total Customers", String.valueOf(ds.getTotalCustomers())});
+                rows.add(new String[]{"Total Orders", String.valueOf(ds.getTotalOrders(from, to, cat))});
+                rows.add(new String[]{"Average Order Value", CurrencyUtil.formatCurrency(ds.getAverageOrderValue(from, to, cat))});
+                rows.add(new String[]{"Most Popular Product", ds.getMostPopularProductName(from, to, cat) != null ? ds.getMostPopularProductName(from, to, cat) : "—"});
+                return rows;
+            }
+        };
+        task.setOnSucceeded(e -> {
+            List<String[]> data = task.getValue();
+            if (data == null) return;
+            File file = chooseFile(window, "Dashboard Summary", "dashboard_summary", format);
+            if (file == null) return;
+            try {
+                if ("pdf".equalsIgnoreCase(format)) ExportService.exportRowsToPDF("Dashboard Summary", data, file);
+                else ExportService.exportRowsToCSV(data, file);
+                showToast("success", "Exported to " + file.getName());
+            } catch (Exception ex) {
+                showToast("error", "Export failed: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
+            }
+        });
+        task.setOnFailed(ev -> showToast("error", "Export failed."));
+        new Thread(task).start();
+    }
+
+    /**
+     * Export order report data to file without navigating.
+     */
+    public void exportOrderReport(String format) {
+        exportReportWithoutNavigate("orders", "Order Report", "order_report", format);
+    }
+
+    /**
+     * Export product report data to file without navigating.
+     */
+    public void exportProductReport(String format) {
+        exportReportWithoutNavigate("products", "Product Report", "product_report", format);
+    }
+
+    /**
+     * Export customer report data to file without navigating.
+     */
+    public void exportCustomerReport(String format) {
+        exportReportWithoutNavigate("customers", "Customer Report", "customer_report", format);
+    }
+
+    private void exportReportWithoutNavigate(String reportType, String title, String defaultName, String format) {
+        Window window = contentArea != null && contentArea.getScene() != null ? contentArea.getScene().getWindow() : null;
+        if (window == null) return;
+        LocalDate to = LocalDate.now();
+        LocalDate from = to.minusDays(30);
+        Task<List<String[]>> task = new Task<>() {
+            @Override
+            protected List<String[]> call() throws Exception {
+                List<String[]> rows = new ArrayList<>();
+                if ("orders".equals(reportType)) {
+                    OrderDao dao = new OrderDao();
+                    List<OrderReportRow> list = dao.findReportRows(from, to, "All Status", null, 0, 0);
+                    rows.add(new String[]{"Order ID", "Customer", "Product", "Amount", "Date", "Status"});
+                    for (OrderReportRow r : list) {
+                        rows.add(new String[]{r.getOrderId(), r.getCustomer(), r.getProduct(), CurrencyUtil.formatCurrency(r.getAmount()), r.getDate(), r.getStatus()});
+                    }
+                } else if ("products".equals(reportType)) {
+                    ProductDao dao = new ProductDao();
+                    List<ProductReportRow> list = dao.findReportRows(from, to, "All Categories", null, 0, 0);
+                    rows.add(new String[]{"Product ID", "Name", "Category", "Cost", "Sale Price", "Profit", "Units Sold", "Revenue"});
+                    for (ProductReportRow r : list) {
+                        rows.add(new String[]{r.getProductId(), r.getName(), r.getCategory(), CurrencyUtil.formatCurrency(r.getCost()), CurrencyUtil.formatCurrency(r.getSalePrice()), CurrencyUtil.formatCurrency(r.getProfit()), String.valueOf(r.getUnitsSold()), CurrencyUtil.formatCurrency(r.getRevenue())});
+                    }
+                } else {
+                    CustomerDao dao = new CustomerDao();
+                    List<CustomerReportRow> list = dao.findReportRows("All", "All", null, null, 0, 0);
+                    rows.add(new String[]{"Customer ID", "Name", "Type", "Country", "Total Orders", "Total Spent", "Avg Order Value", "Last Purchase"});
+                    for (CustomerReportRow r : list) {
+                        rows.add(new String[]{r.getCustomerId(), r.getName(), r.getType(), r.getCountry(), String.valueOf(r.getTotalOrders()), CurrencyUtil.formatCurrency(r.getTotalSpent()), CurrencyUtil.formatCurrency(r.getAvgOrderValue()), r.getLastPurchase()});
+                    }
+                }
+                return rows;
+            }
+        };
+        task.setOnSucceeded(e -> {
+            List<String[]> data = task.getValue();
+            if (data == null) return;
+            File file = chooseFile(window, title, defaultName, format);
+            if (file == null) return;
+            try {
+                if ("pdf".equalsIgnoreCase(format)) ExportService.exportRowsToPDF(title, data, file);
+                else ExportService.exportRowsToCSV(data, file);
+                showToast("success", "Exported to " + file.getName());
+            } catch (Exception ex) {
+                showToast("error", "Export failed: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
+            }
+        });
+        task.setOnFailed(ev -> showToast("error", "Export failed."));
+        new Thread(task).start();
+    }
+
+    private File chooseFile(Window window, String dialogTitle, String defaultName, String format) {
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export " + dialogTitle);
+        if ("pdf".equalsIgnoreCase(format)) {
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+            fc.setInitialFileName(defaultName + ".pdf");
+        } else {
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+            fc.setInitialFileName(defaultName + ".csv");
+        }
+        return fc.showSaveDialog(window);
     }
 
     /**

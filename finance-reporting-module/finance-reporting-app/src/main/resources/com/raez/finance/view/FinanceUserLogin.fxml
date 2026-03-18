@@ -14,19 +14,19 @@
 <?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.text.Font?>
 
-<StackPane style="-fx-background-color: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.FinanceUserLoginController">
+<StackPane style="-fx-background-color: #F9FAFB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.FinanceUserLoginController">
    <padding>
       <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
    </padding>
    <children>
       
-      <VBox fx:id="loginView" maxWidth="450.0" spacing="24.0" alignment="CENTER_LEFT">
+      <VBox fx:id="loginView" alignment="CENTER_LEFT" maxWidth="450.0" spacing="24.0">
          <children>
             <Button fx:id="btnBackToRole" mnemonicParsing="false" onAction="#handleBack" style="-fx-background-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="← Back to Role Selection">
                <font><Font size="14.0" /></font>
             </Button>
 
-            <VBox style="-fx-background-color: white; -fx-background-radius: 8;" spacing="24.0">
+            <VBox spacing="24.0" style="-fx-background-color: white; -fx-background-radius: 8;">
                <padding><Insets bottom="32.0" left="32.0" right="32.0" top="32.0" /></padding>
                <effect>
                   <DropShadow blurType="GAUSSIAN" height="20.0" radius="9.5" width="20.0">
@@ -39,7 +39,7 @@
                      <children>
                         <StackPane maxHeight="80.0" maxWidth="80.0" prefHeight="80.0" prefWidth="80.0" style="-fx-background-color: #1E2939; -fx-background-radius: 8;">
                            <children>
-                              <SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" stroke="WHITE" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2" scaleX="1.5" scaleY="1.5"/>
+                              <SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" scaleX="1.5" scaleY="1.5" stroke="WHITE" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2" />
                            </children>
                            <VBox.margin><Insets bottom="16.0" /></VBox.margin>
                         </StackPane>
@@ -68,7 +68,7 @@
                            </children>
                         </VBox>
 
-                        <VBox fx:id="loginErrorBox" managed="false" visible="false" style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8;">
+                        <VBox fx:id="loginErrorBox" managed="false" style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8;" visible="false">
                            <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
                            <children>
                               <Label fx:id="lblLoginError" text="Invalid credentials" textFill="#B91C1C" wrapText="true" />
@@ -79,6 +79,17 @@
                            <font><Font size="14.0" /></font>
                            <VBox.margin><Insets top="8.0" /></VBox.margin>
                         </Button>
+
+                        <HBox alignment="CENTER">
+                           <children>
+                              <Button fx:id="btnDemoCredentials" mnemonicParsing="false" onAction="#handleAddDemoCredentials" prefHeight="39.0" prefWidth="175.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 10 20;" text="Add demo credentials">
+                                 <font>
+                                    <Font size="13.0" />
+                                 </font>
+                              </Button>
+                           </children>
+                           <VBox.margin><Insets top="4.0" /></VBox.margin>
+                        </HBox>
 
                         <HBox alignment="CENTER">
                            <children>
@@ -108,13 +119,13 @@
          </children>
       </VBox>
 
-      <VBox fx:id="passwordChangeView" maxWidth="450.0" spacing="24.0" alignment="CENTER_LEFT" visible="false" managed="false">
+      <VBox fx:id="passwordChangeView" alignment="CENTER_LEFT" managed="false" maxWidth="450.0" spacing="24.0" visible="false">
          <children>
             <Button mnemonicParsing="false" onAction="#handleBackToLogin" style="-fx-background-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="← Back to Login">
                <font><Font size="14.0" /></font>
             </Button>
 
-            <VBox style="-fx-background-color: white; -fx-background-radius: 8;" spacing="24.0">
+            <VBox spacing="24.0" style="-fx-background-color: white; -fx-background-radius: 8;">
                <padding><Insets bottom="32.0" left="32.0" right="32.0" top="32.0" /></padding>
                <effect>
                   <DropShadow blurType="GAUSSIAN" height="20.0" radius="9.5" width="20.0">
@@ -126,7 +137,7 @@
                      <children>
                         <StackPane maxHeight="80.0" maxWidth="80.0" prefHeight="80.0" prefWidth="80.0" style="-fx-background-color: #1E2939; -fx-background-radius: 8;">
                            <children>
-                              <SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" stroke="WHITE" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2" scaleX="1.5" scaleY="1.5"/>
+                              <SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" scaleX="1.5" scaleY="1.5" stroke="WHITE" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2" />
                            </children>
                            <VBox.margin><Insets bottom="16.0" /></VBox.margin>
                         </StackPane>
@@ -155,7 +166,7 @@
                            </children>
                         </VBox>
 
-                        <VBox fx:id="pwdErrorBox" managed="false" visible="false" style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8;">
+                        <VBox fx:id="pwdErrorBox" managed="false" style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8;" visible="false">
                            <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
                            <children>
                               <Label fx:id="lblPwdError" text="Passwords do not match" textFill="#B91C1C" wrapText="true" />

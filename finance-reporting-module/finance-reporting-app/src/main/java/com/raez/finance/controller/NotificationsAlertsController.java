@@ -2,172 +2,474 @@ package com.raez.finance.controller;
 
 import com.raez.finance.dao.AlertDao;
 import com.raez.finance.dao.FinancialAnomalyDao;
-import javafx.application.Platform;
+import com.raez.finance.service.MockDataProvider;
+import javafx.animation.FadeTransition;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
-import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
-import javafx.scene.shape.SVGPath;
-import javafx.scene.text.Font;
+import javafx.geometry.Pos;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.util.Duration;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class NotificationsAlertsController {
 
-    private final AlertDao alertDao = new AlertDao();
+    // ── FXML ─────────────────────────────────────────────────────────────
+    @FXML private ComboBox<String> cmbFilter;
+
+    @FXML private Label lblCriticalCount;
+    @FXML private Label lblWarningCount;
+    @FXML private Label lblInfoCount;
+    @FXML private Label lblResolvedCount;
+
+    @FXML private VBox  vboxAlerts;
+    @FXML private Label lblNoAlerts;
+    @FXML private Label badgeCritical;
+    @FXML private Button btnResolveAllAlerts;
+
+    @FXML private VBox  vboxNotifications;
+    @FXML private Label lblNoNotifications;
+    @FXML private Label badgeUnread;
+    @FXML private Button btnResolveAllNotifs;
+    @FXML private Button btnMarkAllRead;
+
+    // ── Services ──────────────────────────────────────────────────────────
+    private final AlertDao            alertDao   = new AlertDao();
     private final FinancialAnomalyDao anomalyDao = new FinancialAnomalyDao();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService     executor   = Executors.newSingleThreadExecutor();
 
-    @FXML
-    private VBox vboxAlerts;
+    private static final double LOW_MARGIN_THRESHOLD  = 15.0;
+    private static final double HIGH_REFUND_THRESHOLD = 10.0;
 
-    @FXML
-    private VBox vboxNotifications;
+    // In-memory state (rows are re-rendered on filter change without reloading)
+    private final ObservableList<AlertDao.AlertRow>            allAlerts      = FXCollections.observableArrayList();
+    private final ObservableList<FinancialAnomalyDao.AnomalyRow> allAnomalies = FXCollections.observableArrayList();
+
+    // Track resolved IDs locally (until DB write is confirmed)
+    private final Set<Integer> resolvedAlertIds   = new HashSet<>();
+    private final Set<Integer> resolvedAnomalyIds = new HashSet<>();
+    private final Set<Integer> readAnomalyIds     = new HashSet<>();
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  INIT
+    // ══════════════════════════════════════════════════════════════════════
 
     @FXML
     public void initialize() {
-        vboxAlerts.getChildren().clear();
-        vboxNotifications.getChildren().clear();
-        loadAlerts();
-        loadAnomalies();
+        cmbFilter.setValue("All");
+        cmbFilter.valueProperty().addListener((obs, o, n) -> applyFilter());
+        loadAll();
     }
 
-    private void loadAlerts() {
-        Task<List<AlertDao.AlertRow>> task = new Task<>() {
+    // ══════════════════════════════════════════════════════════════════════
+    //  LOADING
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void loadAll() {
+        Task<Void> task = new Task<>() {
+            List<AlertDao.AlertRow>            alerts   = new ArrayList<>();
+            List<FinancialAnomalyDao.AnomalyRow> anomalies = new ArrayList<>();
+
             @Override
-            protected List<AlertDao.AlertRow> call() throws Exception {
-                return alertDao.findAlerts(false);
+            protected Void call() {
+                // ── Alerts ───────────────────────────────────────────────
+                try { alerts.addAll(alertDao.findAlerts(false)); } catch (Exception ignored) {}
+
+                // Threshold-based synthetic alerts from mock
+                MockDataProvider mock = MockDataProvider.getInstance();
+                LocalDate to   = LocalDate.now();
+                LocalDate from = to.minusMonths(3);
+
+                double sales   = safeDouble(() -> mock.getTotalSales(from, to, null));
+                double refunds = safeDouble(() -> mock.getRefunds(from, to, null));
+                if (sales > 0) {
+                    double rate = 100.0 * refunds / sales;
+                    if (rate >= HIGH_REFUND_THRESHOLD) {
+                        alerts.add(0, syntheticAlert("High Refund Rate", "HIGH",
+                            String.format("Refund rate %.1f%% exceeds %.0f%% threshold. Review returns and product quality.", rate, HIGH_REFUND_THRESHOLD)));
+                    }
+                }
+                for (MockDataProvider.MockProduct p : mock.getProducts()) {
+                    if (p.price <= 0) continue;
+                    double margin = 100.0 * (p.price - p.unitCost) / p.price;
+                    if (margin >= 0 && margin < LOW_MARGIN_THRESHOLD) {
+                        alerts.add(syntheticAlert("Low Profit Margin", "WARNING",
+                            String.format("Product \"%s\" has margin %.1f%% — below %.0f%% threshold.", p.name, margin, LOW_MARGIN_THRESHOLD)));
+                    }
+                }
+
+                // ── Anomalies ────────────────────────────────────────────
+                try { anomalies.addAll(anomalyDao.findAnomalies(false)); } catch (Exception ignored) {}
+
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                allAlerts.setAll(alerts);
+                allAnomalies.setAll(anomalies);
+                applyFilter();
+            }
+
+            @Override
+            protected void failed() {
+                if (getException() != null) getException().printStackTrace();
             }
         };
-        task.setOnSucceeded(e -> {
-            if (task.getValue() != null) {
-                Platform.runLater(() -> renderAlerts(task.getValue()));
-            }
-        });
-        task.exceptionProperty().addListener((o, p, ex) -> {
-            if (ex != null) {
-                Platform.runLater(() -> {
-                    Label lbl = new Label("Unable to load alerts: " + ex.getMessage());
-                    lbl.setWrapText(true);
-                    vboxAlerts.getChildren().add(lbl);
-                });
-            }
-        });
         executor.execute(task);
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  FILTER + RENDER
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void applyFilter() {
+        String filter = cmbFilter.getValue() != null ? cmbFilter.getValue() : "All";
+
+        // Filter alerts
+        List<AlertDao.AlertRow> filteredAlerts = allAlerts.stream()
+            .filter(a -> matchesFilter(a.getSeverity(), resolvedAlertIds.contains(a.getAlertID()), filter))
+            .toList();
+
+        // Filter anomalies
+        List<FinancialAnomalyDao.AnomalyRow> filteredAnomalies = allAnomalies.stream()
+            .filter(a -> {
+                boolean resolved = resolvedAnomalyIds.contains(a.getAnomalyID()) || a.isResolved();
+                boolean unread   = !readAnomalyIds.contains(a.getAnomalyID());
+                if ("Unread".equals(filter)) return unread && !resolved;
+                if ("Resolved".equals(filter)) return resolved;
+                return matchesFilter(a.getSeverity(), resolved, filter);
+            })
+            .toList();
+
+        renderSummaryBadges();
+        renderAlerts(filteredAlerts);
+        renderAnomalies(filteredAnomalies);
+    }
+
+    private boolean matchesFilter(String severity, boolean resolved, String filter) {
+        return switch (filter) {
+            case "Critical" -> !resolved && ("CRITICAL".equalsIgnoreCase(severity) || "HIGH".equalsIgnoreCase(severity));
+            case "Warnings" -> !resolved && "WARNING".equalsIgnoreCase(severity);
+            case "Info"     -> !resolved && "INFO".equalsIgnoreCase(severity);
+            case "Resolved" -> resolved;
+            case "Unread"   -> !resolved;
+            default         -> true; // "All"
+        };
+    }
+
+    // ── Summary badges ────────────────────────────────────────────────────
+
+    private void renderSummaryBadges() {
+        long critical = allAlerts.stream()
+            .filter(a -> !resolvedAlertIds.contains(a.getAlertID()))
+            .filter(a -> isCritical(a.getSeverity())).count();
+        long warning = allAlerts.stream()
+            .filter(a -> !resolvedAlertIds.contains(a.getAlertID()))
+            .filter(a -> "WARNING".equalsIgnoreCase(a.getSeverity())).count();
+        long info = allAnomalies.stream()
+            .filter(a -> !resolvedAnomalyIds.contains(a.getAnomalyID()))
+            .filter(a -> "INFO".equalsIgnoreCase(a.getSeverity())).count();
+        long resolved = resolvedAlertIds.size() + resolvedAnomalyIds.size();
+        long unread   = allAnomalies.stream()
+            .filter(a -> !readAnomalyIds.contains(a.getAnomalyID()) && !resolvedAnomalyIds.contains(a.getAnomalyID())).count();
+
+        setText(lblCriticalCount, String.valueOf(critical));
+        setText(lblWarningCount,  String.valueOf(warning));
+        setText(lblInfoCount,     String.valueOf(info));
+        setText(lblResolvedCount, String.valueOf(resolved));
+        setText(badgeCritical,    String.valueOf(critical));
+        setText(badgeUnread,      unread + " unread");
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  RENDER — ALERTS
+    // ══════════════════════════════════════════════════════════════════════
 
     private void renderAlerts(List<AlertDao.AlertRow> rows) {
         vboxAlerts.getChildren().clear();
-        if (rows.isEmpty()) {
-            Label empty = new Label("No alerts.");
-            empty.setStyle("-fx-text-fill: #6B7280;");
-            vboxAlerts.getChildren().add(empty);
-            return;
-        }
+        boolean empty = rows.isEmpty();
+        if (lblNoAlerts != null) { lblNoAlerts.setManaged(empty); lblNoAlerts.setVisible(empty); }
+
         for (AlertDao.AlertRow row : rows) {
-            String severity = row.getSeverity() != null ? row.getSeverity() : "INFO";
-            boolean critical = "CRITICAL".equalsIgnoreCase(severity) || "HIGH".equalsIgnoreCase(severity);
-            String bg = critical ? "#FEF2F2" : "#FEFCE8";
-            String border = critical ? "#EF4444" : "#EAB308";
-            String titleColor = critical ? "#7F1D1D" : "#713F12";
-            String msgColor = critical ? "#B91C1C" : "#A16207";
-
-            HBox card = new HBox(12);
-            card.setStyle("-fx-background-color: " + bg + "; -fx-border-color: " + border + "; -fx-border-width: 0 0 0 4; -fx-background-radius: 0 8 8 0;");
-            card.setPadding(new Insets(16));
-
-            SVGPath icon = new SVGPath();
-            icon.setContent("M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01");
-            icon.setFill(javafx.scene.paint.Color.TRANSPARENT);
-            icon.setStroke(javafx.scene.paint.Color.web(border));
-            icon.setStrokeWidth(2);
-
-            VBox textBox = new VBox(4);
-            textBox.setPadding(new Insets(0, 0, 0, 12));
-            Label titleLbl = new Label((row.getAlertType() != null ? row.getAlertType() : "Alert") + (row.isResolved() ? " (Resolved)" : ""));
-            titleLbl.setStyle("-fx-text-fill: " + titleColor + "; -fx-font-weight: bold;");
-            titleLbl.setFont(Font.font(14));
-            Label msgLbl = new Label(row.getMessage() != null ? row.getMessage() : "");
-            msgLbl.setStyle("-fx-text-fill: " + msgColor + ";");
-            msgLbl.setWrapText(true);
-            Label timeLbl = new Label(row.getCreatedAt() != null ? row.getCreatedAt() : "");
-            timeLbl.setStyle("-fx-text-fill: #6B7280; -fx-font-size: 12;");
-            textBox.getChildren().addAll(titleLbl, msgLbl, timeLbl);
-            HBox.setHgrow(textBox, javafx.scene.layout.Priority.ALWAYS);
-
-            card.getChildren().addAll(icon, textBox);
-            vboxAlerts.getChildren().add(card);
+            boolean resolved = resolvedAlertIds.contains(row.getAlertID()) || row.isResolved();
+            vboxAlerts.getChildren().add(buildAlertRow(row, resolved));
         }
     }
 
-    private void loadAnomalies() {
-        Task<List<FinancialAnomalyDao.AnomalyRow>> task = new Task<>() {
-            @Override
-            protected List<FinancialAnomalyDao.AnomalyRow> call() throws Exception {
-                return anomalyDao.findAnomalies(false);
-            }
-        };
-        task.setOnSucceeded(e -> {
-            if (task.getValue() != null) {
-                Platform.runLater(() -> renderAnomalies(task.getValue()));
-            }
+    private HBox buildAlertRow(AlertDao.AlertRow row, boolean resolved) {
+        boolean crit     = isCritical(row.getSeverity());
+        String bg        = resolved ? "#F9FAFB" : (crit ? "#FEF2F2" : "#FEFCE8");
+        String accent    = resolved ? "#9CA3AF" : (crit ? "#EF4444" : "#EAB308");
+        String titleClr  = resolved ? "#9CA3AF" : (crit ? "#7F1D1D" : "#713F12");
+        String msgClr    = resolved ? "#9CA3AF" : (crit ? "#B91C1C" : "#A16207");
+
+        HBox card = new HBox(12);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setStyle("-fx-background-color: " + bg + ";" +
+                      "-fx-border-color: " + accent + " transparent transparent transparent;" +
+                      "-fx-border-width: 0 0 1 0;" +
+                      (resolved ? "-fx-opacity: 0.7;" : ""));
+        card.setPadding(new Insets(16, 20, 16, 20));
+
+        // ── Checkbox ───────────────────────────────────────────────────
+        CheckBox checkBox = new CheckBox();
+        checkBox.setSelected(resolved);
+        checkBox.setStyle("-fx-cursor: hand;");
+        checkBox.setTooltip(new Tooltip(resolved ? "Mark as unresolved" : "Mark as resolved"));
+        checkBox.setOnAction(e -> toggleAlertResolved(row, checkBox.isSelected(), card, titleClr, msgClr));
+
+        // ── Accent dot ────────────────────────────────────────────────
+        Circle dot = new Circle(5);
+        dot.setFill(Color.web(resolved ? "#9CA3AF" : accent));
+        HBox dotWrapper = new HBox(dot);
+        dotWrapper.setAlignment(Pos.CENTER);
+        dotWrapper.setPrefWidth(14);
+
+        // ── Text block ────────────────────────────────────────────────
+        VBox text = new VBox(4);
+        HBox.setHgrow(text, Priority.ALWAYS);
+
+        // Title row with severity badge
+        HBox titleRow = new HBox(8);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label titleLbl = new Label(row.getAlertType() != null ? row.getAlertType() : "Alert");
+        titleLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700; -fx-text-fill: " + titleClr + ";");
+
+        String badgeText  = resolved ? "Resolved" : (crit ? "Critical" : "Warning");
+        String badgeBg    = resolved ? "#F3F4F6"  : (crit ? "#FEE2E2"  : "#FEF9C3");
+        String badgeFg    = resolved ? "#6B7280"  : (crit ? "#991B1B"  : "#92400E");
+        Label severityBadge = new Label(badgeText);
+        severityBadge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;" +
+                               "-fx-padding: 1 7 1 7; -fx-background-radius: 999;" +
+                               "-fx-background-color: " + badgeBg + ";" +
+                               "-fx-text-fill: " + badgeFg + ";");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Timestamp
+        Label timeLbl = new Label(formatDate(row.getCreatedAt()));
+        timeLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #9CA3AF;");
+
+        titleRow.getChildren().addAll(titleLbl, severityBadge, spacer, timeLbl);
+
+        // Message
+        Label msgLbl = new Label(row.getMessage() != null ? row.getMessage() : "");
+        msgLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: " + msgClr + ";");
+        msgLbl.setWrapText(true);
+
+        text.getChildren().addAll(titleRow, msgLbl);
+        card.getChildren().addAll(checkBox, dotWrapper, text);
+
+        // Hover
+        card.setOnMouseEntered(e -> {
+            if (!resolved) card.setStyle(card.getStyle() + "-fx-cursor: hand;");
         });
-        task.exceptionProperty().addListener((o, p, ex) -> {
-            if (ex != null) {
-                Platform.runLater(() -> {
-                    Label lbl = new Label("Unable to load anomalies: " + ex.getMessage());
-                    lbl.setWrapText(true);
-                    vboxNotifications.getChildren().add(lbl);
-                });
-            }
-        });
-        executor.execute(task);
+
+        // Fade-in animation
+        fadeIn(card);
+        return card;
     }
+
+    private void toggleAlertResolved(AlertDao.AlertRow row, boolean markResolved, HBox card,
+                                     String oldTitle, String oldMsg) {
+        if (markResolved) resolvedAlertIds.add(row.getAlertID());
+        else              resolvedAlertIds.remove(row.getAlertID());
+
+        // Persist async
+        executor.execute(() -> {
+            try { alertDao.setResolved(row.getAlertID(), markResolved); } catch (Exception ignored) {}
+        });
+
+        applyFilter(); // re-render
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  RENDER — NOTIFICATIONS / ANOMALIES
+    // ══════════════════════════════════════════════════════════════════════
 
     private void renderAnomalies(List<FinancialAnomalyDao.AnomalyRow> rows) {
         vboxNotifications.getChildren().clear();
-        if (rows.isEmpty()) {
-            Label empty = new Label("No financial anomalies recorded.");
-            empty.setStyle("-fx-text-fill: #6B7280;");
-            vboxNotifications.getChildren().add(empty);
-            return;
-        }
+        boolean empty = rows.isEmpty();
+        if (lblNoNotifications != null) { lblNoNotifications.setManaged(empty); lblNoNotifications.setVisible(empty); }
+
         for (FinancialAnomalyDao.AnomalyRow row : rows) {
-            String severity = row.getSeverity() != null ? row.getSeverity() : "INFO";
-            boolean critical = "CRITICAL".equalsIgnoreCase(severity) || "HIGH".equalsIgnoreCase(severity);
-            String bg = critical ? "#FEF2F2" : "#EFF6FF";
-            String border = critical ? "#EF4444" : "#E5E7EB";
-
-            HBox card = new HBox(16);
-            card.setStyle("-fx-background-color: " + bg + "; -fx-border-color: " + border + "; -fx-border-width: 0 0 1 0; -fx-cursor: hand;");
-            card.setPadding(new Insets(24));
-
-            SVGPath icon = new SVGPath();
-            icon.setContent("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z");
-            icon.setFill(javafx.scene.paint.Color.TRANSPARENT);
-            icon.setStroke(javafx.scene.paint.Color.web("#2563EB"));
-            icon.setStrokeWidth(2);
-
-            VBox textBox = new VBox(4);
-            textBox.setPadding(new Insets(0, 0, 0, 16));
-            String title = (row.getAnomalyType() != null ? row.getAnomalyType() : "Anomaly") + (row.isResolved() ? " (Resolved)" : "");
-            Label titleLbl = new Label(title);
-            titleLbl.setStyle("-fx-text-fill: #111827; -fx-font-weight: bold;");
-            titleLbl.setFont(Font.font(14));
-            Label descLbl = new Label(row.getDescription() != null ? row.getDescription() : (row.getDetectionRule() != null ? row.getDetectionRule() : ""));
-            descLbl.setStyle("-fx-text-fill: #4B5563;");
-            descLbl.setWrapText(true);
-            Label timeLbl = new Label(row.getAlertDate() != null ? row.getAlertDate() : "");
-            timeLbl.setStyle("-fx-text-fill: #6B7280; -fx-font-size: 12;");
-            textBox.getChildren().addAll(titleLbl, descLbl, timeLbl);
-            HBox.setHgrow(textBox, javafx.scene.layout.Priority.ALWAYS);
-
-            card.getChildren().addAll(icon, textBox);
-            vboxNotifications.getChildren().add(card);
+            boolean resolved = resolvedAnomalyIds.contains(row.getAnomalyID()) || row.isResolved();
+            boolean unread   = !readAnomalyIds.contains(row.getAnomalyID()) && !resolved;
+            vboxNotifications.getChildren().add(buildNotificationRow(row, resolved, unread));
         }
+    }
+
+    private HBox buildNotificationRow(FinancialAnomalyDao.AnomalyRow row, boolean resolved, boolean unread) {
+        boolean crit   = isCritical(row.getSeverity());
+        String bg      = resolved ? "white" : (unread ? (crit ? "#FEF2F2" : "#EFF6FF") : "white");
+        String iconClr = resolved ? "#9CA3AF" : (crit ? "#DC2626" : "#2563EB");
+
+        HBox card = new HBox(12);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setStyle("-fx-background-color: " + bg + ";" +
+                      "-fx-border-color: transparent transparent #F3F4F6 transparent;" +
+                      "-fx-border-width: 0 0 1 0;" +
+                      "-fx-cursor: hand;" +
+                      (resolved ? "-fx-opacity: 0.65;" : ""));
+        card.setPadding(new Insets(16, 20, 16, 20));
+
+        // Mark read on click
+        card.setOnMouseClicked(e -> {
+            readAnomalyIds.add(row.getAnomalyID());
+            applyFilter();
+        });
+
+        // ── Checkbox ──────────────────────────────────────────────────
+        CheckBox checkBox = new CheckBox();
+        checkBox.setSelected(resolved);
+        checkBox.setStyle("-fx-cursor: hand;");
+        checkBox.setTooltip(new Tooltip(resolved ? "Mark as unresolved" : "Resolve"));
+        checkBox.setOnAction(e -> {
+            e.consume(); // prevent card click from firing
+            if (checkBox.isSelected()) resolvedAnomalyIds.add(row.getAnomalyID());
+            else                       resolvedAnomalyIds.remove(row.getAnomalyID());
+            try { anomalyDao.setResolved(row.getAnomalyID(), checkBox.isSelected()); } catch (Exception ignored) {}
+            applyFilter();
+        });
+
+        // ── Icon dot ──────────────────────────────────────────────────
+        Circle dot = new Circle(6);
+        dot.setFill(Color.web(iconClr + (resolved ? "66" : "FF")));
+        HBox dotWrapper = new HBox(dot);
+        dotWrapper.setAlignment(Pos.CENTER);
+        dotWrapper.setPrefWidth(18);
+
+        // ── Text block ────────────────────────────────────────────────
+        VBox text = new VBox(4);
+        HBox.setHgrow(text, Priority.ALWAYS);
+
+        HBox titleRow = new HBox(8);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        String title = row.getAnomalyType() != null ? row.getAnomalyType() : "Anomaly";
+        Label titleLbl = new Label(title);
+        titleLbl.setStyle("-fx-font-size: 13px; -fx-font-weight: 700;" +
+                          "-fx-text-fill: " + (resolved ? "#9CA3AF" : "#111827") + ";");
+
+        // Unread indicator
+        if (unread) {
+            Circle unreadDot = new Circle(4);
+            unreadDot.setFill(Color.web("#2563EB"));
+            titleRow.getChildren().addAll(titleLbl, unreadDot);
+        } else {
+            titleRow.getChildren().add(titleLbl);
+        }
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label timeLbl = new Label(formatDate(row.getAlertDate()));
+        timeLbl.setStyle("-fx-font-size: 11px; -fx-text-fill: #9CA3AF;");
+        titleRow.getChildren().addAll(spacer, timeLbl);
+
+        String desc = row.getDescription() != null ? row.getDescription()
+                    : (row.getDetectionRule() != null ? row.getDetectionRule() : "");
+        Label descLbl = new Label(desc);
+        descLbl.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (resolved ? "#9CA3AF" : "#4B5563") + ";");
+        descLbl.setWrapText(true);
+
+        text.getChildren().addAll(titleRow, descLbl);
+        card.getChildren().addAll(checkBox, dotWrapper, text);
+
+        fadeIn(card);
+        return card;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  FXML HANDLERS
+    // ══════════════════════════════════════════════════════════════════════
+
+    @FXML
+    private void handleFilterChange() {
+        applyFilter();
+    }
+
+    @FXML
+    private void handleMarkAllRead() {
+        allAnomalies.forEach(a -> readAnomalyIds.add(a.getAnomalyID()));
+        applyFilter();
+    }
+
+    @FXML
+    private void handleResolveAllAlerts() {
+        allAlerts.forEach(a -> resolvedAlertIds.add(a.getAlertID()));
+        executor.execute(() -> {
+            allAlerts.forEach(a -> { try { alertDao.setResolved(a.getAlertID(), true); } catch (Exception ignored) {} });
+        });
+        applyFilter();
+    }
+
+    @FXML
+    private void handleResolveAllNotifs() {
+        allAnomalies.forEach(a -> resolvedAnomalyIds.add(a.getAnomalyID()));
+        executor.execute(() -> {
+            allAnomalies.forEach(a -> { try { anomalyDao.setResolved(a.getAnomalyID(), true); } catch (Exception ignored) {} });
+        });
+        applyFilter();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  HELPERS
+    // ══════════════════════════════════════════════════════════════════════
+
+    private AlertDao.AlertRow syntheticAlert(String type, String severity, String message) {
+        return new AlertDao.AlertRow(0, type, severity, message,
+            LocalDate.now().toString(), null, null, false);
+    }
+
+    private boolean isCritical(String severity) {
+        return "CRITICAL".equalsIgnoreCase(severity) || "HIGH".equalsIgnoreCase(severity);
+    }
+
+    private String formatDate(String raw) {
+        if (raw == null || raw.isBlank()) return "";
+        try {
+            LocalDate d = LocalDate.parse(raw);
+            long days = java.time.temporal.ChronoUnit.DAYS.between(d, LocalDate.now());
+            if (days == 0) return "Today";
+            if (days == 1) return "Yesterday";
+            if (days < 7)  return days + " days ago";
+            return d.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
+        } catch (Exception e) {
+            return raw;
+        }
+    }
+
+    private void setText(Label lbl, String value) {
+        if (lbl != null) lbl.setText(value);
+    }
+
+    private void fadeIn(HBox node) {
+        node.setOpacity(0);
+        FadeTransition ft = new FadeTransition(Duration.millis(250), node);
+        ft.setFromValue(0); ft.setToValue(1); ft.play();
+    }
+
+    private double safeDouble(java.util.concurrent.Callable<Double> fn) {
+        try { return fn.call(); } catch (Exception e) { return 0; }
+    }
+
+    public void shutdown() {
+        executor.shutdown();
+        try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
+        catch (InterruptedException e) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
     }
 }
