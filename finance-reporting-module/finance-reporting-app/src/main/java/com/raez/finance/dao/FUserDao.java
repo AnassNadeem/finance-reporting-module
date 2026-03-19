@@ -54,6 +54,17 @@ public class FUserDao {
         }
     }
 
+    /** Returns the createdAt timestamp for the user, or null if not found. */
+    public String getCreatedAt(int userId) throws Exception {
+        String sql = "SELECT createdAt FROM FUser WHERE userID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getString("createdAt") : null;
+        }
+    }
+
     private FUser mapRow(ResultSet rs) throws Exception {
         int id = rs.getInt("userID");
         String email = rs.getString("email");
@@ -129,6 +140,23 @@ public class FUserDao {
      */
     public void updatePasswordByUserId(int userId, String newPasswordHash) throws Exception {
         String sql = "UPDATE FUser SET passwordHash = ? WHERE userID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newPasswordHash);
+            ps.setInt(2, userId);
+            int updated = ps.executeUpdate();
+            if (updated == 0) {
+                throw new IllegalArgumentException("User not found");
+            }
+        }
+    }
+
+    /**
+     * Sets a temporary password and clears lastLogin so the next login is treated as first-time (must change password).
+     * Used for forgot-password flow on the login screen.
+     */
+    public void setTemporaryPasswordAndClearLastLogin(int userId, String newPasswordHash) throws Exception {
+        String sql = "UPDATE FUser SET passwordHash = ?, lastLogin = NULL WHERE userID = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, newPasswordHash);

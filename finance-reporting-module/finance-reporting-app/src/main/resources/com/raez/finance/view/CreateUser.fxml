@@ -1,71 +1,83 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
-<StackPane xmlns="http://javafx.com/javafx"
-           xmlns:fx="http://javafx.com/fxml"
-           fx:controller="com.raez.finance.controller.CreateUserController"
-           styleClass="app-background">
+<StackPane styleClass="app-background" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.CreateUserController">
 
     <children>
         <VBox alignment="CENTER" spacing="16">
             <children>
-                <VBox styleClass="card" spacing="12" alignment="CENTER">
+                <VBox alignment="CENTER" spacing="12" styleClass="card">
                     <children>
-                        <Label text="Create User" styleClass="title-label"/>
-                        <Label text="Adds a new FUser to finance_raez.db (BCrypt hashed password)" styleClass="subtitle-label"/>
+                        <Label styleClass="title-label" text="Create User" />
+                        <Label styleClass="subtitle-label" text="Adds a new FUser to finance_raez.db (BCrypt hashed password)" />
 
-                        <GridPane hgap="10" vgap="10" maxWidth="420">
+                        <GridPane hgap="10" maxWidth="420" vgap="10">
                             <columnConstraints>
-                                <ColumnConstraints minWidth="120" halignment="RIGHT"/>
-                                <ColumnConstraints hgrow="ALWAYS"/>
+                                <ColumnConstraints halignment="RIGHT" minWidth="120" />
+                                <ColumnConstraints hgrow="ALWAYS" />
                             </columnConstraints>
 
                             <children>
-                                <Label text="Email" styleClass="field-label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                                <TextField fx:id="emailField" promptText="user@example.com" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="Email" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                <TextField fx:id="emailField" promptText="user@example.com" GridPane.columnIndex="1" GridPane.rowIndex="0" />
 
-                                <Label text="Username" styleClass="field-label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                                <TextField fx:id="usernameField" promptText="username" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="Username" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                <TextField fx:id="usernameField" promptText="username" GridPane.columnIndex="1" GridPane.rowIndex="1" />
 
-                                <Label text="Password" styleClass="field-label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-                                <PasswordField fx:id="passwordField" promptText="Password" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="Password" GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                <PasswordField fx:id="passwordField" promptText="Password" GridPane.columnIndex="1" GridPane.rowIndex="2" />
 
-                                <Label text="Role" styleClass="field-label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-                                <ComboBox fx:id="roleCombo" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="Role" GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                <ComboBox fx:id="roleCombo" GridPane.columnIndex="1" GridPane.rowIndex="3" />
 
-                                <Label text="First name" styleClass="field-label" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-                                <TextField fx:id="firstNameField" promptText="First name" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="First name" GridPane.columnIndex="0" GridPane.rowIndex="4" />
+                                <TextField fx:id="firstNameField" promptText="First name" GridPane.columnIndex="1" GridPane.rowIndex="4" />
 
-                                <Label text="Last name" styleClass="field-label" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-                                <TextField fx:id="lastNameField" promptText="Last name" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="Last name" GridPane.columnIndex="0" GridPane.rowIndex="5" />
+                                <TextField fx:id="lastNameField" promptText="Last name" GridPane.columnIndex="1" GridPane.rowIndex="5" />
 
-                                <Label text="Phone" styleClass="field-label" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
-                                <TextField fx:id="phoneField" promptText="Phone" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="Phone" GridPane.columnIndex="0" GridPane.rowIndex="6" />
+                                <TextField fx:id="phoneField" promptText="Phone" GridPane.columnIndex="1" GridPane.rowIndex="6" />
 
-                                <Label text="Active" styleClass="field-label" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
-                                <CheckBox fx:id="activeCheck" text="isActive = 1" selected="true"
-                                          GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+                                <Label styleClass="field-label" text="Active" GridPane.columnIndex="0" GridPane.rowIndex="7" />
+                                <CheckBox fx:id="activeCheck" selected="true" GridPane.columnIndex="1" GridPane.rowIndex="7" />
                             </children>
+                     <rowConstraints>
+                        <RowConstraints />
+                        <RowConstraints />
+                        <RowConstraints />
+                        <RowConstraints />
+                        <RowConstraints />
+                        <RowConstraints />
+                        <RowConstraints />
+                        <RowConstraints />
+                     </rowConstraints>
                         </GridPane>
 
-                        <Label fx:id="statusLabel" text="" styleClass="error-label"/>
+                        <Label fx:id="statusLabel" styleClass="error-label" text="" />
 
-                        <HBox spacing="10" alignment="CENTER">
+                        <HBox alignment="CENTER" spacing="10">
                             <children>
-                                <Button text="Create"
-                                        styleClass="primary-button"
-                                        onAction="#handleCreate"/>
-                                <Button text="Close"
-                                        styleClass="primary-button-outline"
-                                        onAction="#handleClose"/>
+                                <Button onAction="#handleCreate" styleClass="primary-button" text="Create" />
+                                <Button onAction="#handleClose" styleClass="primary-button-outline" text="Close" />
                             </children>
                         </HBox>
                     </children>
                     <padding>
-                        <Insets top="24" right="24" bottom="24" left="24"/>
+                        <Insets bottom="24" left="24" right="24" top="24" />
                     </padding>
                 </VBox>
             </children>

@@ -176,7 +176,7 @@ public class GlobalSearchResultsController {
 
                 List<OrderReportRow> orders = orderDao.findReportRows(from, to, "All Status", trimmed, 0, 0);
                 List<ProductReportRow> products = productDao.findReportRows(from, to, "All Categories", trimmed);
-                List<CustomerReportRow> customers = customerDao.findReportRows("All", "All", trimmed, 0, 0);
+                List<CustomerReportRow> customers = customerDao.findReportRows("All", "All", null, trimmed, 0, 0);
 
                 javafx.application.Platform.runLater(() -> {
                     orderItems.setAll(orders);

@@ -43,6 +43,19 @@ public class FinancialAnomalyDao {
         return list;
     }
 
+    /**
+     * Marks an anomaly resolved/unresolved in the database.
+     */
+    public void setResolved(int anomalyId, boolean resolved) throws Exception {
+        String sql = "UPDATE FinancialAnomalies SET isResolved = ? WHERE anomalyID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, resolved ? 1 : 0);
+            ps.setInt(2, anomalyId);
+            ps.executeUpdate();
+        }
+    }
+
     public static class AnomalyRow {
         private final int anomalyID;
         private final String anomalyType;

@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #F9FAFB;"
+            xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.raez.finance.controller.InvoicesController">
+    <content>
+        <VBox spacing="24.0" style="-fx-background-color: #F9FAFB;">
+            <padding>
+                <Insets top="28.0" right="28.0" bottom="32.0" left="28.0" />
+            </padding>
+            <children>
+
+                <!-- Header -->
+                <HBox alignment="CENTER_LEFT" spacing="0">
+                    <children>
+                        <VBox spacing="3" HBox.hgrow="ALWAYS">
+                            <children>
+                                <Label text="Invoices" textFill="#111827">
+                                    <font><Font size="22.0" /></font>
+                                </Label>
+                                <Label text="Issued invoices and payment status" textFill="#6B7280">
+                                    <font><Font size="13.0" /></font>
+                                </Label>
+                            </children>
+                        </VBox>
+
+                        <MenuButton fx:id="exportMenuButton"
+                                    text="  Export"
+                                    style="-fx-background-color: #1E2939; -fx-text-fill: white;
+                                           -fx-font-size: 13px; -fx-font-weight: 600;
+                                           -fx-padding: 9 18 9 18; -fx-background-radius: 8;
+                                           -fx-cursor: hand; -fx-border-color: transparent;">
+                            <graphic>
+                                <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m4 4V4"
+                                         fill="TRANSPARENT" stroke="white"
+                                         strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                            </graphic>
+                            <items>
+                                <MenuItem fx:id="exportCsvItem" text="Export as CSV" onAction="#handleExportCsv">
+                                    <graphic>
+                                        <SVGPath content="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                                 fill="TRANSPARENT" stroke="#10B981"
+                                                 strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                                    </graphic>
+                                </MenuItem>
+                                <MenuItem fx:id="exportPdfItem" text="Export as PDF" onAction="#handleExportPdf">
+                                    <graphic>
+                                        <SVGPath content="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                                 fill="TRANSPARENT" stroke="#EF4444"
+                                                 strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                                    </graphic>
+                                </MenuItem>
+                            </items>
+                        </MenuButton>
+                    </children>
+                </HBox>
+
+                <!-- Filter bar -->
+                <VBox style="-fx-background-color: white;
+                             -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                             -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 8, 0, 0, 2);">
+                    <padding>
+                        <Insets top="16.0" right="24.0" bottom="16.0" left="24.0" />
+                    </padding>
+                    <children>
+                        <HBox alignment="BOTTOM_LEFT" spacing="14">
+                            <children>
+                                <VBox spacing="6.0" HBox.hgrow="ALWAYS">
+                                    <children>
+                                        <Label text="Search" textFill="#374151" style="-fx-font-size: 11px; -fx-font-weight: 700;" />
+                                        <TextField fx:id="searchField" promptText="Search invoice, order, customer..."
+                                                   style="-fx-font-size: 13px;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6.0">
+                                    <children>
+                                        <Label text="Status" textFill="#374151" style="-fx-font-size: 11px; -fx-font-weight: 700;" />
+                                        <ComboBox fx:id="statusCombo" prefWidth="140.0" prefHeight="34"
+                                                  style="-fx-font-size: 13px;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox spacing="6.0">
+                                    <children>
+                                        <Label text="Date Range" textFill="#374151" style="-fx-font-size: 11px; -fx-font-weight: 700;" />
+                                        <ComboBox fx:id="dateRangeCombo" prefWidth="150.0" prefHeight="34"
+                                                  style="-fx-font-size: 13px;" />
+                                    </children>
+                                </VBox>
+
+                                <VBox fx:id="customDateBox" spacing="6.0" managed="false" visible="false">
+                                    <children>
+                                        <HBox spacing="8" alignment="BOTTOM_LEFT">
+                                            <children>
+                                                <DatePicker fx:id="dpStart" prefWidth="130.0" prefHeight="34" />
+                                                <DatePicker fx:id="dpEnd" prefWidth="130.0" prefHeight="34" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+
+                <!-- Table -->
+                <VBox style="-fx-background-color: white;
+                             -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                             -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 8, 0, 0, 2);">
+                    <padding>
+                        <Insets top="8.0" right="16.0" bottom="16.0" left="16.0" />
+                    </padding>
+                    <children>
+                        <TableView fx:id="invoiceTable"
+                                   style="-fx-background-color: transparent;
+                                          -fx-table-cell-border-color: transparent;
+                                          -fx-fixed-cell-size: 44;">
+                            <columns>
+                                <TableColumn fx:id="colInvoiceNumber" text="Invoice #" minWidth="110" />
+                                <TableColumn fx:id="colOrderId"       text="Order ID"  minWidth="80" />
+                                <TableColumn fx:id="colCustomer"      text="Customer"  minWidth="150" />
+                                <TableColumn fx:id="colAmount"        text="Amount"    minWidth="100" />
+                                <TableColumn fx:id="colStatus"        text="Status"    minWidth="100" />
+                                <TableColumn fx:id="colDueDate"       text="Due Date"  minWidth="110" />
+                                <TableColumn fx:id="colPaidAt"        text="Paid At"   minWidth="110" />
+                            </columns>
+                        </TableView>
+                    </children>
+                </VBox>
+
+            </children>
+        </VBox>
+    </content>
+</ScrollPane>
+

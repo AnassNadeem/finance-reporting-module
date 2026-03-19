@@ -36,7 +36,7 @@ public class ProductDao {
 
         StringBuilder sql = new StringBuilder(
                 "SELECT p.productID, p.name, COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
-                "0 AS cost, p.price AS salePrice, " +
+                "COALESCE(p.unitCost, 0) AS unitCost, p.price AS salePrice, " +
                 "COALESCE(SUM(oi2.quantity * oi2.unitPrice), 0) AS revenue, " +
                 "COALESCE(SUM(oi2.quantity), 0) AS unitsSold " +
                 "FROM Product p " +
@@ -53,7 +53,7 @@ public class ProductDao {
             params.add(term);
             params.add(term);
         }
-        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price ORDER BY revenue DESC");
+        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price, p.unitCost ORDER BY revenue DESC");
 
         List<ProductReportRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
@@ -64,7 +64,9 @@ public class ProductDao {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 double revenue = rs.getDouble("revenue");
-                double cost = rs.getDouble("cost");
+                int unitsSold = rs.getInt("unitsSold");
+                double unitCost = rs.getDouble("unitCost");
+                double cost = unitCost * unitsSold;
                 double profit = revenue - cost;
                 rows.add(new ProductReportRow(
                         String.valueOf(rs.getInt("productID")),
@@ -73,7 +75,7 @@ public class ProductDao {
                         cost,
                         rs.getDouble("salePrice"),
                         profit,
-                        rs.getInt("unitsSold"),
+                        unitsSold,
                         revenue
                 ));
             }
@@ -101,7 +103,7 @@ public class ProductDao {
         }
         StringBuilder sql = new StringBuilder(
                 "SELECT p.productID, p.name, COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
-                "0 AS cost, p.price AS salePrice, " +
+                "COALESCE(p.unitCost, 0) AS unitCost, p.price AS salePrice, " +
                 "COALESCE(SUM(oi2.quantity * oi2.unitPrice), 0) AS revenue, " +
                 "COALESCE(SUM(oi2.quantity), 0) AS unitsSold " +
                 "FROM Product p " +
@@ -118,7 +120,7 @@ public class ProductDao {
             params.add(term);
             params.add(term);
         }
-        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price ORDER BY revenue DESC");
+        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price, p.unitCost ORDER BY revenue DESC");
         if (limit > 0) {
             params.add(limit);
             params.add(offset);
@@ -133,7 +135,9 @@ public class ProductDao {
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 double revenue = rs.getDouble("revenue");
-                double cost = rs.getDouble("cost");
+                int unitsSold = rs.getInt("unitsSold");
+                double unitCost = rs.getDouble("unitCost");
+                double cost = unitCost * unitsSold;
                 double profit = revenue - cost;
                 rows.add(new ProductReportRow(
                         String.valueOf(rs.getInt("productID")),
@@ -142,7 +146,7 @@ public class ProductDao {
                         cost,
                         rs.getDouble("salePrice"),
                         profit,
-                        rs.getInt("unitsSold"),
+                        unitsSold,
                         revenue
                 ));
             }
@@ -174,7 +178,7 @@ public class ProductDao {
             params.add(term);
             params.add(term);
         }
-        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price) AS sub");
+        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price, p.unitCost) AS sub");
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
@@ -185,14 +189,13 @@ public class ProductDao {
 
     /**
      * Revenue and profit by category for Product Profitability chart.
-     * Profit = revenue - cost. Schema has no Product.cost column yet, so cost is 0 per unit.
-     * When cost is added, use SUM(oi.quantity * COALESCE(p.cost, 0)) for cost.
+     * Uses same heuristic as product report: cost ≈ 60% of revenue.
      */
     public List<CategoryRevenueProfit> findCategoryRevenueProfit() throws SQLException {
         String sql = "SELECT COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
                 "SUM(oi.quantity * oi.unitPrice) AS revenue, " +
-                "0 AS cost, " +
-                "SUM(oi.quantity * oi.unitPrice) - 0 AS profit " +
+                "SUM(oi.quantity * COALESCE(p.unitCost, oi.unitPrice * 0.6)) AS cost, " +
+                "SUM(oi.quantity * oi.unitPrice) - SUM(oi.quantity * COALESCE(p.unitCost, oi.unitPrice * 0.6)) AS profit " +
                 "FROM OrderItem oi JOIN Product p ON oi.productID = p.productID " +
                 "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
                 "JOIN \"Order\" o ON oi.orderID = o.orderID " +

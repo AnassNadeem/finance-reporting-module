@@ -252,6 +252,29 @@ CREATE TABLE IF NOT EXISTS Payment (
   FOREIGN KEY (orderID) REFERENCES "Order"(orderID)
 );
 
+CREATE TABLE IF NOT EXISTS Invoice (
+  invoiceID     INTEGER PRIMARY KEY AUTOINCREMENT,
+  orderID       INTEGER NOT NULL,
+  paymentID     INTEGER,
+  invoiceNumber TEXT UNIQUE NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'PENDING',
+  totalAmount   REAL NOT NULL,
+  vatAmount     REAL DEFAULT 0,
+  currency      TEXT DEFAULT 'GBP',
+  issuedAt      TEXT DEFAULT CURRENT_TIMESTAMP,
+  dueDate       TEXT,
+  paidAt        TEXT,
+  notes         TEXT,
+  createdAt     TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt     TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (orderID)   REFERENCES "Order"(orderID)   ON DELETE CASCADE,
+  FOREIGN KEY (paymentID) REFERENCES Payment(paymentID) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_invoice_order   ON Invoice(orderID);
+CREATE INDEX IF NOT EXISTS idx_invoice_status  ON Invoice(status);
+CREATE INDEX IF NOT EXISTS idx_invoice_number  ON Invoice(invoiceNumber);
+
 CREATE TABLE IF NOT EXISTS Refund (
   refundID INTEGER PRIMARY KEY AUTOINCREMENT,
   orderID INTEGER NOT NULL,
@@ -326,6 +349,51 @@ CREATE TABLE IF NOT EXISTS PasswordResetToken (
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (userID) REFERENCES FUser(userID) ON DELETE CASCADE
 );
+
+-- ===========================================================
+-- PASSWORD RESET TOKENS
+-- ===========================================================
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    tokenID     INTEGER PRIMARY KEY AUTOINCREMENT,
+    userID      INTEGER NOT NULL,
+    token       TEXT    NOT NULL UNIQUE,
+    expiresAt   TEXT    NOT NULL,
+    used        INTEGER NOT NULL DEFAULT 0,
+    createdAt   TEXT    NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (userID) REFERENCES FUser(userID)
+);
+
+-- ===========================================================
+-- SUPPLIERS
+-- ===========================================================
+CREATE TABLE IF NOT EXISTS Supplier (
+    supplierID       INTEGER PRIMARY KEY AUTOINCREMENT,
+    name             TEXT NOT NULL,
+    contact          TEXT,
+    email            TEXT,
+    avgLeadDays      REAL DEFAULT 5,
+    reliabilityScore REAL DEFAULT 0.85
+);
+
+-- ===========================================================
+-- GLOBAL SETTINGS (key-value store)
+-- ===========================================================
+CREATE TABLE IF NOT EXISTS GlobalSettings (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
+
+-- ===========================================================
+-- PERFORMANCE INDEXES
+-- ===========================================================
+CREATE INDEX IF NOT EXISTS idx_order_date       ON "Order"(orderDate);
+CREATE INDEX IF NOT EXISTS idx_order_customer    ON "Order"(customerID);
+CREATE INDEX IF NOT EXISTS idx_orderitem_product ON OrderItem(productID);
+CREATE INDEX IF NOT EXISTS idx_customer_type     ON CustomerRegistration(customerType);
+CREATE INDEX IF NOT EXISTS idx_product_category  ON Product(categoryID);
+CREATE INDEX IF NOT EXISTS idx_payment_order     ON Payment(orderID);
+CREATE INDEX IF NOT EXISTS idx_payment_status    ON Payment(paymentStatus);
+CREATE INDEX IF NOT EXISTS idx_refund_order      ON Refund(orderID);
 
 -- ===========================================================
 -- END OF SCHEMA

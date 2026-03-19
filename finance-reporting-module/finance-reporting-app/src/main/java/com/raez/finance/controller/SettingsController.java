@@ -5,9 +5,11 @@ import com.raez.finance.dao.PasswordResetTokenDao;
 import com.raez.finance.dao.RolePermissionDao;
 import com.raez.finance.model.FUser;
 import com.raez.finance.model.UserRole;
+import com.raez.finance.service.GlobalSettingsService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.service.UserService;
 import com.raez.finance.util.PasswordGenerator;
+import com.raez.finance.util.ValidationUtils;
 import javafx.collections.FXCollections;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
@@ -38,21 +40,33 @@ public class SettingsController {
     private final RolePermissionDao rolePermissionDao = new RolePermissionDao();
     private final UserService userService = new UserService();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    private static final DateTimeFormatter DATE_ONLY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @FXML private StackPane rootStackPane;
 
     // --- Tabs ---
     @FXML private Button btnTabAccount;
     @FXML private Button btnTabUsers;
+    @FXML private Button btnTabFinancial;
     @FXML private VBox viewAccount;
     @FXML private VBox viewUsers;
+    @FXML private VBox viewFinancial;
+
+    // --- Company & Financial tab ---
+    @FXML private TextField txtCompanyName;
+    @FXML private TextField txtCompanyAddress;
+    @FXML private TextField txtVatPercent;
+    @FXML private ComboBox<String> cmbCurrency;
+    @FXML private ComboBox<String> cmbFinancialYearMonth;
 
     // --- Account Tab Form ---
+    @FXML private Label lblAccountEmail;
+    @FXML private Label lblAccountName;
+    @FXML private Label lblAccountRole;
+    @FXML private Label lblAccountCreatedAt;
     @FXML private PasswordField txtCurrentPwd;
     @FXML private PasswordField txtNewPwd;
     @FXML private PasswordField txtConfirmPwd;
-    @FXML private TextField txtForgotEmail;
 
     // --- User Management Tab ---
     @FXML private TableView<FUser> tblUsers;
@@ -74,6 +88,8 @@ public class SettingsController {
     @FXML private TextField txtModalLastName;
     @FXML private TextField txtModalEmail;
     @FXML private TextField txtModalPhone;
+    @FXML private TextField txtModalIdCard;
+    @FXML private TextField txtModalAddress;
     @FXML private CheckBox chkModalActive;
     @FXML private Button btnModalSave;
 
@@ -86,16 +102,65 @@ public class SettingsController {
 
         bindUserColumns();
 
-        if (!rolePermissionDao.hasPermission(SessionManager.getRole(), "MANAGE_USERS")) {
+        if (!SessionManager.isAdmin()) {
             btnTabUsers.setVisible(false);
             btnTabUsers.setManaged(false);
             viewUsers.setVisible(false);
             viewUsers.setManaged(false);
+            if (btnTabFinancial != null) {
+                btnTabFinancial.setVisible(false);
+                btnTabFinancial.setManaged(false);
+            }
+            if (viewFinancial != null) {
+                viewFinancial.setVisible(false);
+                viewFinancial.setManaged(false);
+            }
         } else {
             refreshUsers();
         }
 
+        if (cmbCurrency != null) {
+            cmbCurrency.setItems(FXCollections.observableArrayList("£", "$", "€", "¥", "CHF", "₹"));
+            cmbCurrency.setValue("£");
+        }
+        if (cmbFinancialYearMonth != null) {
+            cmbFinancialYearMonth.setItems(FXCollections.observableArrayList(
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"));
+            cmbFinancialYearMonth.setValue("January");
+        }
         switchTab("account");
+        loadAccountDetails();
+    }
+
+    private void loadAccountDetails() {
+        if (lblAccountEmail == null) return;
+        try {
+            FUser user = SessionManager.getCurrentUser();
+            lblAccountEmail.setText(user.getEmail() != null ? user.getEmail() : "—");
+            String first = user.getFirstName() != null ? user.getFirstName() : "";
+            String last = user.getLastName() != null ? user.getLastName() : "";
+            String full = (first + " " + last).trim();
+            lblAccountName.setText(full.isEmpty() ? "—" : full);
+            lblAccountRole.setText(user.getRole() != null ? user.getRole().name() : "—");
+            String createdAt = fUserDao.getCreatedAt(user.getId());
+            lblAccountCreatedAt.setText(createdAt != null ? formatCreatedAt(createdAt) : "—");
+        } catch (Exception e) {
+            lblAccountEmail.setText("—");
+            lblAccountName.setText("—");
+            lblAccountRole.setText("—");
+            lblAccountCreatedAt.setText("—");
+        }
+    }
+
+    private static String formatCreatedAt(String sqlTimestamp) {
+        if (sqlTimestamp == null) return "—";
+        try {
+            java.time.LocalDateTime dt = java.time.LocalDateTime.parse(sqlTimestamp.replace(" ", "T"));
+            return dt.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"));
+        } catch (Exception e) {
+            return sqlTimestamp;
+        }
     }
 
     private void bindUserColumns() {
@@ -107,10 +172,28 @@ public class SettingsController {
             return new javafx.beans.property.SimpleStringProperty(full.isEmpty() ? "—" : full);
         });
         colEmail.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getEmail()));
-        colRole.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getRole().name()));
-        colStatus.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().isActive() ? "Active" : "Inactive"));
+        colRole.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+                c.getValue().getRole() == UserRole.ADMIN ? "Admin" : "User"));
+        colStatus.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().isActive() ? "active" : "inactive"));
+        colStatus.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                if (empty || item == null) {
+                    setText(null);
+                    setStyle("");
+                    return;
+                }
+                setText(item);
+                if ("active".equalsIgnoreCase(item)) {
+                    setStyle("-fx-background-color: #D1FAE5; -fx-background-radius: 4; -fx-padding: 4 10; -fx-text-fill: #065F46; -fx-alignment: center;");
+                } else {
+                    setStyle("-fx-background-color: #F3F4F6; -fx-background-radius: 4; -fx-padding: 4 10; -fx-text-fill: #4B5563; -fx-alignment: center;");
+                }
+            }
+        });
         colLastLogin.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
-                c.getValue().getLastLogin() == null ? "—" : c.getValue().getLastLogin().format(DATE_FMT)));
+                c.getValue().getLastLogin() == null ? "—" : c.getValue().getLastLogin().format(DATE_ONLY_FMT)));
         colActions.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(""));
         colActions.setCellFactory(createActionsCellFactory());
     }
@@ -119,26 +202,19 @@ public class SettingsController {
         return col -> new TableCell<>() {
             private final HBox box = new HBox(8);
             private final Button btnEdit = new Button();
-            private final Button btnToggle = new Button();
             private final Button btnDelete = new Button();
+            private final Button btnToken = new Button();
 
             {
                 box.setAlignment(Pos.CENTER_LEFT);
                 btnEdit.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
-                btnEdit.setTooltip(new Tooltip("Edit"));
+                btnEdit.setTooltip(new Tooltip("Edit / Update"));
                 SVGPath editSvg = new SVGPath();
                 editSvg.setContent("M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z");
                 editSvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
                 editSvg.setStroke(javafx.scene.paint.Color.valueOf("#4B5563"));
                 editSvg.setStrokeWidth(2);
                 btnEdit.setGraphic(editSvg);
-
-                btnToggle.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
-                SVGPath toggleSvg = new SVGPath();
-                toggleSvg.setContent("M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z");
-                toggleSvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
-                toggleSvg.setStrokeWidth(2);
-                btnToggle.setGraphic(toggleSvg);
 
                 btnDelete.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
                 btnDelete.setTooltip(new Tooltip("Delete"));
@@ -149,7 +225,16 @@ public class SettingsController {
                 deleteSvg.setStrokeWidth(2);
                 btnDelete.setGraphic(deleteSvg);
 
-                box.getChildren().addAll(btnEdit, btnToggle, btnDelete);
+                btnToken.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
+                btnToken.setTooltip(new Tooltip("Generate token"));
+                SVGPath keySvg = new SVGPath();
+                keySvg.setContent("M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z");
+                keySvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                keySvg.setStroke(javafx.scene.paint.Color.valueOf("#4B5563"));
+                keySvg.setStrokeWidth(2);
+                btnToken.setGraphic(keySvg);
+
+                box.getChildren().addAll(btnEdit, btnDelete, btnToken);
             }
 
             @Override
@@ -161,35 +246,18 @@ public class SettingsController {
                 }
                 FUser user = getTableRow().getItem();
                 btnEdit.setOnAction(e -> showEditModal(user));
-                btnToggle.setTooltip(new Tooltip(user.isActive() ? "Deactivate" : "Activate"));
-                Node g = btnToggle.getGraphic();
-                if (g instanceof SVGPath) {
-                    ((SVGPath) g).setStroke(user.isActive() ? javafx.scene.paint.Color.valueOf("#059669") : javafx.scene.paint.Color.valueOf("#6B7280"));
-                }
-                btnToggle.setOnAction(e -> toggleUserActive(user));
                 btnDelete.setOnAction(e -> confirmAndDelete(user));
+                btnToken.setOnAction(e -> showResetTokenForUser(user));
                 setGraphic(box);
             }
         };
     }
 
-    private void toggleUserActive(FUser user) {
-        try {
-            fUserDao.updateUser(user.getId(), user.getEmail(), user.getUsername(),
-                    user.getFirstName(), user.getLastName(), user.getPhone(),
-                    user.getRole(), !user.isActive());
-            refreshUsers();
-            showSuccessToast(user.isActive() ? "User deactivated." : "User activated.");
-        } catch (Exception ex) {
-            new Alert(Alert.AlertType.ERROR, "Could not update user: " + ex.getMessage()).showAndWait();
-        }
-    }
-
     private void confirmAndDelete(FUser user) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Delete User");
-        confirm.setHeaderText(null);
-        confirm.setContentText("Are you sure you want to delete user " + (user.getUsername() != null ? user.getUsername() : user.getEmail()) + "?");
+        confirm.setHeaderText("Delete user \"" + (user.getUsername() != null ? user.getUsername() : user.getEmail()) + "\"?");
+        confirm.setContentText("Are you sure you want to delete this user? This action cannot be undone.");
         confirm.showAndWait().ifPresent(response -> {
             if (response == ButtonType.OK) {
                 try {
@@ -236,21 +304,92 @@ public class SettingsController {
         }
     }
 
+    @FXML
+    private void handleTabFinancial(ActionEvent event) {
+        switchTab("financial");
+    }
+
+    @FXML
+    private void handleSaveFinancialSettings(ActionEvent event) {
+        GlobalSettingsService gs = GlobalSettingsService.getInstance();
+        try {
+            double vat = 20.0;
+            if (txtVatPercent != null && txtVatPercent.getText() != null && !txtVatPercent.getText().isBlank()) {
+                vat = Double.parseDouble(txtVatPercent.getText().trim());
+                if (vat < 0 || vat > 100) {
+                    showAlert("Invalid VAT", "VAT percentage must be between 0 and 100.");
+                    return;
+                }
+            }
+            gs.setDefaultVatPercent(vat);
+            gs.setCompanyName(txtCompanyName != null ? txtCompanyName.getText() : "");
+            gs.setCompanyAddress(txtCompanyAddress != null ? txtCompanyAddress.getText() : "");
+            if (cmbCurrency != null && cmbCurrency.getValue() != null) gs.setDefaultCurrencySymbol(cmbCurrency.getValue());
+            if (cmbFinancialYearMonth != null && cmbFinancialYearMonth.getValue() != null) {
+                int month = cmbFinancialYearMonth.getItems().indexOf(cmbFinancialYearMonth.getValue()) + 1;
+                gs.setFinancialYearStartMonth(month);
+            }
+            gs.save();
+            showAlert("Saved", "Company & financial settings have been saved. Reports and dashboard will use these values.");
+        } catch (NumberFormatException e) {
+            showAlert("Invalid VAT", "Please enter a valid number for VAT percentage (e.g. 20).");
+        }
+    }
+
+    private void showAlert(String title, String message) {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(message);
+        a.showAndWait();
+    }
+
     private void switchTab(String tab) {
-        String activeStyle = "-fx-background-color: transparent; -fx-border-color: #1E2939; -fx-border-width: 0 0 2 0; -fx-text-fill: #1E2939; -fx-cursor: hand; -fx-font-weight: bold;";
+        String activeStyle = "-fx-background-color: transparent; -fx-border-color: #1E2939; -fx-border-width: 0 0 3 0; -fx-text-fill: #1E2939; -fx-cursor: hand; -fx-font-weight: bold;";
         String inactiveStyle = "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;";
-        
+
         btnTabAccount.setStyle(inactiveStyle);
         btnTabUsers.setStyle(inactiveStyle);
+        if (btnTabFinancial != null) btnTabFinancial.setStyle(inactiveStyle);
         viewAccount.setVisible(false);
+        viewAccount.setManaged(false);
         viewUsers.setVisible(false);
+        viewUsers.setManaged(false);
+        if (viewFinancial != null) {
+            viewFinancial.setVisible(false);
+            viewFinancial.setManaged(false);
+        }
 
         if (tab.equals("account")) {
             btnTabAccount.setStyle(activeStyle);
             viewAccount.setVisible(true);
-        } else {
+            viewAccount.setManaged(true);
+            loadAccountDetails();
+        } else if (tab.equals("users")) {
             btnTabUsers.setStyle(activeStyle);
             viewUsers.setVisible(true);
+            viewUsers.setManaged(true);
+        } else if (tab.equals("financial") && btnTabFinancial != null && viewFinancial != null) {
+            btnTabFinancial.setStyle(activeStyle);
+            viewFinancial.setVisible(true);
+            viewFinancial.setManaged(true);
+            loadFinancialSettings();
+        }
+    }
+
+    private void loadFinancialSettings() {
+        GlobalSettingsService gs = GlobalSettingsService.getInstance();
+        if (txtCompanyName != null) txtCompanyName.setText(gs.getCompanyName());
+        if (txtCompanyAddress != null) txtCompanyAddress.setText(gs.getCompanyAddress());
+        if (txtVatPercent != null) txtVatPercent.setText(String.valueOf((int) Math.round(gs.getDefaultVatPercent())));
+        if (cmbCurrency != null) {
+            String sym = gs.getDefaultCurrencySymbol();
+            if (sym != null && cmbCurrency.getItems().contains(sym)) cmbCurrency.setValue(sym);
+            else cmbCurrency.setValue("£");
+        }
+        if (cmbFinancialYearMonth != null) {
+            int m = gs.getFinancialYearStartMonth();
+            if (m >= 1 && m <= 12) cmbFinancialYearMonth.setValue(cmbFinancialYearMonth.getItems().get(m - 1));
         }
     }
 
@@ -266,8 +405,9 @@ public class SettingsController {
             new Alert(Alert.AlertType.WARNING, "Enter your current password.").showAndWait();
             return;
         }
-        if (newPwd == null || newPwd.length() < 8) {
-            new Alert(Alert.AlertType.WARNING, "New password must be at least 8 characters.").showAndWait();
+        String pwdError = ValidationUtils.validateNewPassword(newPwd);
+        if (pwdError != null) {
+            new Alert(Alert.AlertType.WARNING, pwdError).showAndWait();
             return;
         }
         if (!newPwd.equals(confirm)) {
@@ -300,19 +440,15 @@ public class SettingsController {
         }
     }
 
-    @FXML
-    private void handleResetPassword(ActionEvent event) {
-        String email = txtForgotEmail.getText();
-        if (email == null || email.trim().isEmpty()) {
-            new Alert(Alert.AlertType.WARNING, "Enter the user's email address.").showAndWait();
+    /** Admin-only: generate reset token for a user (e.g. from User Management table). */
+    void showResetTokenForUser(FUser user) {
+        if (user == null) return;
+        String email = user.getEmail();
+        if (email == null || email.isBlank()) {
+            new Alert(Alert.AlertType.WARNING, "User has no email.").showAndWait();
             return;
         }
         try {
-            FUser user = fUserDao.findByEmail(email.trim());
-            if (user == null) {
-                new Alert(Alert.AlertType.WARNING, "No user found with that email.").showAndWait();
-                return;
-            }
             String token = resetTokenDao.createToken(user.getId());
             showResetTokenDialog(email.trim(), token);
         } catch (Exception e) {
@@ -365,6 +501,8 @@ public class SettingsController {
         txtModalLastName.setText(user.getLastName() != null ? user.getLastName() : "");
         txtModalEmail.setText(user.getEmail());
         txtModalPhone.setText(user.getPhone() != null ? user.getPhone() : "");
+        if (txtModalIdCard != null) txtModalIdCard.clear();
+        if (txtModalAddress != null) txtModalAddress.clear();
         txtModalPassword.clear();
         txtModalPassword.setDisable(true);
         cmbModalRole.setValue(user.getRole() == UserRole.ADMIN ? "Admin" : "Finance User");
@@ -407,6 +545,10 @@ public class SettingsController {
         }
         if (email == null || email.isBlank()) {
             new Alert(Alert.AlertType.WARNING, "Email is required.").showAndWait();
+            return;
+        }
+        if (!ValidationUtils.isRaezEmail(email)) {
+            new Alert(Alert.AlertType.WARNING, "Email must be a valid @raez.org.uk address.").showAndWait();
             return;
         }
         UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
@@ -461,6 +603,10 @@ public class SettingsController {
             new Alert(Alert.AlertType.WARNING, "Username and email are required.").showAndWait();
             return;
         }
+        if (!ValidationUtils.isRaezEmail(email)) {
+            new Alert(Alert.AlertType.WARNING, "Email must be a valid @raez.org.uk address.").showAndWait();
+            return;
+        }
         UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
         try {
             fUserDao.updateUser(current.getId(), email.trim(), username.trim(),
@@ -507,12 +653,16 @@ public class SettingsController {
     private void clearModal() {
         txtModalUsername.clear();
         txtModalPassword.clear();
-        txtModalPassword.setDisable(false);
-        txtModalPassword.setPromptText("");
+        if (txtModalPassword != null) {
+            txtModalPassword.setDisable(false);
+            txtModalPassword.setPromptText("");
+        }
         txtModalFirstName.clear();
         txtModalLastName.clear();
         txtModalEmail.clear();
         txtModalPhone.clear();
+        if (txtModalIdCard != null) txtModalIdCard.clear();
+        if (txtModalAddress != null) txtModalAddress.clear();
         cmbModalRole.setValue("Finance User");
         chkModalActive.setSelected(true);
     }

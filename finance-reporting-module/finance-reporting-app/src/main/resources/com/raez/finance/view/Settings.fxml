@@ -41,17 +41,21 @@
                      </children>
                   </VBox>
 
-                  <VBox style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;" VBox.vgrow="ALWAYS">
+                  <VBox styleClass="reports-card" style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 10, 0, 0, 2);" VBox.vgrow="ALWAYS">
                      <children>
 
                         <HBox spacing="32.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 0 0 1 0;">
                            <padding><Insets left="24.0" right="24.0" /></padding>
                            <children>
-                              <Button fx:id="btnTabAccount" mnemonicParsing="false" onAction="#handleTabAccount" style="-fx-background-color: transparent; -fx-border-color: #1E2939; -fx-border-width: 0 0 2 0; -fx-text-fill: #1E2939; -fx-cursor: hand;" text="My Account">
+                              <Button fx:id="btnTabAccount" mnemonicParsing="false" onAction="#handleTabAccount" style="-fx-background-color: transparent; -fx-border-color: #1E2939; -fx-border-width: 0 0 3 0; -fx-text-fill: #1E2939; -fx-cursor: hand;" text="My Account">
                                  <padding><Insets bottom="16.0" left="8.0" right="8.0" top="16.0" /></padding>
                                  <font><Font name="System Bold" size="14.0" /></font>
                               </Button>
                               <Button fx:id="btnTabUsers" mnemonicParsing="false" onAction="#handleTabUsers" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="User Management">
+                                 <padding><Insets bottom="16.0" left="8.0" right="8.0" top="16.0" /></padding>
+                                 <font><Font size="14.0" /></font>
+                              </Button>
+                              <Button fx:id="btnTabFinancial" mnemonicParsing="false" onAction="#handleTabFinancial" style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="Company &amp; Financial">
                                  <padding><Insets bottom="16.0" left="8.0" right="8.0" top="16.0" /></padding>
                                  <font><Font size="14.0" /></font>
                               </Button>
@@ -64,8 +68,31 @@
                               <VBox fx:id="viewAccount" spacing="32.0">
                                  <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
                                  <children>
-                                    
-                                    <VBox maxWidth="600.0" spacing="16.0">
+
+                                    <VBox maxWidth="600.0" spacing="12.0">
+                                       <children>
+                                          <Label text="Account details" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font></Label>
+                                          <GridPane hgap="16.0" vgap="8.0">
+                                             <columnConstraints>
+                                                <ColumnConstraints minWidth="120.0" />
+                                                <ColumnConstraints hgrow="ALWAYS" />
+                                             </columnConstraints>
+                                             <children>
+                                                <Label text="Email" textFill="#4B5563" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                                                <Label fx:id="lblAccountEmail" text="—" textFill="#111827" GridPane.rowIndex="0" GridPane.columnIndex="1" />
+                                                <Label text="Name" textFill="#4B5563" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                                                <Label fx:id="lblAccountName" text="—" textFill="#111827" GridPane.rowIndex="1" GridPane.columnIndex="1" />
+                                                <Label text="Role" textFill="#4B5563" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                                                <Label fx:id="lblAccountRole" text="—" textFill="#111827" GridPane.rowIndex="2" GridPane.columnIndex="1" />
+                                                <Label text="Created" textFill="#4B5563" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+                                                <Label fx:id="lblAccountCreatedAt" text="—" textFill="#111827" GridPane.rowIndex="3" GridPane.columnIndex="1" />
+                                             </children>
+                                          </GridPane>
+                                       </children>
+                                    </VBox>
+
+                                    <VBox maxWidth="600.0" spacing="16.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 1 0 0 0;">
+                                       <padding><Insets top="24.0" /></padding>
                                        <children>
                                           <HBox alignment="CENTER_LEFT" spacing="12.0">
                                              <SVGPath content="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" fill="TRANSPARENT" stroke="#1E2939" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
@@ -92,26 +119,6 @@
                                        </children>
                                     </VBox>
 
-                                    <VBox maxWidth="600.0" spacing="16.0" style="-fx-border-color: #E5E7EB; -fx-border-width: 1 0 0 0;">
-                                       <padding><Insets top="24.0" /></padding>
-                                       <children>
-                                          <HBox alignment="CENTER_LEFT" spacing="12.0">
-                                             <SVGPath content="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" fill="TRANSPARENT" stroke="#1E2939" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
-                                             <VBox>
-                                                <Label text="Forgot Password" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font></Label>
-                                                <Label text="Reset your account password" textFill="#4B5563" />
-                                             </VBox>
-                                          </HBox>
-                                          
-                                          <VBox spacing="8.0">
-                                             <Label text="Email" textFill="#374151" />
-                                             <TextField fx:id="txtForgotEmail" prefHeight="40.0" promptText="Enter your email address" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
-                                          </VBox>
-                                          
-                                          <Button mnemonicParsing="false" onAction="#handleResetPassword" prefHeight="40.0" prefWidth="150.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;" text="Reset Password" />
-                                       </children>
-                                    </VBox>
-
                                  </children>
                               </VBox>
 
@@ -119,19 +126,19 @@
                                  <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
                                  <children>
                                     <HBox alignment="CENTER_LEFT">
-                                       <VBox>
-                                          <Label text="User Management" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font></Label>
-                                          <Label text="Manage finance users and their permissions" textFill="#4B5563" />
+                                       <VBox spacing="4.0">
+                                          <Label text="User Management" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                                          <Label text="Manage finance users and their permissions" textFill="#4B5563"><font><Font size="14.0" /></font></Label>
                                        </VBox>
                                        <Region HBox.hgrow="ALWAYS" />
-                                       <Button mnemonicParsing="false" onAction="#handleShowCreateModal" prefHeight="40.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;" text="Create New User">
+                                       <Button mnemonicParsing="false" onAction="#handleShowCreateModal" prefHeight="40.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 8 16;" text="Create New User">
                                           <graphic>
                                              <SVGPath content="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2 M8 7a4 4 0 100-8 4 4 0 000 8z M20 8v6 M23 11h-6" fill="TRANSPARENT" stroke="WHITE" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
                                           </graphic>
                                        </Button>
                                     </HBox>
 
-                                    <TableView fx:id="tblUsers" prefHeight="400.0" style="-fx-background-color: white;">
+                                    <TableView fx:id="tblUsers" styleClass="reports-table" prefHeight="400.0" style="-fx-background-color: white;">
                                        <VBox.margin><Insets top="24.0" /></VBox.margin>
                                        <columns>
                                           <TableColumn fx:id="colUsername" prefWidth="120.0" text="Username" />
@@ -143,6 +150,37 @@
                                           <TableColumn fx:id="colActions" prefWidth="100.0" text="Actions" />
                                        </columns>
                                     </TableView>
+                                 </children>
+                              </VBox>
+
+                              <VBox fx:id="viewFinancial" visible="false" managed="false" spacing="24.0">
+                                 <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
+                                 <children>
+                                    <VBox spacing="4.0">
+                                       <Label text="Company &amp; Financial Settings" textFill="#111827"><font><Font name="System Bold" size="18.0" /></font></Label>
+                                       <Label text="Used for report generation and all financial calculations" textFill="#4B5563"><font><Font size="14.0" /></font></Label>
+                                    </VBox>
+                                    <VBox maxWidth="600.0" spacing="12.0">
+                                       <Label text="Company Name" textFill="#374151" />
+                                       <TextField fx:id="txtCompanyName" prefHeight="40.0" promptText="e.g. Acme Ltd" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                                    </VBox>
+                                    <VBox maxWidth="600.0" spacing="12.0">
+                                       <Label text="Company Address" textFill="#374151" />
+                                       <TextField fx:id="txtCompanyAddress" prefHeight="40.0" promptText="e.g. 123 High Street, London" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                                    </VBox>
+                                    <VBox maxWidth="280.0" spacing="12.0">
+                                       <Label text="Default VAT %" textFill="#374151" />
+                                       <TextField fx:id="txtVatPercent" prefHeight="40.0" promptText="20" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                                    </VBox>
+                                    <VBox maxWidth="280.0" spacing="12.0">
+                                       <Label text="Default Currency" textFill="#374151" />
+                                       <ComboBox fx:id="cmbCurrency" prefWidth="120.0" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                                    </VBox>
+                                    <VBox maxWidth="280.0" spacing="12.0">
+                                       <Label text="Financial Year Start Month" textFill="#374151" />
+                                       <ComboBox fx:id="cmbFinancialYearMonth" prefWidth="180.0" prefHeight="40.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                                    </VBox>
+                                    <Button mnemonicParsing="false" onAction="#handleSaveFinancialSettings" prefHeight="40.0" prefWidth="160.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;" text="Save Settings" />
                                  </children>
                               </VBox>
 
@@ -159,8 +197,8 @@
 
       <StackPane fx:id="modalOverlay" managed="false" visible="false" style="-fx-background-color: rgba(0, 0, 0, 0.5);">
          <children>
-            <VBox maxWidth="560.0" maxHeight="520.0" spacing="0.0" style="-fx-background-color: white; -fx-background-radius: 8;">
-               <padding><Insets bottom="16.0" left="16.0" right="16.0" top="16.0" /></padding>
+            <VBox maxWidth="560.0" maxHeight="600.0" spacing="0.0" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 20, 0, 0, 4);">
+               <padding><Insets bottom="24.0" left="24.0" right="24.0" top="24.0" /></padding>
                <children>
                   <HBox alignment="CENTER_LEFT">
                      <Label fx:id="lblModalTitle" text="Create New User" textFill="#111827"><font><Font name="System Bold" size="20.0" /></font></Label>
@@ -180,52 +218,59 @@
                         <ColumnConstraints hgrow="SOMETIMES" percentWidth="50.0" />
                      </columnConstraints>
                      <children>
-                        
                         <VBox spacing="8.0" GridPane.columnIndex="0" GridPane.rowIndex="0">
-                           <Label text="Username *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
-                           <TextField fx:id="txtModalUsername" prefHeight="40.0" promptText="e.g. jdoe" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           <Label text="Username *" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                           <TextField fx:id="txtModalUsername" prefHeight="40.0" promptText="e.g., finance4" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
-                        
                         <VBox spacing="8.0" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                           <Label text="Role *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
+                           <Label text="Role *" textFill="#374151"><font><Font size="12.0" /></font></Label>
                            <ComboBox fx:id="cmbModalRole" maxWidth="Infinity" prefHeight="40.0" promptText="Select role" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
-
                         <VBox spacing="8.0" GridPane.columnIndex="0" GridPane.rowIndex="1">
-                           <Label text="First Name *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
-                           <TextField fx:id="txtModalFirstName" prefHeight="40.0" promptText="e.g. John" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           <Label text="First Name *" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                           <TextField fx:id="txtModalFirstName" prefHeight="40.0" promptText="e.g., Jane" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
-
                         <VBox spacing="8.0" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                           <Label text="Last Name *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
-                           <TextField fx:id="txtModalLastName" prefHeight="40.0" promptText="e.g. Doe" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                           <Label text="Last Name *" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                           <TextField fx:id="txtModalLastName" prefHeight="40.0" promptText="e.g., Doe" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                         </VBox>
-
                      </children>
                   </GridPane>
 
                   <VBox spacing="8.0">
-                     <Label text="Email *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
-                     <TextField fx:id="txtModalEmail" prefHeight="40.0" promptText="e.g. john.doe@company.com" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
-                  </VBox>
-
-                  <VBox spacing="8.0">
-                     <Label text="Initial Password *" textFill="#DC2626"><font><Font size="12.0" /></font></Label>
-                     <PasswordField fx:id="txtModalPassword" prefHeight="40.0" promptText="Min. 8 characters" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <Label text="Email *" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                     <TextField fx:id="txtModalEmail" prefHeight="40.0" promptText="e.g., jane.doe@company.com" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
 
                   <VBox spacing="8.0">
                      <Label text="Phone Number" textFill="#374151"><font><Font size="12.0" /></font></Label>
-                     <TextField fx:id="txtModalPhone" prefHeight="40.0" promptText="Optional" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                     <TextField fx:id="txtModalPhone" prefHeight="40.0" promptText="e.g., +1 (555) 123-4567" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
                   </VBox>
 
-                  <CheckBox fx:id="chkModalActive" mnemonicParsing="false" text="Active Status" textFill="#374151" />
+                  <VBox spacing="8.0">
+                     <Label text="ID Card Number" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                     <TextField fx:id="txtModalIdCard" prefHeight="40.0" promptText="e.g., ID-123456" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
 
-                  <HBox spacing="16.0" alignment="CENTER_RIGHT">
-                     <VBox.margin><Insets top="16.0" /></VBox.margin>
+                  <VBox spacing="8.0">
+                     <Label text="Address" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                     <TextField fx:id="txtModalAddress" prefHeight="40.0" promptText="e.g., 123 Main St, City, State ZIP" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+
+                  <VBox spacing="8.0" visible="false" managed="false">
+                     <Label text="Password (auto-generated)" textFill="#374151"><font><Font size="12.0" /></font></Label>
+                     <PasswordField fx:id="txtModalPassword" prefHeight="40.0" promptText="(auto-generated)" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                  </VBox>
+
+                  <HBox alignment="CENTER_LEFT" spacing="16.0">
+                     <CheckBox fx:id="chkModalActive" mnemonicParsing="false" text="Active Status" style="-fx-text-fill: #374151;" />
+                  </HBox>
+
+                  <HBox spacing="16.0" alignment="CENTER_LEFT">
+                     <VBox.margin><Insets top="8.0" /></VBox.margin>
                      <children>
+                        <Button fx:id="btnModalSave" mnemonicParsing="false" onAction="#handleSaveUser" prefHeight="40.0" prefWidth="140.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;" text="Create User" />
                         <Button mnemonicParsing="false" onAction="#handleCloseModal" prefHeight="40.0" prefWidth="120.0" style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-text-fill: #374151; -fx-cursor: hand;" text="Cancel" />
-                        <Button fx:id="btnModalSave" mnemonicParsing="false" onAction="#handleSaveUser" prefHeight="40.0" prefWidth="120.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;" text="Save User" />
                      </children>
                   </HBox>
                            </children>

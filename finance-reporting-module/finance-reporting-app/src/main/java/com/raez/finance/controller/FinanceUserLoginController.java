@@ -4,6 +4,7 @@ import com.raez.finance.model.FUser;
 import com.raez.finance.model.UserRole;
 import com.raez.finance.service.AuthService;
 import com.raez.finance.service.AuthService.FirstLoginRequiredException;
+import com.raez.finance.util.ValidationUtils;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -25,6 +26,9 @@ import java.net.URL;
 public class FinanceUserLoginController {
 
     private static final String VIEW_PATH = "/com/raez/finance/view/";
+    private static final String DEMO_EMAIL = "d.hughes@raez.org.uk";
+    private static final String DEMO_PASSWORD = "User123!";
+
     private final AuthService authService = new AuthService();
 
     @FXML private VBox loginView;
@@ -63,6 +67,12 @@ public class FinanceUserLoginController {
     @FXML
     private void handleBack(ActionEvent event) {
         navigateTo(VIEW_PATH + "RoleSelection.fxml", event);
+    }
+
+    @FXML
+    private void handleAddDemoCredentials(ActionEvent event) {
+        txtEmail.setText(DEMO_EMAIL);
+        txtPassword.setText(DEMO_PASSWORD);
     }
 
     @FXML
@@ -111,8 +121,9 @@ public class FinanceUserLoginController {
             return;
         }
 
-        if (newPwd.length() < 8) {
-            showPwdError("Password must be at least 8 characters");
+        String pwdError = ValidationUtils.validateNewPassword(newPwd);
+        if (pwdError != null) {
+            showPwdError(pwdError);
             return;
         }
 
@@ -143,59 +154,37 @@ public class FinanceUserLoginController {
     @FXML
     private void handleForgotPassword(ActionEvent event) {
         javafx.scene.control.Dialog<String> dialog = new javafx.scene.control.Dialog<>();
-        dialog.setTitle("Reset Password with Token");
-        dialog.setHeaderText("Enter your email and the one-time token from your administrator.");
+        dialog.setTitle("Forgot Password");
+        dialog.setHeaderText("Enter your email address. A temporary password will be sent to your email.");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
         javafx.scene.control.TextField emailField = new javafx.scene.control.TextField();
-        emailField.setPromptText("Email");
+        emailField.setPromptText("Email (@raez.org.uk)");
         emailField.setPrefWidth(280);
-        javafx.scene.control.TextField tokenField = new javafx.scene.control.TextField();
-        tokenField.setPromptText("Reset token");
-        tokenField.setPrefWidth(280);
-        javafx.scene.control.PasswordField newPwdField = new javafx.scene.control.PasswordField();
-        newPwdField.setPromptText("New password (min 8 characters)");
-        newPwdField.setPrefWidth(280);
-        javafx.scene.control.PasswordField confirmField = new javafx.scene.control.PasswordField();
-        confirmField.setPromptText("Confirm new password");
-        confirmField.setPrefWidth(280);
-
         javafx.scene.layout.GridPane grid = new javafx.scene.layout.GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.add(new Label("Email:"), 0, 0);
         grid.add(emailField, 1, 0);
-        grid.add(new Label("Token:"), 0, 1);
-        grid.add(tokenField, 1, 1);
-        grid.add(new Label("New password:"), 0, 2);
-        grid.add(newPwdField, 1, 2);
-        grid.add(new Label("Confirm:"), 0, 3);
-        grid.add(confirmField, 1, 3);
         dialog.getDialogPane().setContent(grid);
 
         dialog.setResultConverter(btn -> btn == ButtonType.OK ? "ok" : null);
         dialog.showAndWait().ifPresent(result -> {
             String email = emailField.getText();
-            String token = tokenField.getText();
-            String newPwd = newPwdField.getText();
-            String confirm = confirmField.getText();
-            if (email == null || email.trim().isEmpty() || token == null || token.trim().isEmpty()) {
-                new Alert(Alert.AlertType.WARNING, "Email and token are required.").showAndWait();
+            if (email == null || email.trim().isEmpty()) {
+                new Alert(Alert.AlertType.WARNING, "Email is required.").showAndWait();
                 return;
             }
-            if (newPwd == null || newPwd.length() < 8) {
-                new Alert(Alert.AlertType.WARNING, "New password must be at least 8 characters.").showAndWait();
-                return;
-            }
-            if (!newPwd.equals(confirm)) {
-                new Alert(Alert.AlertType.WARNING, "Passwords do not match.").showAndWait();
+            if (!ValidationUtils.isRaezEmail(email)) {
+                new Alert(Alert.AlertType.WARNING, "Email must be a valid @raez.org.uk address.").showAndWait();
                 return;
             }
             try {
-                authService.resetPasswordWithToken(email.trim(), token.trim(), newPwd);
-                new Alert(Alert.AlertType.INFORMATION, "Password updated. You can now log in.").showAndWait();
+                authService.requestTemporaryPassword(email.trim());
+                new Alert(Alert.AlertType.INFORMATION,
+                    "A temporary password has been sent to your email. Use it to log in; you will be asked to set a new password.").showAndWait();
             } catch (Exception e) {
-                new Alert(Alert.AlertType.ERROR, e.getMessage() != null ? e.getMessage() : "Reset failed.").showAndWait();
+                new Alert(Alert.AlertType.ERROR, e.getMessage() != null ? e.getMessage() : "Request failed.").showAndWait();
             }
         });
     }
@@ -211,12 +200,15 @@ public class FinanceUserLoginController {
             URL url = getClass().getResource(resourcePath);
             if (url == null) throw new IllegalStateException("Resource not found: " + resourcePath);
             Parent root = FXMLLoader.load(url);
-            Scene scene = new Scene(root);
+            Scene scene = new Scene(root, 1200, 800);
             URL cssUrl = getClass().getResource("/css/app.css");
             if (cssUrl != null) scene.getStylesheets().add(cssUrl.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
             stage.setScene(scene);
             stage.setTitle("RAEZ Finance – Main");
+            stage.setResizable(true);
+            stage.setMinWidth(800);
+            stage.setMinHeight(600);
             stage.show();
         } catch (Exception e) {
             throw new RuntimeException("Navigation failed: " + resourcePath, e);

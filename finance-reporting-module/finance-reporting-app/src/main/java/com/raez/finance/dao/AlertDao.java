@@ -44,6 +44,21 @@ public class AlertDao {
         return list;
     }
 
+    /**
+     * Marks an alert resolved/unresolved in the database.
+     * Stores resolvedAt when resolving; clears it when unresolving.
+     */
+    public void setResolved(int alertId, boolean resolved) throws Exception {
+        String sql = resolved
+                ? "UPDATE Alert SET isResolved = 1, resolvedAt = CURRENT_TIMESTAMP WHERE alertID = ?"
+                : "UPDATE Alert SET isResolved = 0, resolvedAt = NULL, resolvedBy = NULL WHERE alertID = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, alertId);
+            ps.executeUpdate();
+        }
+    }
+
     public static class AlertRow {
         private final int alertID;
         private final String alertType;
