@@ -233,11 +233,17 @@ public class AuthService {
         if (roleStr == null || roleStr.isBlank()) {
             throw new IllegalArgumentException("User role is missing in database.");
         }
+        // Backwards compatibility: older seed/test data used `role='USER'`
+        // while the current enum expects `FINANCE_USER`.
+        String normalized = roleStr.trim().toUpperCase().replace(" ", "_");
+        if ("USER".equals(normalized)) {
+            return UserRole.FINANCE_USER;
+        }
         try {
-            return UserRole.valueOf(roleStr.trim().toUpperCase().replace(" ", "_"));
+            return UserRole.valueOf(normalized);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException(
-                    "Unsupported role in database: '" + roleStr + "'. Allowed roles: ADMIN, FINANCE_USER"
+                    "Unsupported role in database: '" + roleStr + "'. Allowed roles: ADMIN, FINANCE_USER (legacy: USER)"
             );
         }
     }
