@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS Product (
   name TEXT NOT NULL,
   description TEXT,
   price REAL NOT NULL DEFAULT 0.00,
+  unitCost REAL NOT NULL DEFAULT 0.00,
   stock INTEGER NOT NULL DEFAULT 0,
   status TEXT DEFAULT 'active',
   categoryID INTEGER,

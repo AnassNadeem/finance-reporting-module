@@ -234,6 +234,25 @@
 .search-result-row:hover {
     -fx-background-color: #F3F4F6;
 }
+.search-result-primary {
+    -fx-font-weight: 700;
+    -fx-font-size: 12px;
+    -fx-text-fill: #111827;
+}
+.search-result-secondary {
+    -fx-font-size: 11px;
+    -fx-text-fill: #9CA3AF;
+}
+.search-no-results {
+    -fx-text-fill: #9CA3AF;
+    -fx-font-size: 12px;
+    -fx-padding: 8;
+}
+.search-hint {
+    -fx-text-fill: #6B7280;
+    -fx-font-size: 11px;
+    -fx-padding: 6 0 0 0;
+}
 
 /* ---- Export Button ---- */
 .export-menu-button {
@@ -386,6 +405,31 @@
     -fx-text-fill: #9CA3AF;
 }
 
+/* ---- Shared Table Badges / Cell Styles ---- */
+.status-badge-paid,
+.status-badge-warning,
+.status-badge-danger,
+.status-badge-info,
+.status-badge-neutral,
+.status-badge-company,
+.status-badge-individual {
+    -fx-font-size: 10px;
+    -fx-font-weight: 700;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 999;
+}
+.status-badge-paid { -fx-background-color: #DCFCE7; -fx-text-fill: #15803D; }
+.status-badge-warning { -fx-background-color: #FEF9C3; -fx-text-fill: #92400E; }
+.status-badge-danger { -fx-background-color: #FEE2E2; -fx-text-fill: #991B1B; }
+.status-badge-info { -fx-background-color: #DBEAFE; -fx-text-fill: #1E40AF; }
+.status-badge-neutral { -fx-background-color: #F3F4F6; -fx-text-fill: #6B7280; }
+.status-badge-company { -fx-background-color: #DBEAFE; -fx-text-fill: #1E40AF; }
+.status-badge-individual { -fx-background-color: #F3F4F6; -fx-text-fill: #4B5563; }
+
+.table-profit-positive { -fx-text-fill: #16A34A; }
+.table-profit-negative { -fx-text-fill: #DC2626; }
+.table-trend-label { -fx-font-size: 11px; -fx-font-weight: 700; }
+
 /* ---- Dashboard Charts ---- */
 /* Line Chart */
 .dashboard-line-chart .chart-plot-background {
@@ -523,6 +567,19 @@
 .profile-signout:hover {
     -fx-background-color: #FEF2F2;
 }
+.profile-name {
+    -fx-font-weight: 700;
+    -fx-font-size: 14px;
+    -fx-text-fill: #111827;
+}
+.profile-email {
+    -fx-font-size: 12px;
+    -fx-text-fill: #9CA3AF;
+}
+
+/* ---- Product Profitability Chart ---- */
+.profitability-chart .default-color0.chart-bar { -fx-bar-fill: #1E2939; }
+.profitability-chart .default-color1.chart-bar { -fx-bar-fill: #10B981; }
 
 /* ---- Divider ---- */
 .divider {
