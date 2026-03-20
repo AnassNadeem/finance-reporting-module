@@ -36,6 +36,7 @@ public final class DBConnection {
     private static boolean printedPath = false;
     private static boolean bootstrapping = false;
     private static boolean integrityChecked = false;
+    private static boolean schemaChecked = false;
 
     private DBConnection() {
     }
@@ -90,22 +91,27 @@ public final class DBConnection {
             } catch (SQLException ignored) {}
         }
 
-        if (!bootstrapping) {
-            try (Statement stmt = conn.createStatement();
-                 ResultSet rs = stmt.executeQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name='FUser' LIMIT 1")) {
-                if (!rs.next()) {
-                    conn.close();
-                    bootstrapping = true;
-                    try {
-                        DatabaseInitialiser.initialise();
-                    } catch (Exception ex) {
-                        throw new SQLException("Failed to initialise database", ex);
-                    } finally {
-                        bootstrapping = false;
-                    }
-                    return getConnection();
-                }
+        if (!bootstrapping && !schemaChecked) {
+            boolean requiresInit;
+            try {
+                requiresInit = DatabaseInitialiser.isInitialisationRequired(conn);
+            } catch (SQLException ex) {
+                requiresInit = true;
             }
+            if (requiresInit) {
+                conn.close();
+                bootstrapping = true;
+                try {
+                    DatabaseInitialiser.initialise();
+                } catch (Exception ex) {
+                    throw new SQLException("Failed to initialise database", ex);
+                } finally {
+                    bootstrapping = false;
+                }
+                schemaChecked = true;
+                return getConnection();
+            }
+            schemaChecked = true;
         }
 
         return conn;

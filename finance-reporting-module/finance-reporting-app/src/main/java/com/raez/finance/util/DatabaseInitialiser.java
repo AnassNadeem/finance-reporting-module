@@ -6,38 +6,45 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 /**
- * Comprehensive database initialiser for the RAEZ Finance application.
- * Creates all tables, adds missing columns, seeds realistic data, and verifies integrity.
- *
- * Run standalone:
- *   mvn -DskipTests compile exec:java "-Dexec.mainClass=com.raez.finance.util.DatabaseInitialiser"
- *
- * Or called automatically by DBConnection on first launch (when FUser table is absent).
+ * Database initialiser for the RAEZ Finance application.
+ * Net-First convention:
+ * - Product.price and OrderItem.unitPrice are NET amounts (VAT excluded).
+ * - Order.totalAmount and Invoice.totalAmount are GROSS amounts (NET + VAT).
  */
 public class DatabaseInitialiser {
 
-    private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private static final DateTimeFormatter ISO_TIME = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final double VAT_RATE = 0.20;
+    private static final int REQUIRED_PRODUCT_COUNT = 16;
+    private static final int REQUIRED_CUSTOMER_COUNT = 24;
+    private static final int REQUIRED_SUPPLIER_COUNT = 5;
+    private static final int REQUIRED_ORDER_COUNT = 120;
+    private static final int REQUIRED_INVOICE_COUNT = 10;
+    private static final int REQUIRED_LOW_STOCK_COUNT = 3;
+    private static final int REQUIRED_NEGATIVE_REVIEW_COUNT = 4;
+    private static final int REQUIRED_REFUND_COUNT = 5;
+    private static final int REQUIRED_ACTIVE_ALERT_COUNT = 3;
 
-    private static final double[] PRODUCT_PRICES = {
-        4200.00, 5100.00, 4300.00, 3900.00, 172000.00, 268000.00,
-        68000.00, 61000.00, 890.00, 6100.00, 1800.00, 950.00
-    };
-
-    private static final double[] PRODUCT_COSTS = {
-        1800.00, 2900.00, 3800.00, 2200.00, 98000.00, 155000.00,
-        62000.00, 38000.00, 320.00, 5200.00, 400.00, 550.00
-    };
+    private record ProductSeed(int id, String name, String description, double netPrice, double unitCost, int categoryId) {}
+    private record CustomerSeed(int id, String name, String email, String phone, String address, String type) {}
+    private record OrderSeed(int id, int customerId, String status, String orderDate, double grossTotal) {}
 
     public static void main(String[] args) {
         try {
             initialise();
-            System.out.println("[DatabaseInitialiser] Complete — all tables created and seeded.");
+            System.out.println("[DatabaseInitialiser] Complete.");
         } catch (Exception e) {
             System.err.println("[DatabaseInitialiser] FAILED: " + e.getMessage());
             e.printStackTrace();
@@ -47,29 +54,37 @@ public class DatabaseInitialiser {
 
     public static void initialise() throws Exception {
         try (Connection conn = DBConnection.getConnection()) {
-            exec(conn, "PRAGMA foreign_keys = OFF");
-
-            applySchemaFile(conn);
-            addMissingColumns(conn);
-            createIndexes(conn);
-            runIntegrityCheck(conn);
-
-            if (needsSeeding(conn)) {
-                System.out.println("[DatabaseInitialiser] Fresh database detected — seeding all data...");
-                clearAllData(conn);
-                seedAllData(conn);
-            } else {
-                System.out.println("[DatabaseInitialiser] Seed data already present — skipping.");
-            }
-
             exec(conn, "PRAGMA foreign_keys = ON");
+            applySchemaFile(conn);
+            ensureCompatibilityColumns(conn);
+            ensureCanonicalCompatibilityTables(conn);
+
+            if (isInitialisationRequired(conn)) {
+                exec(conn, "PRAGMA foreign_keys = OFF");
+                clearAllData(conn);
+                seedAllData(conn, LocalDate.now());
+                exec(conn, "PRAGMA foreign_keys = ON");
+            }
             verifyData(conn);
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // SCHEMA
-    // ═══════════════════════════════════════════════════════════════════
+    public static boolean isInitialisationRequired(Connection conn) throws SQLException {
+        if (!tableExists(conn, "FUser") || !tableExists(conn, "Product") || !tableExists(conn, "\"Order\"")) {
+            return true;
+        }
+        if (!columnExists(conn, "Product", "unitCost")) {
+            return true;
+        }
+        return isBelowThreshold(conn, "Product", REQUIRED_PRODUCT_COUNT)
+            || isBelowThreshold(conn, "CustomerRegistration", REQUIRED_CUSTOMER_COUNT)
+            || isBelowThreshold(conn, "Supplier", REQUIRED_SUPPLIER_COUNT)
+            || isBelowThreshold(conn, "\"Order\"", REQUIRED_ORDER_COUNT)
+            || isBelowThreshold(conn, "Invoice", REQUIRED_INVOICE_COUNT)
+            || isBelowThreshold(conn, "Refund", REQUIRED_REFUND_COUNT)
+            || isBelowThreshold(conn, "Review", REQUIRED_NEGATIVE_REVIEW_COUNT + 2)
+            || isBelowThreshold(conn, "Alert", REQUIRED_ACTIVE_ALERT_COUNT);
+    }
 
     private static void applySchemaFile(Connection conn) throws Exception {
         try (InputStream is = DatabaseInitialiser.class.getResourceAsStream("/database/schema.sql")) {
@@ -82,285 +97,281 @@ public class DatabaseInitialiser {
             for (String raw : sb.toString().split(";")) {
                 String sql = stripComments(raw).trim();
                 if (!sql.isEmpty()) {
-                    try { conn.createStatement().execute(sql); } catch (SQLException ignored) {}
+                    try (Statement st = conn.createStatement()) {
+                        st.execute(sql);
+                    }
                 }
             }
         }
-        System.out.println("[DatabaseInitialiser] schema.sql applied.");
     }
 
-    private static void addMissingColumns(Connection conn) throws SQLException {
+    private static void ensureCompatibilityColumns(Connection conn) throws SQLException {
         addColumnIfMissing(conn, "Product", "unitCost", "REAL DEFAULT 0");
-        addColumnIfMissing(conn, "FUser", "staffId", "TEXT");
-        addColumnIfMissing(conn, "FUser", "addressLine1", "TEXT");
-        addColumnIfMissing(conn, "FUser", "addressLine2", "TEXT");
-        addColumnIfMissing(conn, "FUser", "addressLine3", "TEXT");
-        addColumnIfMissing(conn, "FUser", "firstLogin", "INTEGER DEFAULT 0");
+        addColumnIfMissing(conn, "InventoryRecord", "supplierID", "INTEGER");
+        addColumnIfMissing(conn, "InventoryRecord", "unitCost", "REAL DEFAULT 0");
+        addColumnIfMissing(conn, "InventoryRecord", "isActive", "INTEGER DEFAULT 1");
+        addColumnIfMissing(conn, "Invoice", "vatAmount", "REAL DEFAULT 0");
     }
 
     private static void addColumnIfMissing(Connection conn, String table, String column, String type) throws SQLException {
-        try (ResultSet rs = conn.getMetaData().getColumns(null, null, table, column)) {
-            if (!rs.next()) {
-                exec(conn, "ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
-                System.out.println("[DatabaseInitialiser] Added column " + table + "." + column);
-            }
+        if (columnExists(conn, table, column)) return;
+        try (Statement st = conn.createStatement()) {
+            st.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
         }
     }
 
-    private static void createIndexes(Connection conn) {
-        String[] indexes = {
-            "CREATE INDEX IF NOT EXISTS idx_order_date ON \"Order\"(orderDate)",
-            "CREATE INDEX IF NOT EXISTS idx_order_customer ON \"Order\"(customerID)",
-            "CREATE INDEX IF NOT EXISTS idx_orderitem_product ON OrderItem(productID)",
-            "CREATE INDEX IF NOT EXISTS idx_customer_type ON CustomerRegistration(customerType)",
-            "CREATE INDEX IF NOT EXISTS idx_product_category ON Product(categoryID)",
-            "CREATE INDEX IF NOT EXISTS idx_payment_order ON Payment(orderID)",
-            "CREATE INDEX IF NOT EXISTS idx_payment_status ON Payment(paymentStatus)",
-            "CREATE INDEX IF NOT EXISTS idx_refund_order ON Refund(orderID)",
-            "CREATE INDEX IF NOT EXISTS idx_invoice_order ON Invoice(orderID)",
-            "CREATE INDEX IF NOT EXISTS idx_invoice_status ON Invoice(status)"
+    private static void ensureCanonicalCompatibilityTables(Connection conn) throws SQLException {
+        String[] ddl = {
+            "CREATE TABLE IF NOT EXISTS roles (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, username TEXT UNIQUE, password_hash TEXT NOT NULL, role_id INTEGER, is_active INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(role_id) REFERENCES roles(id))",
+            "CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT)",
+            "CREATE TABLE IF NOT EXISTS customers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT UNIQUE, customer_type TEXT, status TEXT DEFAULT 'active')",
+            "CREATE TABLE IF NOT EXISTS suppliers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, email TEXT, contact TEXT)",
+            "CREATE TABLE IF NOT EXISTS products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category_id INTEGER, sale_price REAL NOT NULL, unit_cost REAL DEFAULT 0, is_active INTEGER DEFAULT 1, FOREIGN KEY(category_id) REFERENCES categories(id))",
+            "CREATE TABLE IF NOT EXISTS inventory (id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL, supplier_id INTEGER, current_stock INTEGER DEFAULT 0, reorder_level INTEGER DEFAULT 0, unit_cost REAL DEFAULT 0, FOREIGN KEY(product_id) REFERENCES products(id), FOREIGN KEY(supplier_id) REFERENCES suppliers(id))",
+            "CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER NOT NULL, order_date TEXT NOT NULL, status TEXT NOT NULL, total_amount REAL NOT NULL, FOREIGN KEY(customer_id) REFERENCES customers(id))",
+            "CREATE TABLE IF NOT EXISTS order_items (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, product_id INTEGER NOT NULL, quantity INTEGER NOT NULL, unit_price REAL NOT NULL, FOREIGN KEY(order_id) REFERENCES orders(id), FOREIGN KEY(product_id) REFERENCES products(id))",
+            "CREATE TABLE IF NOT EXISTS invoices (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, invoice_number TEXT UNIQUE NOT NULL, status TEXT NOT NULL, total_amount REAL NOT NULL, vat_amount REAL DEFAULT 0, issued_at TEXT, due_date TEXT, paid_at TEXT, FOREIGN KEY(order_id) REFERENCES orders(id))",
+            "CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY AUTOINCREMENT, severity TEXT, message TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_resolved INTEGER DEFAULT 0)",
+            "CREATE TABLE IF NOT EXISTS financial_anomalies (id INTEGER PRIMARY KEY AUTOINCREMENT, anomaly_type TEXT, description TEXT, severity TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP, is_resolved INTEGER DEFAULT 0)",
+            "CREATE TABLE IF NOT EXISTS password_reset_tokens (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, token TEXT UNIQUE NOT NULL, expires_at TEXT NOT NULL, used INTEGER DEFAULT 0, FOREIGN KEY(user_id) REFERENCES users(id))",
+            "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)",
+            "CREATE TABLE IF NOT EXISTS reviews (id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER NOT NULL, product_id INTEGER NOT NULL, rating INTEGER NOT NULL, review_text TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS refunds (id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL, product_id INTEGER, refund_amount REAL NOT NULL, reason TEXT, status TEXT DEFAULT 'APPROVED', refund_date TEXT DEFAULT CURRENT_TIMESTAMP)"
         };
-        for (String sql : indexes) {
-            try { conn.createStatement().execute(sql); } catch (SQLException ignored) {}
-        }
-    }
-
-    private static void runIntegrityCheck(Connection conn) {
-        try (Statement s = conn.createStatement();
-             ResultSet rs = s.executeQuery("PRAGMA integrity_check")) {
-            if (rs.next()) {
-                String result = rs.getString(1);
-                System.out.println("[DatabaseInitialiser] Integrity check: " +
-                    ("ok".equalsIgnoreCase(result) ? "OK" : "FAILED — " + result));
+        for (String sql : ddl) {
+            try (Statement st = conn.createStatement()) {
+                st.execute(sql);
             }
-        } catch (SQLException e) {
-            System.err.println("[DatabaseInitialiser] Integrity check error: " + e.getMessage());
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // SEEDING CHECK
-    // ═══════════════════════════════════════════════════════════════════
-
-    private static boolean needsSeeding(Connection conn) throws SQLException {
-        try (Statement s = conn.createStatement();
-             ResultSet rs = s.executeQuery("SELECT COUNT(*) FROM Product WHERE name = 'XV2 Scout Drone'")) {
-            return !rs.next() || rs.getInt(1) == 0;
-        } catch (SQLException e) {
-            return true;
         }
     }
 
     private static void clearAllData(Connection conn) throws SQLException {
         String[] tables = {
-            "Alert", "FinancialAnomalies", "Refund", "Invoice", "Payment",
-            "PasswordResetToken", "password_reset_tokens", "DeliveryLog", "Delivery",
-            "OrderItem", "\"Order\"", "Review", "StockMovement", "InventoryRecord",
-            "ProductImage", "ProductValidation", "Product", "Category",
-            "CustomerPreferences", "CustomerUpdate", "LoginCredentials", "CustomerRegistration",
-            "FUser", "AdminUser", "Driver", "Warehouse", "Supplier", "GlobalSettings",
-            "role_permissions"
+            "Alert", "FinancialAnomalies", "Refund", "Invoice", "Payment", "PasswordResetToken", "password_reset_tokens",
+            "DeliveryLog", "Delivery", "OrderItem", "\"Order\"", "Review", "StockMovement", "InventoryRecord",
+            "ProductImage", "ProductValidation", "Product", "Category", "CustomerPreferences", "CustomerUpdate",
+            "LoginCredentials", "CustomerRegistration", "FUser", "AdminUser", "Driver", "Warehouse", "Supplier",
+            "GlobalSettings", "role_permissions"
         };
+        conn.setAutoCommit(false);
         for (String t : tables) {
-            try { exec(conn, "DELETE FROM " + t); } catch (SQLException ignored) {}
+            try (Statement st = conn.createStatement()) {
+                st.execute("DELETE FROM " + t);
+            } catch (SQLException ignored) {
+                // ignore missing tables
+            }
         }
-        try { exec(conn, "DELETE FROM sqlite_sequence"); } catch (SQLException ignored) {}
-        System.out.println("[DatabaseInitialiser] All tables cleared.");
+        try (Statement st = conn.createStatement()) {
+            st.execute("DELETE FROM sqlite_sequence");
+        }
+        conn.commit();
+        conn.setAutoCommit(true);
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // SEED ALL DATA
-    // ═══════════════════════════════════════════════════════════════════
-
-    private static void seedAllData(Connection conn) throws SQLException {
-        LocalDate now = LocalDate.now();
-
-        seedCategories(conn);
-        seedProducts(conn);
-        seedCustomers(conn);
-        seedUsers(conn);
-        seedSuppliers(conn);
-        seedWarehouse(conn);
-        seedOrders(conn, now);
-        seedPayments(conn, now);
-        seedInvoices(conn, now);
-        seedRefunds(conn, now);
-        seedReviews(conn, now);
-        seedAlerts(conn);
-        seedAnomalies(conn);
-        seedInventory(conn);
-        seedSettings(conn);
-        seedRolePermissions(conn);
-        seedMiscData(conn);
-
-        System.out.println("[DatabaseInitialiser] All seed data inserted.");
+    private static void seedAllData(Connection conn, LocalDate today) throws SQLException {
+        conn.setAutoCommit(false);
+        try {
+            seedSettings(conn);
+            seedRolePermissions(conn);
+            seedCategories(conn);
+            List<ProductSeed> products = seedProducts(conn);
+            List<CustomerSeed> customers = seedCustomers(conn);
+            seedUsers(conn);
+            seedSuppliers(conn);
+            seedWarehouseAndDrivers(conn);
+            seedInventory(conn, products);
+            List<OrderSeed> orders = seedOrdersAndItems(conn, today, customers, products);
+            seedPayments(conn, orders);
+            seedInvoices(conn, today, orders);
+            seedRefunds(conn, today, orders);
+            seedReviews(conn, today, customers, products);
+            seedAnomalies(conn, today);
+            seedAlerts(conn, today);
+            seedAuxiliaryRows(conn, customers);
+            conn.commit();
+        } catch (Exception ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(true);
+        }
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 1. CATEGORIES
-    // ───────────────────────────────────────────────────────────────────
+    private static void seedSettings(Connection conn) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO GlobalSettings (key, value) VALUES (?, ?)";
+        String[][] settings = {
+            {"vat_rate", "20.0"},
+            {"company_name", "RAEZ Finance Ltd"},
+            {"currency_symbol", "£"},
+            {"session_timeout_minutes", "2"},
+            {"low_stock_threshold", "5"}
+        };
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (String[] kv : settings) {
+                ps.setString(1, kv[0]);
+                ps.setString(2, kv[1]);
+                ps.executeUpdate();
+            }
+        }
+    }
+
+    private static void seedRolePermissions(Connection conn) throws SQLException {
+        String sql = "INSERT OR IGNORE INTO role_permissions (role, action) VALUES (?, ?)";
+        String[][] perms = {
+            {"ADMIN", "VIEW_DASHBOARD"},
+            {"ADMIN", "MANAGE_FINANCE_DATA"},
+            {"ADMIN", "EXPORT_REPORTS"},
+            {"ADMIN", "MANAGE_USERS"},
+            {"ADMIN", "VIEW_COMPANY_FINANCIALS"},
+            {"FINANCE_USER", "VIEW_DASHBOARD"},
+            {"FINANCE_USER", "MANAGE_FINANCE_DATA"}
+        };
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (String[] p : perms) {
+                ps.setString(1, p[0]);
+                ps.setString(2, p[1]);
+                ps.executeUpdate();
+            }
+        }
+    }
 
     private static void seedCategories(Connection conn) throws SQLException {
-        String sql = "INSERT INTO Category (categoryID, categoryName, description) VALUES (?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO Category (categoryID, categoryName, description, isActive) VALUES (?, ?, ?, 1)";
+        String[][] categories = {
+            {"1", "Drones", "Unmanned systems and aerial platforms"},
+            {"2", "Robotics", "Industrial and service robots"},
+            {"3", "Accessories", "Add-ons and replacement kits"},
+            {"4", "Services", "Maintenance and consulting offerings"}
+        };
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            cat(ps, 1, "Drones", "Unmanned aerial vehicles and components");
-            cat(ps, 2, "Robots", "Autonomous robotic systems and units");
-            cat(ps, 3, "Accessories", "Add-ons, parts, and upgrade kits");
-            cat(ps, 4, "Services", "Installation, maintenance, and support services");
+            for (String[] c : categories) {
+                ps.setInt(1, Integer.parseInt(c[0]));
+                ps.setString(2, c[1]);
+                ps.setString(3, c[2]);
+                ps.executeUpdate();
+            }
         }
-        log("Category", 4);
     }
 
-    private static void cat(PreparedStatement ps, int id, String name, String desc) throws SQLException {
-        ps.setInt(1, id); ps.setString(2, name); ps.setString(3, desc);
-        ps.executeUpdate();
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 2. PRODUCTS (12 products with realistic margins)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedProducts(Connection conn) throws SQLException {
+    private static List<ProductSeed> seedProducts(Connection conn) throws SQLException {
+        List<ProductSeed> list = List.of(
+            new ProductSeed(1, "XV2 Scout Drone", "Survey and mapping drone", 4200, 2700, 1),
+            new ProductSeed(2, "S9 Surveillance Drone", "4K surveillance drone", 5100, 3200, 1),
+            new ProductSeed(3, "T7 Thermal Drone", "Thermal inspection drone", 4600, 3300, 1),
+            new ProductSeed(4, "V9 Inspection Drone", "Compact inspection drone", 3900, 2500, 1),
+            new ProductSeed(5, "A2 Cargo Drone", "Heavy-lift logistics drone", 6800, 4700, 1),
+            new ProductSeed(6, "AR7 Industrial Robot", "Assembly line robot", 172000, 121000, 2),
+            new ProductSeed(7, "M4 Manufacturing Robot", "High precision manufacturing robot", 268000, 195000, 2),
+            new ProductSeed(8, "P3 Delivery Robot", "Autonomous warehouse delivery robot", 68000, 49000, 2),
+            new ProductSeed(9, "C5 Cleaning Robot", "Commercial cleaning robot", 61000, 43000, 2),
+            new ProductSeed(10, "Q1 Picker Robot", "Automated stock picker robot", 94000, 67000, 2),
+            new ProductSeed(11, "Drone Sensor Kit", "Multi-sensor upgrade kit", 890, 420, 3),
+            new ProductSeed(12, "Robot Arm Extension", "Extension and grip kit", 6100, 3900, 3),
+            new ProductSeed(13, "Battery Pack XL", "High-density battery module", 1200, 700, 3),
+            new ProductSeed(14, "Safety Shield Module", "Shielding and safety package", 1450, 820, 3),
+            new ProductSeed(15, "Installation & Setup", "Professional setup service", 1800, 750, 4),
+            new ProductSeed(16, "Annual Maintenance Plan", "12 month service coverage", 950, 520, 4)
+        );
         String sql = "INSERT INTO Product (productID, name, description, price, unitCost, stock, status, categoryID) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, 'active', ?)";
-        Object[][] products = {
-            {1,  "XV2 Scout Drone",          "High-performance scout drone for surveillance and mapping",    4200.00, 1800.00, 24, 1},
-            {2,  "S9 Surveillance Drone",    "Advanced surveillance drone with 4K camera system",           5100.00, 2900.00, 18, 1},
-            {3,  "T7 Thermal Imaging Drone", "Thermal imaging drone for industrial inspections",            4300.00, 3800.00,  2, 1},
-            {4,  "V9 Inspection Drone",      "Compact inspection drone for confined spaces",                3900.00, 2200.00, 15, 1},
-            {5,  "AR7 Industrial Robot",     "Heavy-duty industrial robotic arm for manufacturing",       172000.00,98000.00,  7, 2},
-            {6,  "M4 Manufacturing Robot",   "Full-scale manufacturing robot with AI-assisted operation", 268000.00,155000.00, 9, 2},
-            {7,  "P3 Delivery Robot",        "Autonomous delivery robot for warehouse logistics",          68000.00,62000.00,  1, 2},
-            {8,  "C5 Cleaning Robot",        "Commercial cleaning robot with multi-surface capability",    61000.00,38000.00, 12, 2},
-            {9,  "Drone Sensor Upgrade Kit", "Universal sensor upgrade kit for all drone models",            890.00,  320.00, 45, 3},
-            {10, "Robot Arms Extension Kit", "Extension arms kit compatible with AR7 and M4 robots",        6100.00, 5200.00,  0, 3},
-            {11, "Installation & Setup",     "Professional installation, calibration, and setup service",    1800.00,  400.00,100, 4},
-            {12, "Annual Maintenance Plan",  "12-month maintenance and support contract",                    950.00,  550.00, 88, 4},
-        };
+            "VALUES (?, ?, ?, ?, ?, ?, 'active', ?) " +
+            "ON CONFLICT(productID) DO UPDATE SET " +
+            "name=excluded.name, description=excluded.description, price=excluded.price, " +
+            "unitCost=excluded.unitCost, stock=excluded.stock, status=excluded.status, categoryID=excluded.categoryID";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (Object[] p : products) {
-                ps.setInt(1, (int) p[0]);
-                ps.setString(2, (String) p[1]);
-                ps.setString(3, (String) p[2]);
-                ps.setDouble(4, (double) p[3]);
-                ps.setDouble(5, (double) p[4]);
-                ps.setInt(6, (int) p[5]);
-                ps.setInt(7, (int) p[6]);
+            for (ProductSeed p : list) {
+                ps.setInt(1, p.id);
+                ps.setString(2, p.name);
+                ps.setString(3, p.description);
+                ps.setDouble(4, p.netPrice);
+                ps.setDouble(5, p.unitCost);
+                ps.setInt(6, 40);
+                ps.setInt(7, p.categoryId);
                 ps.executeUpdate();
             }
         }
-        log("Product", 12);
+        return list;
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 3. CUSTOMERS (6 companies + 8 individuals = 14)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedCustomers(Connection conn) throws SQLException {
-        String sql = "INSERT INTO CustomerRegistration (customerID, name, email, contactNumber, deliveryAddress, customerType, status) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
-        Object[][] customers = {
-            {1,  "TechCorp Industries",  "procurement@techcorp.com",     "+1 555 100 2001", "New York, US",      "Company",    "active"},
-            {2,  "RoboManufacture Ltd",  "orders@robomanufacture.co.uk", "+44 20 7946 0001","London, UK",        "Company",    "active"},
-            {3,  "GlobalTech Solutions", "finance@globaltech.ae",        "+971 4 300 1000", "Dubai, UAE",         "Company",    "active"},
-            {4,  "AutoMate Systems",     "purchasing@automate.cn",       "+86 10 6500 1234","Beijing, China",     "Company",    "active"},
-            {5,  "InnovateCo",           "accounts@innovateco.com",      "+1 555 200 3002", "San Francisco, US",  "Company",    "active"},
-            {6,  "SmartFactory Inc",     "ops@smartfactory.co.uk",       "+44 121 496 0002","Birmingham, UK",     "Company",    "inactive"},
-            {7,  "John Smith",           "john.smith@email.com",         "+1 555 300 4001", "Chicago, US",        "Individual", "active"},
-            {8,  "Sarah Johnson",        "sarah.j@email.com",            "+44 20 7946 0003","Manchester, UK",     "Individual", "active"},
-            {9,  "David Lee",            "david.lee@email.com",          "+971 4 300 2000", "Abu Dhabi, UAE",     "Individual", "active"},
-            {10, "Michael Chen",         "mchen@personal.com",           "+86 21 6100 5678","Shanghai, China",    "Individual", "active"},
-            {11, "Emily Rodriguez",      "emily.r@email.com",            "+1 555 400 5001", "Los Angeles, US",    "Individual", "active"},
-            {12, "Anna Williams",        "anna.w@email.com",             "+44 161 200 0004","Leeds, UK",          "Individual", "active"},
-            {13, "James Brown",          "jbrown@email.com",             "+1 555 500 6001", "Houston, US",        "Individual", "active"},
-            {14, "Lisa Zhang",           "lzhang@personal.com",          "+86 755 8000 1234","Shenzhen, China",   "Individual", "inactive"},
-        };
+    private static List<CustomerSeed> seedCustomers(Connection conn) throws SQLException {
+        List<CustomerSeed> list = List.of(
+            new CustomerSeed(1, "TechCorp Industries", "procurement@techcorp.com", "+44 20 1100 0001", "London, UK", "Company"),
+            new CustomerSeed(2, "RoboManufacture Ltd", "orders@robomfg.co.uk", "+44 20 1100 0002", "Birmingham, UK", "Company"),
+            new CustomerSeed(3, "Global Systems Plc", "accounts@globalsystems.com", "+44 20 1100 0003", "Leeds, UK", "Company"),
+            new CustomerSeed(4, "Northwind Logistics", "supply@northwind.com", "+44 20 1100 0004", "Manchester, UK", "Company"),
+            new CustomerSeed(5, "Innovate Holdings", "finance@innovate.io", "+44 20 1100 0005", "Bristol, UK", "Company"),
+            new CustomerSeed(6, "Metro Retail Group", "buying@metroretail.com", "+44 20 1100 0006", "Liverpool, UK", "Company"),
+            new CustomerSeed(7, "Orion Builders", "ops@orionbuild.com", "+44 20 1100 0007", "Sheffield, UK", "Company"),
+            new CustomerSeed(8, "Vertex Foods", "purchasing@vertexfoods.com", "+44 20 1100 0008", "Nottingham, UK", "Company"),
+            new CustomerSeed(9, "Ava Wilson", "ava.wilson@email.com", "+44 7700 900101", "York, UK", "Individual"),
+            new CustomerSeed(10, "Noah Evans", "noah.evans@email.com", "+44 7700 900102", "Leicester, UK", "Individual"),
+            new CustomerSeed(11, "Sophia Khan", "sophia.khan@email.com", "+44 7700 900103", "Cambridge, UK", "Individual"),
+            new CustomerSeed(12, "Liam Patel", "liam.patel@email.com", "+44 7700 900104", "Oxford, UK", "Individual"),
+            new CustomerSeed(13, "Mia Chen", "mia.chen@email.com", "+44 7700 900105", "Reading, UK", "Individual"),
+            new CustomerSeed(14, "Ethan Brown", "ethan.brown@email.com", "+44 7700 900106", "Derby, UK", "Individual"),
+            new CustomerSeed(15, "Isla Scott", "isla.scott@email.com", "+44 7700 900107", "Glasgow, UK", "Individual"),
+            new CustomerSeed(16, "Oliver Green", "oliver.green@email.com", "+44 7700 900108", "Edinburgh, UK", "Individual"),
+            new CustomerSeed(17, "Emily Hall", "emily.hall@email.com", "+44 7700 900109", "Cardiff, UK", "Individual"),
+            new CustomerSeed(18, "Jack Turner", "jack.turner@email.com", "+44 7700 900110", "Swansea, UK", "Individual"),
+            new CustomerSeed(19, "Grace Bell", "grace.bell@email.com", "+44 7700 900111", "Newcastle, UK", "Individual"),
+            new CustomerSeed(20, "Henry Adams", "henry.adams@email.com", "+44 7700 900112", "Norwich, UK", "Individual"),
+            new CustomerSeed(21, "Amelia Reed", "amelia.reed@email.com", "+44 7700 900113", "Plymouth, UK", "Individual"),
+            new CustomerSeed(22, "Leo Cooper", "leo.cooper@email.com", "+44 7700 900114", "Southampton, UK", "Individual"),
+            new CustomerSeed(23, "Ella Moore", "ella.moore@email.com", "+44 7700 900115", "Brighton, UK", "Individual"),
+            new CustomerSeed(24, "Mason Gray", "mason.gray@email.com", "+44 7700 900116", "Exeter, UK", "Individual")
+        );
+        String sql = "INSERT OR REPLACE INTO CustomerRegistration (customerID, name, email, contactNumber, deliveryAddress, customerType, status) VALUES (?, ?, ?, ?, ?, ?, 'active')";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (Object[] c : customers) {
-                ps.setInt(1, (int) c[0]);
-                ps.setString(2, (String) c[1]);
-                ps.setString(3, (String) c[2]);
-                ps.setString(4, (String) c[3]);
-                ps.setString(5, (String) c[4]);
-                ps.setString(6, (String) c[5]);
-                ps.setString(7, (String) c[6]);
+            for (CustomerSeed c : list) {
+                ps.setInt(1, c.id);
+                ps.setString(2, c.name);
+                ps.setString(3, c.email);
+                ps.setString(4, c.phone);
+                ps.setString(5, c.address);
+                ps.setString(6, c.type);
                 ps.executeUpdate();
             }
         }
-        log("CustomerRegistration", 14);
+        return list;
     }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 4. USERS (5 finance users with BCrypt passwords)
-    // ───────────────────────────────────────────────────────────────────
 
     private static void seedUsers(Connection conn) throws SQLException {
-        String sql = "INSERT INTO FUser (userID, email, username, passwordHash, role, firstName, lastName, " +
-                     "phone, isActive, lastLogin, staffId, addressLine1, addressLine2, addressLine3, firstLogin) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO FUser (userID, email, username, passwordHash, role, firstName, lastName, phone, isActive, lastLogin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            // jcarter — ADMIN, active, not first login
-            user(ps, 1, "j.carter@raez.org.uk", "jcarter", hash("Admin123!"), "ADMIN",
-                 "James", "Carter", "+44 7700 900001", true, "2026-03-01 09:00:00",
-                 "RAEZ-001", "14 Ashford Road", "London", "EC1A 1BB", false);
+            ps.setInt(1, 1);
+            ps.setString(2, "admin@raez.org.uk");
+            ps.setString(3, "admin");
+            ps.setString(4, hash("Admin@123"));
+            ps.setString(5, "ADMIN");
+            ps.setString(6, "System");
+            ps.setString(7, "Admin");
+            ps.setString(8, "+44 7700 900001");
+            ps.setInt(9, 1);
+            ps.setString(10, LocalDateTime.now().minusDays(1).toString());
+            ps.executeUpdate();
 
-            // smitchell — ADMIN, active, not first login
-            user(ps, 2, "s.mitchell@raez.org.uk", "smitchell", hash("Admin456!"), "ADMIN",
-                 "Sarah", "Mitchell", "+44 7700 900002", true, "2026-03-10 14:30:00",
-                 "RAEZ-002", "7 Maple Close", "Manchester", "M1 2AB", false);
-
-            // dhughes — FINANCE_USER, active, not first login
-            user(ps, 3, "d.hughes@raez.org.uk", "dhughes", hash("User123!"), "FINANCE_USER",
-                 "Daniel", "Hughes", "+44 7700 900003", true, "2026-03-12 11:15:00",
-                 "RAEZ-003", "22 Victoria Street", "Birmingham", "B1 1BB", false);
-
-            // psharma — FINANCE_USER, active, FIRST LOGIN (lastLogin=NULL, firstLogin=1)
-            user(ps, 4, "p.sharma@raez.org.uk", "psharma", hash("TempPass1!"), "FINANCE_USER",
-                 "Priya", "Sharma", "+44 7700 900004", true, null,
-                 "RAEZ-004", "9 Queens Avenue", "Leeds", "LS1 4AP", true);
-
-            // obennett — FINANCE_USER, INACTIVE, not first login
-            user(ps, 5, "o.bennett@raez.org.uk", "obennett", hash("User456!"), "FINANCE_USER",
-                 "Oliver", "Bennett", "+44 7700 900005", false, "2025-12-20 16:00:00",
-                 "RAEZ-005", "31 Harbour Lane", "Bristol", "BS1 5TR", false);
+            ps.setInt(1, 2);
+            ps.setString(2, "finance@raez.org.uk");
+            ps.setString(3, "finance");
+            ps.setString(4, hash("User@123"));
+            ps.setString(5, "FINANCE_USER");
+            ps.setString(6, "Finance");
+            ps.setString(7, "User");
+            ps.setString(8, "+44 7700 900002");
+            ps.setInt(9, 1);
+            ps.setNull(10, Types.VARCHAR);
+            ps.executeUpdate();
         }
-        log("FUser", 5);
     }
-
-    private static void user(PreparedStatement ps, int id, String email, String username, String pwHash,
-                             String role, String first, String last, String phone, boolean active,
-                             String lastLogin, String staffId, String addr1, String addr2, String addr3,
-                             boolean firstLogin) throws SQLException {
-        ps.setInt(1, id);
-        ps.setString(2, email);
-        ps.setString(3, username);
-        ps.setString(4, pwHash);
-        ps.setString(5, role);
-        ps.setString(6, first);
-        ps.setString(7, last);
-        ps.setString(8, phone);
-        ps.setInt(9, active ? 1 : 0);
-        if (lastLogin != null) ps.setString(10, lastLogin); else ps.setNull(10, Types.VARCHAR);
-        ps.setString(11, staffId);
-        ps.setString(12, addr1);
-        ps.setString(13, addr2);
-        ps.setString(14, addr3);
-        ps.setInt(15, firstLogin ? 1 : 0);
-        ps.executeUpdate();
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 5. SUPPLIERS (5 suppliers)
-    // ───────────────────────────────────────────────────────────────────
 
     private static void seedSuppliers(Connection conn) throws SQLException {
-        String sql = "INSERT INTO Supplier (supplierID, name, contact, email, avgLeadDays, reliabilityScore) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT OR REPLACE INTO Supplier (supplierID, name, contact, email, avgLeadDays, reliabilityScore) VALUES (?, ?, ?, ?, ?, ?)";
         Object[][] suppliers = {
-            {1, "AeroTech Components",  "Mike Reynolds",  "m.reynolds@aerotech.com",    7.0, 0.96},
-            {2, "RoboCore Supplies",    "Lisa Tanaka",    "l.tanaka@robocore.jp",       12.0, 0.88},
-            {3, "DronePartsHub",        "Carlos Mendez",  "c.mendez@dronepartshub.com", 4.0, 0.94},
-            {4, "SmartKit Europe",      "Hannah Muller",  "h.muller@smartkit.de",        9.0, 0.72},
-            {5, "TechServe UK",         "Raj Patel",      "r.patel@techserve.co.uk",     3.0, 0.98},
+            {1, "AeroTech Components", "Morgan Reed", "morgan@aerotech.com", 6.0, 0.95},
+            {2, "RoboCore Parts", "Linda Zhao", "linda@robocore.com", 8.0, 0.91},
+            {3, "Nimbus Supply", "Samuel Park", "samuel@nimbus.com", 4.0, 0.93},
+            {4, "Prime Industrial", "Nina Shah", "nina@primeindustrial.com", 7.0, 0.89},
+            {5, "Vertex Distributors", "Ibrahim Noor", "ibrahim@vertexdist.com", 5.0, 0.94}
         };
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             for (Object[] s : suppliers) {
@@ -373,586 +384,311 @@ public class DatabaseInitialiser {
                 ps.executeUpdate();
             }
         }
-        log("Supplier", 5);
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 6. WAREHOUSE (for InventoryRecord FK)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedWarehouse(Connection conn) throws SQLException {
-        exec(conn, "INSERT INTO Warehouse (warehouseID, warehouseName, location, contactEmail, capacityLimit) " +
-                   "VALUES (1, 'Main Warehouse', 'London, UK', 'warehouse@raez.org.uk', 500)");
-        log("Warehouse", 1);
+    private static void seedWarehouseAndDrivers(Connection conn) throws SQLException {
+        exec(conn, "INSERT INTO Warehouse (warehouseID, warehouseName, location, contactEmail, capacityLimit) VALUES (1, 'Main Warehouse', 'London, UK', 'warehouse@raez.com', 5000)");
+        exec(conn, "INSERT INTO Driver (driverID, licenceNumber, phoneNum, email, driverName) VALUES (1, 'DRV-1001', '+44 7700 111001', 'driver1@raez.com', 'Ali Turner')");
+        exec(conn, "INSERT INTO Driver (driverID, licenceNumber, phoneNum, email, driverName) VALUES (2, 'DRV-1002', '+44 7700 111002', 'driver2@raez.com', 'Emma Collins')");
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 7. ORDERS (73 orders across 14 months)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedOrders(Connection conn, LocalDate now) throws SQLException {
-        String sqlOrder = "INSERT INTO \"Order\" (orderID, customerID, totalAmount, status, orderDate) VALUES (?, ?, ?, ?, ?)";
-        String sqlItem  = "INSERT INTO OrderItem (orderID, productID, quantity, unitPrice) VALUES (?, ?, ?, ?)";
-
-        try (PreparedStatement psO = conn.prepareStatement(sqlOrder);
-             PreparedStatement psI = conn.prepareStatement(sqlItem)) {
-
-            // Month -14 (5 orders)
-            order(psO, psI, 1,  1,  d(now,14,5),  "Completed", items(5,1));
-            order(psO, psI, 2,  5,  d(now,14,12), "Completed", items(6,1));
-            order(psO, psI, 3,  7,  d(now,14,18), "Completed", items(2,1));
-            order(psO, psI, 4,  2,  d(now,14,22), "Cancelled", items(8,1));
-            order(psO, psI, 5,  8,  d(now,14,26), "Pending",   items(11,1));
-
-            // Month -13 (5 orders)
-            order(psO, psI, 6,  3,  d(now,13,3),  "Completed", items(5,2));
-            order(psO, psI, 7,  11, d(now,13,8),  "Completed", items(4,1));
-            order(psO, psI, 8,  9,  d(now,13,14), "Completed", items(9,1));
-            order(psO, psI, 9,  12, d(now,13,20), "Pending",   items(12,2));
-            order(psO, psI, 10, 4,  d(now,13,25), "Completed", items(8,1, 10,2));
-
-            // Month -12 (5 orders)
-            order(psO, psI, 11, 1,  d(now,12,2),  "Completed", items(6,2));
-            order(psO, psI, 12, 6,  d(now,12,7),  "Completed", items(6,1));
-            order(psO, psI, 13, 10, d(now,12,12), "Completed", items(2,1));
-            order(psO, psI, 14, 2,  d(now,12,18), "Completed", items(1,2, 9,3));
-            order(psO, psI, 15, 13, d(now,12,24), "Pending",   items(9,2));
-
-            // Month -11 (5 orders)
-            order(psO, psI, 16, 5,  d(now,11,4),  "Completed", items(4,2));
-            order(psO, psI, 17, 7,  d(now,11,9),  "Completed", items(1,1));
-            order(psO, psI, 18, 3,  d(now,11,15), "Pending",   items(5,2));
-            order(psO, psI, 19, 8,  d(now,11,21), "Completed", items(12,1));
-            order(psO, psI, 20, 14, d(now,11,27), "Completed", items(12,1));
-
-            // Month -10 (5 orders)
-            order(psO, psI, 21, 4,  d(now,10,3),  "Completed", items(11,3));
-            order(psO, psI, 22, 1,  d(now,10,8),  "Completed", items(1,3));
-            order(psO, psI, 23, 11, d(now,10,14), "Completed", items(11,1, 12,1));
-            order(psO, psI, 24, 2,  d(now,10,20), "Completed", items(6,1));
-            order(psO, psI, 25, 6,  d(now,10,26), "Cancelled", items(1,1));
-
-            // Month -9 (5 orders)
-            order(psO, psI, 26, 4,  d(now,9,2),   "Refunded",  items(5,1));
-            order(psO, psI, 27, 9,  d(now,9,8),   "Completed", items(4,1));
-            order(psO, psI, 28, 3,  d(now,9,14),  "Completed", items(8,2));
-            order(psO, psI, 29, 10, d(now,9,20),  "Pending",   items(1,1));
-            order(psO, psI, 30, 12, d(now,9,26),  "Pending",   items(9,1));
-
-            // Month -8 (5 orders)
-            order(psO, psI, 31, 1,  d(now,8,3),   "Completed", items(2,2));
-            order(psO, psI, 32, 5,  d(now,8,8),   "Completed", items(1,2));
-            order(psO, psI, 33, 7,  d(now,8,15),  "Completed", items(4,1, 9,1));
-            order(psO, psI, 34, 14, d(now,8,20),  "Cancelled", items(10,1));
-            order(psO, psI, 35, 2,  d(now,8,25),  "Cancelled", items(7,1));
-
-            // Month -7 (5 orders)
-            order(psO, psI, 36, 8,  d(now,7,2),   "Completed", items(1,1));
-            order(psO, psI, 37, 3,  d(now,7,8),   "Completed", items(1,5, 2,3));
-            order(psO, psI, 38, 4,  d(now,7,14),  "Completed", items(8,1));
-            order(psO, psI, 39, 11, d(now,7,20),  "Pending",   items(4,1));
-            order(psO, psI, 40, 6,  d(now,7,26),  "Completed", items(8,1, 10,3));
-
-            // Month -6 (5 orders)
-            order(psO, psI, 41, 1,  d(now,6,2),   "Completed", items(5,1));
-            order(psO, psI, 42, 12, d(now,6,8),   "Pending",   items(12,2));
-            order(psO, psI, 43, 14, d(now,6,14),  "Cancelled", items(12,1));
-            order(psO, psI, 44, 2,  d(now,6,20),  "Completed", items(2,1));
-            order(psO, psI, 45, 13, d(now,6,26),  "Completed", items(12,1));
-
-            // Month -5 (6 orders)
-            order(psO, psI, 46, 1,  d(now,5,3),   "Completed", items(1,2));
-            order(psO, psI, 47, 7,  d(now,5,9),   "Completed", items(4,1));
-            order(psO, psI, 48, 5,  d(now,5,15),  "Completed", items(5,1));
-            order(psO, psI, 49, 10, d(now,5,21),  "Cancelled", items(3,1));
-            order(psO, psI, 50, 3,  d(now,5,27),  "Completed", items(2,2));
-            order(psO, psI, 51, 9,  d(now,5,12),  "Completed", items(9,1));
-
-            // Month -4 (6 orders)
-            order(psO, psI, 52, 5,  d(now,4,2),   "Refunded",  items(8,1));
-            order(psO, psI, 53, 2,  d(now,4,7),   "Completed", items(8,1));
-            order(psO, psI, 54, 8,  d(now,4,13),  "Completed", items(9,2));
-            order(psO, psI, 55, 4,  d(now,4,19),  "Pending",   items(5,1));
-            order(psO, psI, 56, 13, d(now,4,25),  "Completed", items(12,1));
-            order(psO, psI, 57, 12, d(now,4,10),  "Completed", items(1,1));
-
-            // Month -3 (6 orders)
-            order(psO, psI, 58, 5,  d(now,3,2),   "Refunded",  items(11,1));
-            order(psO, psI, 59, 3,  d(now,3,7),   "Completed", items(7,2));
-            order(psO, psI, 60, 1,  d(now,3,12),  "Completed", items(6,1, 11,2));
-            order(psO, psI, 61, 11, d(now,3,18),  "Completed", items(1,1));
-            order(psO, psI, 62, 6,  d(now,3,24),  "Cancelled", items(7,1));
-            order(psO, psI, 63, 10, d(now,3,10),  "Completed", items(4,1));
-
-            // Month -2 (6 orders)
-            order(psO, psI, 64, 5,  d(now,2,2),   "Refunded",  items(12,1));
-            order(psO, psI, 65, 2,  d(now,2,7),   "Completed", items(2,3, 4,2));
-            order(psO, psI, 66, 9,  d(now,2,12),  "Completed", items(11,1));
-            order(psO, psI, 67, 4,  d(now,2,18),  "Cancelled", items(6,1));
-            order(psO, psI, 68, 8,  d(now,2,24),  "Pending",   items(2,1));
-            order(psO, psI, 69, 13, d(now,2,8),   "Completed", items(9,1));
-
-            // Month -1 (5 orders)
-            order(psO, psI, 70, 3,  d(now,1,2),   "Refunded",  items(6,1));
-            order(psO, psI, 71, 7,  d(now,1,7),   "Refunded",  items(2,1));
-            order(psO, psI, 72, 11, d(now,1,12),  "Refunded",  items(9,1));
-            order(psO, psI, 73, 1,  d(now,1,18),  "Completed", items(5,1, 1,2));
+    private static void seedInventory(Connection conn, List<ProductSeed> products) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO InventoryRecord (inventoryID, warehouseID, productID, quantityOnHand, minStockThreshold, reorderQuantity, lowStockFlag, supplierID, unitCost, isActive) VALUES (?, 1, ?, ?, ?, ?, ?, ?, ?, 1)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int id = 1;
+            for (ProductSeed p : products) {
+                int qty = switch (p.id) {
+                    case 3 -> 2;
+                    case 8 -> 1;
+                    case 12 -> 0;
+                    default -> 35 + (p.id % 9);
+                };
+                int reorder = 5;
+                ps.setInt(1, id++);
+                ps.setInt(2, p.id);
+                ps.setInt(3, qty);
+                ps.setInt(4, reorder);
+                ps.setInt(5, 12);
+                ps.setInt(6, qty <= reorder ? 1 : 0);
+                ps.setInt(7, ((p.id - 1) % 5) + 1);
+                ps.setDouble(8, p.unitCost);
+                ps.executeUpdate();
+            }
         }
-
-        log("Order", 73);
-        System.out.println("[DatabaseInitialiser]   OrderItem rows inserted for all orders.");
+        // Keep Product.stock aligned with inventory.
+        try (PreparedStatement ps = conn.prepareStatement(
+            "UPDATE Product SET stock = (SELECT quantityOnHand FROM InventoryRecord i WHERE i.productID = Product.productID LIMIT 1)"
+        )) {
+            ps.executeUpdate();
+        }
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 8. PAYMENTS
-    // ───────────────────────────────────────────────────────────────────
+    private static List<OrderSeed> seedOrdersAndItems(Connection conn, LocalDate today, List<CustomerSeed> customers, List<ProductSeed> products) throws SQLException {
+        List<OrderSeed> orderSeeds = new ArrayList<>();
+        String orderSql = "INSERT OR REPLACE INTO \"Order\" (orderID, customerID, orderDate, totalAmount, status) VALUES (?, ?, ?, ?, ?)";
+        String itemSql = "INSERT OR REPLACE INTO OrderItem (orderItemID, orderID, productID, quantity, unitPrice) VALUES (?, ?, ?, ?, ?)";
+        Random random = new Random(20260319L);
+        int itemId = 1;
 
-    private static void seedPayments(Connection conn, LocalDate now) throws SQLException {
-        String sql = "INSERT INTO Payment (orderID, amountPaid, paymentMethod, paymentStatus, transactionRef, paymentDate) " +
-                     "VALUES (?, ?, ?, ?, ?, ?)";
-        int payCount = 0;
-        try (PreparedStatement ps = conn.prepareStatement(sql);
-             Statement s = conn.createStatement();
-             ResultSet rs = s.executeQuery("SELECT orderID, totalAmount, status, orderDate FROM \"Order\" ORDER BY orderID")) {
-            while (rs.next()) {
-                int oid = rs.getInt("orderID");
-                double amount = rs.getDouble("totalAmount");
-                String status = rs.getString("status");
-                String orderDate = rs.getString("orderDate");
+        try (PreparedStatement orderPs = conn.prepareStatement(orderSql);
+             PreparedStatement itemPs = conn.prepareStatement(itemSql)) {
+            for (int orderId = 1; orderId <= REQUIRED_ORDER_COUNT; orderId++) {
+                int monthOffset = (orderId - 1) % 12;
+                int day = 1 + ((orderId * 7) % 27);
+                LocalDate orderDate = today.minusMonths(monthOffset).withDayOfMonth(Math.min(day, today.minusMonths(monthOffset).lengthOfMonth()));
+                CustomerSeed customer = customers.get((orderId - 1) % customers.size());
+                String status = statusForOrder(orderId);
+                int itemCount = 1 + random.nextInt(3);
+                double netSubtotal = 0;
 
-                String payStatus;
-                switch (status) {
-                    case "Completed": payStatus = "SUCCESS"; break;
-                    case "Refunded":  payStatus = "SUCCESS"; break;
-                    case "Pending":   payStatus = "PENDING"; break;
-                    default: continue;
+                for (int i = 0; i < itemCount; i++) {
+                    ProductSeed product = products.get((orderId + i + random.nextInt(products.size())) % products.size());
+                    int qty = 1 + random.nextInt(product.categoryId == 3 ? 4 : 2);
+                    itemPs.setInt(1, itemId++);
+                    itemPs.setInt(2, orderId);
+                    itemPs.setInt(3, product.id);
+                    itemPs.setInt(4, qty);
+                    itemPs.setDouble(5, product.netPrice);
+                    itemPs.executeUpdate();
+                    netSubtotal += (product.netPrice * qty);
                 }
 
-                String method = amount > 50000 ? "BANK" : "CARD";
-                ps.setInt(1, oid);
-                ps.setDouble(2, amount);
-                ps.setString(3, method);
-                ps.setString(4, payStatus);
-                ps.setString(5, String.format("TXN-%04d", oid));
-                ps.setString(6, orderDate);
-                ps.executeUpdate();
-                payCount++;
+                double grossTotal = round2(netSubtotal * (1.0 + VAT_RATE));
+                orderPs.setInt(1, orderId);
+                orderPs.setInt(2, customer.id);
+                orderPs.setString(3, orderDate.toString());
+                orderPs.setDouble(4, grossTotal);
+                orderPs.setString(5, status);
+                orderPs.executeUpdate();
+
+                orderSeeds.add(new OrderSeed(orderId, customer.id, status, orderDate.toString(), grossTotal));
             }
         }
-        log("Payment", payCount);
+        return orderSeeds;
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 9. INVOICES (12 invoices)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedInvoices(Connection conn, LocalDate now) throws SQLException {
-        String sql = "INSERT INTO Invoice (invoiceID, orderID, invoiceNumber, status, totalAmount, vatAmount, " +
-                     "currency, issuedAt, dueDate, paidAt, notes) VALUES (?, ?, ?, ?, ?, ?, 'GBP', ?, ?, ?, ?)";
-        double vatRate = 0.20;
-
-        Object[][] invoices = {
-            // {id, orderID, status, total, dueDateOffset(days from now, negative=past), paidOffset, notes}
-            {1,  1,  "PAID",      172000.00, -30,  -32,  "Paid on time"},
-            {2,  24, "PAID",      268000.00, -45,  -42,  "Paid 3 days late"},
-            {3,  18, "PENDING",   344000.00, +15,  null, "Due soon"},
-            {4,  38, "OVERDUE",    61000.00, -10,  null, "Missed payment — follow up"},
-            {5,  48, "OVERDUE",   172000.00, -25,  null, "Long overdue"},
-            {6,  3,  "PAID",        5100.00, -60,  -62,  "Individual — paid promptly"},
-            {7,  5,  "PENDING",     1800.00,  +7,  null, "Individual — services invoice"},
-            {8,  8,  "PAID",         890.00, -90,  -92,  "Small accessories order"},
-            {9,  11, "OVERDUE",   536000.00,  -5,  null, "Large order, payment delayed"},
-            {10, 61, "PENDING",     4200.00, +20,  null, "Drone order"},
-            {11, 12, "PAID",      268000.00,-120, -122,  "Historical — company now inactive"},
-            {12, 49, "CANCELLED",      0.00,   0,  null, "Invoice cancelled before issue"},
-        };
-
+    private static void seedPayments(Connection conn, List<OrderSeed> orders) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO Payment (paymentID, orderID, amountPaid, currency, paymentMethod, paymentStatus, transactionRef, paymentDate) VALUES (?, ?, ?, 'GBP', ?, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (Object[] inv : invoices) {
-                int id = (int) inv[0];
-                int orderId = (int) inv[1];
-                String status = (String) inv[2];
-                double total = (double) inv[3];
-                int dueDaysOffset = (int) inv[4];
-                Integer paidOffset = (Integer) inv[5];
-                String notes = (String) inv[6];
+            int id = 1;
+            for (OrderSeed order : orders) {
+                if ("Cancelled".equals(order.status)) continue;
+                ps.setInt(1, id++);
+                ps.setInt(2, order.id);
+                ps.setDouble(3, order.grossTotal);
+                ps.setString(4, order.grossTotal > 10000 ? "BANK" : "CARD");
+                ps.setString(5, "Pending".equals(order.status) ? "PENDING" : "SUCCESS");
+                ps.setString(6, "TXN-" + String.format("%05d", order.id));
+                ps.setString(7, order.orderDate);
+                ps.executeUpdate();
+            }
+        }
+    }
 
-                double vat = total / (1 + vatRate) * vatRate;
-                String invoiceNum = String.format("INV-2025-%04d", id);
-                String issuedAt = now.minusDays(Math.abs(dueDaysOffset) + 30).format(ISO);
-                String dueDate = now.plusDays(dueDaysOffset).format(ISO);
-                String paidAt = paidOffset != null ? now.plusDays(paidOffset).format(ISO) : null;
+    private static void seedInvoices(Connection conn, LocalDate today, List<OrderSeed> orders) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO Invoice (invoiceID, orderID, customerID, paymentID, invoiceNumber, status, subtotal, vatAmount, totalAmount, currency, issuedAt, dueDate, paidAt, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'GBP', ?, ?, ?, ?)";
+        String[] statuses = {"PAID", "PAID", "PENDING", "OVERDUE", "PAID", "OVERDUE", "PENDING", "PAID", "OVERDUE", "PENDING"};
+        int invoiceCount = 0;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (OrderSeed order : orders) {
+                if ("Cancelled".equals(order.status)) continue;
+                if (invoiceCount >= REQUIRED_INVOICE_COUNT) break;
+                int idx = invoiceCount;
+                LocalDate issued = LocalDate.parse(order.orderDate);
+                LocalDate due = issued.plusDays(30);
+                String status = statuses[idx];
+                String paidAt = "PAID".equals(status) ? issued.plusDays(5).toString() : null;
 
-                ps.setInt(1, id);
+                ps.setInt(1, idx + 1);
+                ps.setInt(2, order.id);
+                ps.setInt(3, order.customerId);
+                ps.setInt(4, idx + 1); // paymentID follows seeded payment order for early rows
+                ps.setString(5, "INV-2026-" + String.format("%04d", idx + 1));
+                ps.setString(6, status);
+                ps.setDouble(7, round2(order.grossTotal / (1 + VAT_RATE)));
+                ps.setDouble(8, round2(order.grossTotal - (order.grossTotal / (1 + VAT_RATE))));
+                ps.setDouble(9, order.grossTotal);
+                ps.setString(10, issued.toString());
+                ps.setString(11, due.toString());
+                if (paidAt == null) ps.setNull(12, Types.VARCHAR); else ps.setString(12, paidAt);
+                ps.setString(13, "Auto-seeded invoice");
+                ps.executeUpdate();
+                invoiceCount++;
+            }
+        }
+    }
+
+    private static void seedRefunds(Connection conn, LocalDate today, List<OrderSeed> orders) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO Refund (refundID, orderID, productID, refundAmount, refundDate, reason, status, processedBy) VALUES (?, ?, ?, ?, ?, ?, 'APPROVED', 1)";
+        int[] refundOrderIds = {10, 24, 37, 55, 88};
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (int i = 0; i < refundOrderIds.length; i++) {
+                int orderId = refundOrderIds[i];
+                OrderSeed seed = orders.stream().filter(o -> o.id == orderId).findFirst().orElse(null);
+                if (seed == null) continue;
+                ps.setInt(1, i + 1);
                 ps.setInt(2, orderId);
-                ps.setString(3, invoiceNum);
-                ps.setString(4, status);
-                ps.setDouble(5, total);
-                ps.setDouble(6, Math.round(vat * 100.0) / 100.0);
-                ps.setString(7, issuedAt);
-                ps.setString(8, dueDate);
-                if (paidAt != null) ps.setString(9, paidAt); else ps.setNull(9, Types.VARCHAR);
-                ps.setString(10, notes);
+                ps.setInt(3, 1 + (i % REQUIRED_PRODUCT_COUNT));
+                ps.setDouble(4, round2(seed.grossTotal * 0.18));
+                ps.setString(5, today.minusDays(5L * (i + 1)).toString());
+                ps.setString(6, "Seeded refund case " + (i + 1));
                 ps.executeUpdate();
             }
         }
-        log("Invoice", 12);
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 10. REFUNDS (8 refunds, 3 for InnovateCo to trigger alerts)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedRefunds(Connection conn, LocalDate now) throws SQLException {
-        String sql = "INSERT INTO Refund (orderID, productID, refundAmount, reason, status, refundDate, processedBy) " +
-                     "VALUES (?, ?, ?, ?, 'APPROVED', ?, 1)";
-        Object[][] refunds = {
-            // {orderID, productID, amount, reason, daysAgo}
-            {26, 5,  172000.00, "Product fault reported by AutoMate Systems",      240},
-            {52, 8,   61000.00, "Delivered damaged — InnovateCo",                   90},
-            {58, 11,   1800.00, "Service not delivered — InnovateCo",                60},
-            {64, 12,    950.00, "Duplicate order — InnovateCo",                      30},
-            {46, 1,    4200.00, "Changed mind — TechCorp Industries",                21},
-            {71, 2,    5100.00, "Product fault — John Smith",                        14},
-            {72, 9,     890.00, "Wrong item delivered — Emily Rodriguez",              7},
-            {70, 6,  268000.00, "Contract cancelled — GlobalTech Solutions",           4},
+    private static void seedReviews(Connection conn, LocalDate today, List<CustomerSeed> customers, List<ProductSeed> products) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO Review (reviewID, rating, reviewText, reviewDate, isReported, customerID, productID) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        int[][] reviewPairs = {
+            {9, 3, 1}, {10, 8, 2}, {11, 6, 1}, {12, 7, 2},
+            {13, 5, 5}, {14, 2, 4}, {15, 10, 4}, {16, 12, 5}
         };
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (Object[] r : refunds) {
-                ps.setInt(1, (int) r[0]);
-                ps.setInt(2, (int) r[1]);
-                ps.setDouble(3, (double) r[2]);
-                ps.setString(4, (String) r[3]);
-                ps.setString(5, now.minusDays((int) r[4]).format(ISO));
+            for (int i = 0; i < reviewPairs.length; i++) {
+                int rating = reviewPairs[i][2];
+                ps.setInt(1, i + 1);
+                ps.setInt(2, rating);
+                ps.setString(3, rating <= 2 ? "Negative seeded review " + (i + 1) : "Positive seeded review " + (i + 1));
+                ps.setString(4, today.minusDays(2L + i).toString());
+                ps.setInt(5, rating <= 2 ? 1 : 0);
+                ps.setInt(6, reviewPairs[i][0]);
+                ps.setInt(7, reviewPairs[i][1]);
                 ps.executeUpdate();
             }
         }
-        log("Refund", 8);
     }
 
-    // ───────────────────────────────────────────────────────────────────
-    // 11. REVIEWS (10 reviews, 4 with rating ≤ 2)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedReviews(Connection conn, LocalDate now) throws SQLException {
-        String sql = "INSERT INTO Review (productID, customerID, rating, reviewText, reviewDate) VALUES (?, ?, ?, ?, ?)";
-        Object[][] reviews = {
-            {3,  2,  1, "Drone overheats after 10 minutes of flight, completely unusable for inspections",         60},
-            {3,  7,  2, "Poor thermal accuracy, not worth the premium price point compared to competitors",        42},
-            {7,  4,  1, "Delivery robot broke down within the first week of deployment in our warehouse",          90},
-            {10, 5,  2, "Arms extension kit does not fit the AR7 model as advertised — poor quality control",      30},
-            {1,  11, 5, "Excellent scout drone, very reliable in all weather conditions — highly recommended",      35},
-            {5,  1,  5, "AR7 exceeded all expectations, fantastic ROI within the first quarter of operation",       21},
-            {6,  2,  4, "M4 manufacturing robot performing well after 3 months of continuous operation",            14},
-            {11, 8,  5, "Installation team was extremely professional, completed ahead of schedule",                 7},
-            {9,  13, 4, "Sensor upgrade kit works great with our XV2 fleet, easy to install and calibrate",          4},
-            {12, 7,  3, "Maintenance plan is acceptable but response time for urgent issues could be faster",        2},
-        };
+    private static void seedAnomalies(Connection conn, LocalDate today) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO FinancialAnomalies (anomalyID, anomalyType, description, severity, detectionRule, alertDate, isResolved, affectedCustomerFK, affectedOrderFK, affectedProductFK) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (Object[] r : reviews) {
-                ps.setInt(1, (int) r[0]);
-                ps.setInt(2, (int) r[1]);
-                ps.setInt(3, (int) r[2]);
-                ps.setString(4, (String) r[3]);
-                ps.setString(5, now.minusDays((int) r[4]).format(ISO));
-                ps.executeUpdate();
-            }
-        }
-        log("Review", 10);
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 12. ALERTS (6 alerts)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedAlerts(Connection conn) throws SQLException {
-        String sql = "INSERT INTO Alert (alertType, severity, message, entityType, entityID, isResolved, createdAt) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))";
-        Object[][] alerts = {
-            {"High Refund Rate",  "CRITICAL", "InnovateCo has triggered 3 refunds in 30 days — immediate review needed",  "CUSTOMER", 5, 0, "-2 days"},
-            {"Low Profit Margin", "HIGH",     "T7 Thermal Imaging Drone margin is 11.6% — below 15% threshold",          "PRODUCT",  3, 0, "-3 days"},
-            {"Low Profit Margin", "HIGH",     "P3 Delivery Robot margin is 8.8% — below 15% threshold",                  "PRODUCT",  7, 0, "-3 days"},
-            {"Overdue Payment",   "WARNING",  "AutoMate Systems invoice INV-2025-0004 overdue by 10 days",                "INVOICE",  4, 0, "-1 day"},
-            {"Low Stock",         "WARNING",  "P3 Delivery Robot stock at 1 unit — reorder level is 5",                   "PRODUCT",  7, 0, "-4 days"},
-            {"System Backup",     "INFO",     "Scheduled database backup completed successfully",                         "SYSTEM",   0, 1, "-7 days"},
-        };
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (Object[] a : alerts) {
-                ps.setString(1, (String) a[0]);
-                ps.setString(2, (String) a[1]);
-                ps.setString(3, (String) a[2]);
-                ps.setString(4, (String) a[3]);
-                ps.setInt(5, (int) a[4]);
-                ps.setInt(6, (int) a[5]);
-                ps.setString(7, (String) a[6]);
-                ps.executeUpdate();
-            }
-        }
-        log("Alert", 6);
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 13. FINANCIAL ANOMALIES (4 anomalies)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedAnomalies(Connection conn) throws SQLException {
-        String sql = "INSERT INTO FinancialAnomalies (anomalyType, description, severity, detectionRule, " +
-                     "alertDate, isResolved, affectedCustomerFK, affectedProductFK) " +
-                     "VALUES (?, ?, ?, ?, datetime('now', ?), ?, ?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            anomaly(ps, "Unusual Refund Pattern", "Customer InnovateCo — 3 refunds totalling £63,750 in last 30 days",
-                    "CRITICAL", "REFUND_COUNT_GT_2", "-1 day", 0, 5, null);
-            anomaly(ps, "Revenue Drop", "Drones category revenue down 23% vs previous 30-day period",
-                    "HIGH", "CATEGORY_REVENUE_DROP", "-2 days", 0, null, null);
-            anomaly(ps, "Margin Compression", "Average margin across Robots category fell from 41% to 37% this quarter",
-                    "WARNING", "MARGIN_BELOW_THRESHOLD", "-5 days", 0, null, null);
-            anomaly(ps, "Inactive Customer Spend", "SmartFactory Inc (inactive) still has 1 unpaid invoice outstanding",
-                    "INFO", "INACTIVE_CUSTOMER_OUTSTANDING", "-10 days", 1, 6, null);
-        }
-        log("FinancialAnomalies", 4);
-    }
-
-    private static void anomaly(PreparedStatement ps, String type, String desc, String severity,
-                                String rule, String dateOffset, int resolved,
-                                Integer custFK, Integer prodFK) throws SQLException {
-        ps.setString(1, type);
-        ps.setString(2, desc);
-        ps.setString(3, severity);
-        ps.setString(4, rule);
-        ps.setString(5, dateOffset);
-        ps.setInt(6, resolved);
-        if (custFK != null) ps.setInt(7, custFK); else ps.setNull(7, Types.INTEGER);
-        if (prodFK != null) ps.setInt(8, prodFK); else ps.setNull(8, Types.INTEGER);
-        ps.executeUpdate();
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 14. INVENTORY (InventoryRecord — one per product)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedInventory(Connection conn) throws SQLException {
-        String sql = "INSERT INTO InventoryRecord (warehouseID, productID, quantityOnHand, minStockThreshold, reorderQuantity) " +
-                     "VALUES (1, ?, ?, ?, ?)";
-        int[][] inv = {
-            // {productID, currentStock, reorderLevel, reorderQty}
-            {1,  24, 10, 20},
-            {2,  18, 10, 15},
-            {3,   2, 10, 15},    // LOW — triggers alert
-            {4,  15, 10, 12},
-            {5,   7,  5,  3},
-            {6,   9,  5,  3},
-            {7,   1,  5,  5},    // CRITICAL — triggers alert
-            {8,  12,  8,  5},
-            {9,  45, 20, 30},
-            {10,  0,  3,  5},    // OUT OF STOCK — triggers alert
-            {11,100, 10, 20},
-            {12, 88, 10, 20},
-        };
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (int[] row : inv) {
-                ps.setInt(1, row[0]);
-                ps.setInt(2, row[1]);
-                ps.setInt(3, row[2]);
-                ps.setInt(4, row[3]);
-                ps.executeUpdate();
-            }
-        }
-        log("InventoryRecord", 12);
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 15. GLOBAL SETTINGS
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedSettings(Connection conn) throws SQLException {
-        String sql = "INSERT OR REPLACE INTO GlobalSettings (key, value) VALUES (?, ?)";
-        String[][] settings = {
-            {"vat_rate",                "20.0"},
-            {"company_name",            "Raez Finance & Reporting Ltd"},
-            {"company_address_line1",   "100 Canary Wharf"},
-            {"company_address_line2",   "London"},
-            {"company_address_line3",   "E14 5AB"},
-            {"company_email",           "finance@raez.org.uk"},
-            {"company_phone",           "+44 20 7946 0000"},
-            {"currency_symbol",         "\u00A3"},
-            {"date_format",             "dd/MM/yyyy"},
-            {"session_timeout_minutes", "2"},
-            {"low_margin_threshold",    "15.0"},
-            {"high_refund_threshold",   "10.0"},
-            {"app_version",             "1.0.0"},
-        };
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (String[] kv : settings) {
-                ps.setString(1, kv[0]);
-                ps.setString(2, kv[1]);
-                ps.executeUpdate();
-            }
-        }
-        log("GlobalSettings", settings.length);
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 16. ROLE PERMISSIONS
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedRolePermissions(Connection conn) throws SQLException {
-        String sql = "INSERT OR IGNORE INTO role_permissions (role, action) VALUES (?, ?)";
-        String[][] perms = {
-            {"ADMIN", "VIEW_DASHBOARD"},
-            {"ADMIN", "MANAGE_FINANCE_DATA"},
-            {"ADMIN", "EXPORT_REPORTS"},
-            {"ADMIN", "MANAGE_USERS"},
-            {"ADMIN", "VIEW_COMPANY_FINANCIALS"},
-            {"ADMIN", "VIEW_USER_MANAGEMENT"},
-            {"ADMIN", "CREATE_ALERTS"},
-            {"ADMIN", "MANAGE_INVOICES"},
-            {"FINANCE_USER", "VIEW_DASHBOARD"},
-            {"FINANCE_USER", "MANAGE_FINANCE_DATA"},
-            {"FINANCE_USER", "VIEW_REPORTS"},
-        };
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (String[] p : perms) {
-                ps.setString(1, p[0]);
-                ps.setString(2, p[1]);
-                ps.executeUpdate();
-            }
-        }
-        log("role_permissions", perms.length);
-    }
-
-    // ───────────────────────────────────────────────────────────────────
-    // 17. MISC (LoginCredentials, AdminUser, Drivers for existing FKs)
-    // ───────────────────────────────────────────────────────────────────
-
-    private static void seedMiscData(Connection conn) throws SQLException {
-        // LoginCredentials for each customer
-        String credSql = "INSERT INTO LoginCredentials (customerID, passwordHash) VALUES (?, ?)";
-        try (PreparedStatement ps = conn.prepareStatement(credSql)) {
-            for (int i = 1; i <= 14; i++) {
+            for (int i = 1; i <= 3; i++) {
                 ps.setInt(1, i);
-                ps.setString(2, hash("Customer" + i + "!"));
+                ps.setString(2, "ANOMALY_" + i);
+                ps.setString(3, "Seeded financial anomaly " + i);
+                ps.setString(4, i == 1 ? "CRITICAL" : "HIGH");
+                ps.setString(5, "RULE_" + i);
+                ps.setString(6, today.minusDays(i).toString());
+                ps.setInt(7, i);
+                ps.setInt(8, i * 8);
+                ps.setInt(9, i * 3);
                 ps.executeUpdate();
             }
         }
-
-        // AdminUser row (needed by CustomerUpdate FK)
-        exec(conn, "INSERT INTO AdminUser (adminID, name, email) VALUES (1, 'System Admin', 'admin@raez.org.uk')");
-
-        // Drivers (for Delivery FK)
-        exec(conn, "INSERT INTO Driver (driverID, driverName, phoneNum, email) VALUES (1, 'Ali Khan', '+44 7700 800001', 'a.khan@raez.org.uk')");
-        exec(conn, "INSERT INTO Driver (driverID, driverName, phoneNum, email) VALUES (2, 'Emma Taylor', '+44 7700 800002', 'e.taylor@raez.org.uk')");
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // VERIFICATION
-    // ═══════════════════════════════════════════════════════════════════
+    private static void seedAlerts(Connection conn, LocalDate today) throws SQLException {
+        String sql = "INSERT OR REPLACE INTO Alert (alertID, alertType, severity, message, createdAt, entityType, entityID, isResolved, sourceAnomalyID) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)";
+        String[][] rows = {
+            {"1", "Low Stock", "WARNING", "Three inventory items are at or below reorder threshold", "PRODUCT", "3", "1"},
+            {"2", "Refund Spike", "HIGH", "Refund ratio exceeded threshold for customer segment", "CUSTOMER", "5", "2"},
+            {"3", "Invoice Overdue", "CRITICAL", "Multiple invoices are overdue beyond due date", "INVOICE", "4", "3"}
+        };
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (String[] row : rows) {
+                ps.setInt(1, Integer.parseInt(row[0]));
+                ps.setString(2, row[1]);
+                ps.setString(3, row[2]);
+                ps.setString(4, row[3]);
+                ps.setString(5, today.minusDays(1).toString());
+                ps.setString(6, row[4]);
+                ps.setInt(7, Integer.parseInt(row[5]));
+                ps.setInt(8, Integer.parseInt(row[6]));
+                ps.executeUpdate();
+            }
+        }
+    }
+
+    private static void seedAuxiliaryRows(Connection conn, List<CustomerSeed> customers) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("INSERT OR REPLACE INTO LoginCredentials (customerID, passwordHash) VALUES (?, ?)")) {
+            for (CustomerSeed c : customers) {
+                ps.setInt(1, c.id);
+                ps.setString(2, hash("Customer@" + c.id));
+                ps.executeUpdate();
+            }
+        }
+        exec(conn, "INSERT INTO AdminUser (adminID, name, email) VALUES (1, 'System Admin', 'admin@raez.org.uk')");
+        exec(conn, "INSERT INTO CustomerPreferences (preferenceID, customerID, preferredCategories, notificationSettings, deliveryInstructions) VALUES (1, 1, 'Drones', 'EMAIL', 'Leave at reception')");
+    }
 
     private static void verifyData(Connection conn) throws SQLException {
-        System.out.println("\n[DatabaseInitialiser] ═══ DATA VERIFICATION ═══");
+        assertAtLeast(conn, "Product", REQUIRED_PRODUCT_COUNT);
+        assertAtLeast(conn, "CustomerRegistration", REQUIRED_CUSTOMER_COUNT);
+        assertAtLeast(conn, "Supplier", REQUIRED_SUPPLIER_COUNT);
+        assertAtLeast(conn, "\"Order\"", REQUIRED_ORDER_COUNT);
+        assertAtLeast(conn, "Invoice", REQUIRED_INVOICE_COUNT);
+        assertAtLeast(conn, "Refund", REQUIRED_REFUND_COUNT);
+        assertAtLeast(conn, "Alert", REQUIRED_ACTIVE_ALERT_COUNT);
 
-        // Table row counts
-        String[] tables = {"Category", "Product", "CustomerRegistration", "FUser", "\"Order\"",
-                           "OrderItem", "Payment", "Invoice", "Refund", "Review",
-                           "Alert", "FinancialAnomalies", "Supplier", "InventoryRecord", "GlobalSettings"};
-        for (String t : tables) {
-            int count = queryInt(conn, "SELECT COUNT(*) FROM " + t);
-            String name = t.replace("\"", "");
-            if (count == 0) {
-                System.err.println("  [FAIL] " + name + ": 0 rows!");
-            } else {
-                System.out.println("  [OK]   " + name + ": " + count + " rows");
-            }
+        int lowStock = queryInt(conn, "SELECT COUNT(*) FROM InventoryRecord WHERE quantityOnHand <= minStockThreshold");
+        if (lowStock < REQUIRED_LOW_STOCK_COUNT) {
+            throw new SQLException("Seed validation failed: low stock count < " + REQUIRED_LOW_STOCK_COUNT);
         }
-
-        // Revenue in all 4 categories
-        int catRevCount = queryInt(conn,
-            "SELECT COUNT(DISTINCT c.categoryName) FROM OrderItem oi " +
-            "JOIN Product p ON oi.productID = p.productID " +
-            "JOIN Category c ON p.categoryID = c.categoryID");
-        System.out.println("  [" + (catRevCount >= 4 ? "OK" : "FAIL") + "]   Revenue categories: " + catRevCount);
-
-        // Order status mix
-        int statusCount = queryInt(conn, "SELECT COUNT(DISTINCT status) FROM \"Order\"");
-        System.out.println("  [" + (statusCount >= 4 ? "OK" : "FAIL") + "]   Distinct order statuses: " + statusCount);
-
-        // Low stock items
-        int lowStock = queryInt(conn, "SELECT COUNT(*) FROM Product WHERE stock <= 3");
-        System.out.println("  [" + (lowStock >= 3 ? "OK" : "FAIL") + "]   Low stock products: " + lowStock);
-
-        // Low-rated reviews
         int lowRated = queryInt(conn, "SELECT COUNT(*) FROM Review WHERE rating <= 2");
-        System.out.println("  [" + (lowRated >= 4 ? "OK" : "FAIL") + "]   Low-rated reviews: " + lowRated);
+        if (lowRated < REQUIRED_NEGATIVE_REVIEW_COUNT) {
+            throw new SQLException("Seed validation failed: negative review count < " + REQUIRED_NEGATIVE_REVIEW_COUNT);
+        }
+        int activeAlerts = queryInt(conn, "SELECT COUNT(*) FROM Alert WHERE isResolved = 0");
+        if (activeAlerts < REQUIRED_ACTIVE_ALERT_COUNT) {
+            throw new SQLException("Seed validation failed: active alert count < " + REQUIRED_ACTIVE_ALERT_COUNT);
+        }
+        validateOrderTotals(conn);
+    }
 
-        // Refunds triggering alert (customer with ≥3 refunds)
-        int refundAlert = queryInt(conn,
-            "SELECT COUNT(*) FROM (SELECT o.customerID, COUNT(*) AS cnt FROM Refund r " +
-            "JOIN \"Order\" o ON r.orderID = o.orderID GROUP BY o.customerID HAVING cnt >= 3)");
-        System.out.println("  [" + (refundAlert >= 1 ? "OK" : "FAIL") + "]   Customers with 3+ refunds: " + refundAlert);
-
-        // Invoice status mix
-        int invStatuses = queryInt(conn, "SELECT COUNT(DISTINCT status) FROM Invoice WHERE status != 'CANCELLED'");
-        System.out.println("  [" + (invStatuses >= 3 ? "OK" : "FAIL") + "]   Invoice statuses (excl cancelled): " + invStatuses);
-
-        // Monthly order distribution
-        try (Statement s = conn.createStatement();
-             ResultSet rs = s.executeQuery(
-                "SELECT strftime('%Y-%m', orderDate) AS month, COUNT(*) AS cnt " +
-                "FROM \"Order\" GROUP BY month ORDER BY month")) {
-            boolean allGood = true;
+    private static void validateOrderTotals(Connection conn) throws SQLException {
+        String sql =
+            "SELECT o.orderID, o.totalAmount, COALESCE(SUM(oi.quantity * oi.unitPrice),0) AS netSubtotal " +
+            "FROM \"Order\" o LEFT JOIN OrderItem oi ON oi.orderID = o.orderID " +
+            "GROUP BY o.orderID, o.totalAmount";
+        try (PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                if (rs.getInt("cnt") < 4) {
-                    System.err.println("  [WARN] Month " + rs.getString("month") + " has only " + rs.getInt("cnt") + " orders");
-                    allGood = false;
+                double expectedGross = round2(rs.getDouble("netSubtotal") * (1.0 + VAT_RATE));
+                double actual = rs.getDouble("totalAmount");
+                if (Math.abs(expectedGross - actual) > 0.01) {
+                    throw new SQLException("Order total mismatch for order " + rs.getInt("orderID")
+                        + ": expected " + expectedGross + ", found " + actual);
                 }
             }
-            if (allGood) System.out.println("  [OK]   All months have >= 4 orders");
-        }
-
-        // User email validation
-        int badEmails = queryInt(conn, "SELECT COUNT(*) FROM FUser WHERE email NOT LIKE '%@raez.org.uk'");
-        System.out.println("  [" + (badEmails == 0 ? "OK" : "FAIL") + "]   Users with non-@raez.org.uk emails: " + badEmails);
-
-        System.out.println("[DatabaseInitialiser] ═══ VERIFICATION COMPLETE ═══\n");
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // HELPERS
-    // ═══════════════════════════════════════════════════════════════════
-
-    private static void order(PreparedStatement psO, PreparedStatement psI,
-                              int orderId, int custId, String date, String status, int[][] items) throws SQLException {
-        double total = 0;
-        for (int[] it : items) {
-            total += PRODUCT_PRICES[it[0] - 1] * it[1];
-        }
-        psO.setInt(1, orderId);
-        psO.setInt(2, custId);
-        psO.setDouble(3, total);
-        psO.setString(4, status);
-        psO.setString(5, date);
-        psO.executeUpdate();
-
-        for (int[] it : items) {
-            psI.setInt(1, orderId);
-            psI.setInt(2, it[0]);
-            psI.setInt(3, it[1]);
-            psI.setDouble(4, PRODUCT_PRICES[it[0] - 1]);
-            psI.executeUpdate();
         }
     }
 
-    private static int[][] items(int... args) {
-        int[][] result = new int[args.length / 2][2];
-        for (int i = 0; i < args.length; i += 2) {
-            result[i / 2] = new int[]{args[i], args[i + 1]};
-        }
-        return result;
+    private static String statusForOrder(int orderId) {
+        if (orderId % 17 == 0) return "Cancelled";
+        if (orderId % 11 == 0) return "Pending";
+        if (orderId % 23 == 0) return "Refunded";
+        return "Completed";
     }
 
-    private static String d(LocalDate now, int monthsAgo, int day) {
-        LocalDate month = now.minusMonths(monthsAgo);
-        int safeDay = Math.min(day, month.lengthOfMonth());
-        return month.withDayOfMonth(safeDay).format(ISO);
+    private static boolean tableExists(Connection conn, String tableName) throws SQLException {
+        String normalized = tableName.replace("\"", "");
+        try (PreparedStatement ps = conn.prepareStatement(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1"
+        )) {
+            ps.setString(1, normalized);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private static boolean columnExists(Connection conn, String table, String column) throws SQLException {
+        try (ResultSet rs = conn.getMetaData().getColumns(null, null, table, column)) {
+            return rs.next();
+        }
+    }
+
+    private static boolean isBelowThreshold(Connection conn, String table, int threshold) throws SQLException {
+        return queryInt(conn, "SELECT COUNT(*) FROM " + table) < threshold;
+    }
+
+    private static void assertAtLeast(Connection conn, String table, int minCount) throws SQLException {
+        int count = queryInt(conn, "SELECT COUNT(*) FROM " + table);
+        if (count < minCount) {
+            throw new SQLException("Seed validation failed: " + table + " has " + count + ", expected at least " + minCount);
+        }
+    }
+
+    private static double round2(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private static String hash(String password) {
@@ -967,10 +703,6 @@ public class DatabaseInitialiser {
         try (Statement s = conn.createStatement(); ResultSet rs = s.executeQuery(sql)) {
             return rs.next() ? rs.getInt(1) : 0;
         }
-    }
-
-    private static void log(String table, int count) {
-        System.out.println("[DatabaseInitialiser]   " + table + ": " + count + " rows seeded");
     }
 
     private static String stripComments(String block) {
