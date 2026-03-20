@@ -6,183 +6,311 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.effect.DropShadow?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.paint.Color?>
 <?import javafx.scene.shape.SVGPath?>
-<?import javafx.scene.text.Font?>
 
-<StackPane style="-fx-background-color: #F9FAFB;" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.FinanceUserLoginController">
-   <padding>
-      <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
-   </padding>
-   <children>
-      
-      <VBox fx:id="loginView" alignment="CENTER_LEFT" maxWidth="450.0" spacing="24.0">
-         <children>
-            <Button fx:id="btnBackToRole" mnemonicParsing="false" onAction="#handleBack" style="-fx-background-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="← Back to Role Selection">
-               <font><Font size="14.0" /></font>
-            </Button>
+<StackPane
+    style="-fx-background-color: #F9FAFB;"
+    xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="com.raez.finance.controller.FinanceUserLoginController">
 
-            <VBox spacing="24.0" style="-fx-background-color: white; -fx-background-radius: 8;">
-               <padding><Insets bottom="32.0" left="32.0" right="32.0" top="32.0" /></padding>
-               <effect>
-                  <DropShadow blurType="GAUSSIAN" height="20.0" radius="9.5" width="20.0">
-                     <color><Color opacity="0.1" /></color>
-                  </DropShadow>
-               </effect>
-               <children>
-                  
-                  <VBox alignment="CENTER" spacing="8.0">
-                     <children>
-                        <StackPane maxHeight="80.0" maxWidth="80.0" prefHeight="80.0" prefWidth="80.0" style="-fx-background-color: #1E2939; -fx-background-radius: 8;">
-                           <children>
-                              <SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" scaleX="1.5" scaleY="1.5" stroke="WHITE" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2" />
-                           </children>
-                           <VBox.margin><Insets bottom="16.0" /></VBox.margin>
-                        </StackPane>
-                        <Label text="Finance User Login" textFill="#111827">
-                           <font><Font name="System Bold" size="24.0" /></font>
-                        </Label>
-                        <Label text="Finance &amp; Reporting Access" textFill="#4B5563">
-                           <font><Font size="14.0" /></font>
-                        </Label>
-                     </children>
-                  </VBox>
+    <!-- Animated background -->
+    <Pane fx:id="animatedBg" style="-fx-background-color: transparent;" />
 
-                  <VBox spacing="16.0">
-                     <children>
-                        <VBox spacing="8.0">
-                           <children>
-                              <Label text="Username / Email" textFill="#374151" />
-                              <TextField fx:id="txtEmail" prefHeight="45.0" promptText="Enter your email" style="-fx-background-radius: 8; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-color: white;" />
-                           </children>
-                        </VBox>
+    <VBox alignment="CENTER">
 
-                        <VBox spacing="8.0">
-                           <children>
-                              <Label text="Password" textFill="#374151" />
-                              <PasswordField fx:id="txtPassword" prefHeight="45.0" promptText="Enter your password" style="-fx-background-radius: 8; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-color: white;" />
-                           </children>
-                        </VBox>
+        <!-- ══════════════════════
+             LOGIN VIEW
+        ══════════════════════ -->
+        <VBox fx:id="loginCard"
+              alignment="CENTER_LEFT"
+              maxWidth="460"
+              opacity="0">
+            <padding><Insets top="24" right="0" bottom="24" left="0" /></padding>
 
-                        <VBox fx:id="loginErrorBox" managed="false" style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8;" visible="false">
-                           <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
-                           <children>
-                              <Label fx:id="lblLoginError" text="Invalid credentials" textFill="#B91C1C" wrapText="true" />
-                           </children>
-                        </VBox>
+            <!-- Back link -->
+            <HBox alignment="CENTER_LEFT">
+                <VBox.margin><Insets bottom="16" /></VBox.margin>
+                <Button fx:id="btnBackToRole"
+                        text="← Back to Role Selection"
+                        onAction="#handleBack"
+                        style="-fx-background-color: transparent;
+                               -fx-text-fill: #4B5563;
+                               -fx-cursor: hand;
+                               -fx-font-size: 13px;
+                               -fx-border-color: transparent;" />
+            </HBox>
 
-                        <Button fx:id="btnLogin" maxWidth="Infinity" mnemonicParsing="false" onAction="#handleLogin" prefHeight="48.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-weight: bold; -fx-cursor: hand;" text="Login as Finance User">
-                           <font><Font size="14.0" /></font>
-                           <VBox.margin><Insets top="8.0" /></VBox.margin>
-                        </Button>
+            <VBox fx:id="loginView" spacing="24"
+                  style="-fx-background-color: white;
+                         -fx-background-radius: 16;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.09), 20, 0, 0, 4);">
+                <padding><Insets top="36" right="36" bottom="36" left="36" /></padding>
 
-                        <HBox alignment="CENTER">
-                           <children>
-                              <Button fx:id="btnDemoCredentials" mnemonicParsing="false" onAction="#handleAddDemoCredentials" prefHeight="39.0" prefWidth="175.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-border-radius: 8; -fx-background-radius: 8; -fx-cursor: hand; -fx-padding: 10 20;" text="Add demo credentials">
-                                 <font>
-                                    <Font size="13.0" />
-                                 </font>
-                              </Button>
-                           </children>
-                           <VBox.margin><Insets top="4.0" /></VBox.margin>
+                <!-- Icon + title -->
+                <VBox alignment="CENTER" spacing="8">
+                    <StackPane
+                        prefWidth="60" prefHeight="60" maxWidth="60"
+                        style="-fx-background-color: #1E2939; -fx-background-radius: 12;">
+                        <VBox.margin><Insets bottom="8" /></VBox.margin>
+                        <SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+                                 fill="TRANSPARENT" stroke="WHITE"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                                 strokeWidth="2" scaleX="1.1" scaleY="1.1" />
+                    </StackPane>
+                    <Label text="Finance User Login"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Reports &amp; analytics access"
+                           style="-fx-font-size: 13px; -fx-text-fill: #6B7280;" />
+                </VBox>
+
+                <!-- Form -->
+                <VBox spacing="16">
+
+                    <VBox spacing="6">
+                        <Label text="Email / Username"
+                               style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <HBox alignment="CENTER_LEFT"
+                              style="-fx-border-color: #D1D5DB; -fx-border-radius: 8;
+                                     -fx-background-color: #FAFAFA; -fx-background-radius: 8;
+                                     -fx-padding: 0 12 0 12;">
+                            <SVGPath content="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6"
+                                     fill="TRANSPARENT" stroke="#9CA3AF"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                            <TextField fx:id="txtEmail"
+                                       promptText="d.hughes@raez.org.uk"
+                                       prefHeight="38"
+                                       style="-fx-background-color: transparent;
+                                              -fx-border-color: transparent;
+                                              -fx-font-size: 13px;
+                                              -fx-padding: 0 0 0 8;"
+                                       HBox.hgrow="ALWAYS" />
                         </HBox>
+                    </VBox>
 
-                        <HBox alignment="CENTER">
-                           <children>
-                              <Hyperlink fx:id="linkForgotPassword" onAction="#handleForgotPassword" style="-fx-text-fill: #1E2939; -fx-border-color: transparent;" text="Forgot Password?" />
-                           </children>
+                    <VBox spacing="6">
+                        <Label text="Password"
+                               style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <HBox alignment="CENTER_LEFT"
+                              style="-fx-border-color: #D1D5DB; -fx-border-radius: 8;
+                                     -fx-background-color: #FAFAFA; -fx-background-radius: 8;
+                                     -fx-padding: 0 12 0 12;">
+                            <SVGPath content="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M7 11V7a5 5 0 0 1 10 0v4"
+                                     fill="TRANSPARENT" stroke="#9CA3AF"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                            <PasswordField fx:id="txtPassword"
+                                           promptText="Enter your password"
+                                           prefHeight="38"
+                                           style="-fx-background-color: transparent;
+                                                  -fx-border-color: transparent;
+                                                  -fx-font-size: 13px;
+                                                  -fx-padding: 0 0 0 8;"
+                                           HBox.hgrow="ALWAYS" />
                         </HBox>
-                     </children>
-                  </VBox>
+                    </VBox>
 
-                  <VBox style="-fx-background-color: #EFF6FF; -fx-border-color: #BFDBFE; -fx-border-radius: 8; -fx-background-radius: 8;">
-                     <padding><Insets bottom="16.0" left="16.0" right="16.0" top="16.0" /></padding>
-                     <children>
-                        <Label text="First-time users: You will be required to change your temporary password immediately after login." textFill="#1E40AF" wrapText="true">
-                           <font><Font name="System Bold" size="12.0" /></font>
-                        </Label>
-                     </children>
-                  </VBox>
+                    <!-- Forgot password -->
+                    <HBox alignment="CENTER_RIGHT">
+                        <Hyperlink fx:id="linkForgotPassword"
+                                   text="Forgot password?"
+                                   onAction="#handleForgotPassword"
+                                   style="-fx-text-fill: #1E2939;
+                                          -fx-border-color: transparent;
+                                          -fx-font-size: 12px;" />
+                    </HBox>
 
-                  <HBox alignment="CENTER">
-                     <children>
-                        <Hyperlink onAction="#handleReportIssue" style="-fx-text-fill: #1E2939; -fx-border-color: transparent;" text="Report Technical Issues" />
-                     </children>
-                     <VBox.margin><Insets top="-8.0" /></VBox.margin>
-                  </HBox>
-               </children>
+                    <!-- Error box — wrapText so text is never cut off -->
+                    <VBox fx:id="loginErrorBox"
+                          managed="false" visible="false"
+                          style="-fx-background-color: #FEF2F2;
+                                 -fx-border-color: #FECACA;
+                                 -fx-border-radius: 8;
+                                 -fx-background-radius: 8;">
+                        <padding><Insets top="12" right="16" bottom="12" left="16" /></padding>
+                        <HBox spacing="8" alignment="TOP_LEFT">
+                            <SVGPath content="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01"
+                                     fill="TRANSPARENT" stroke="#DC2626"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                            <Label fx:id="lblLoginError"
+                                   text="Invalid credentials"
+                                   textFill="#B91C1C"
+                                   wrapText="true"
+                                   maxWidth="340"
+                                   style="-fx-font-size: 13px;"
+                                   HBox.hgrow="ALWAYS" />
+                        </HBox>
+                    </VBox>
+
+                    <!-- Login button -->
+                    <Button fx:id="btnLogin"
+                            text="Login as Finance User"
+                            maxWidth="Infinity"
+                            prefHeight="44"
+                            onAction="#handleLogin"
+                            style="-fx-background-color: #1E2939;
+                                   -fx-text-fill: white;
+                                   -fx-background-radius: 8;
+                                   -fx-font-size: 13px;
+                                   -fx-font-weight: 700;
+                                   -fx-cursor: hand;">
+                        <VBox.margin><Insets top="4" /></VBox.margin>
+                    </Button>
+
+                    <!-- Demo credentials -->
+                    <HBox alignment="CENTER">
+                        <Button fx:id="btnDemoCredentials"
+                                text="Fill demo credentials"
+                                onAction="#handleAddDemoCredentials"
+                                style="-fx-background-color: transparent;
+                                       -fx-text-fill: #6B7280;
+                                       -fx-border-color: #E5E7EB;
+                                       -fx-border-radius: 8;
+                                       -fx-background-radius: 8;
+                                       -fx-font-size: 12px;
+                                       -fx-cursor: hand;
+                                       -fx-padding: 6 16 6 16;" />
+                    </HBox>
+
+                </VBox>
+
+                <!-- Info notice -->
+                <VBox style="-fx-background-color: #EFF6FF;
+                             -fx-border-color: #BFDBFE;
+                             -fx-border-radius: 8;
+                             -fx-background-radius: 8;">
+                    <padding><Insets top="12" right="14" bottom="12" left="14" /></padding>
+                    <Label text="ℹ  First-time users will be prompted to set a new password immediately after login."
+                           textFill="#1E40AF"
+                           wrapText="true"
+                           style="-fx-font-size: 12px;" />
+                </VBox>
+
             </VBox>
-         </children>
-      </VBox>
+        </VBox>
 
-      <VBox fx:id="passwordChangeView" alignment="CENTER_LEFT" managed="false" maxWidth="450.0" spacing="24.0" visible="false">
-         <children>
-            <Button mnemonicParsing="false" onAction="#handleBackToLogin" style="-fx-background-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;" text="← Back to Login">
-               <font><Font size="14.0" /></font>
-            </Button>
+        <!-- ══════════════════════
+             SET PASSWORD VIEW
+             (visible on first login — back button disabled)
+        ══════════════════════ -->
+        <VBox fx:id="passwordChangeCard"
+              alignment="CENTER_LEFT"
+              maxWidth="460"
+              managed="false" visible="false">
+            <padding><Insets top="24" right="0" bottom="24" left="0" /></padding>
 
-            <VBox spacing="24.0" style="-fx-background-color: white; -fx-background-radius: 8;">
-               <padding><Insets bottom="32.0" left="32.0" right="32.0" top="32.0" /></padding>
-               <effect>
-                  <DropShadow blurType="GAUSSIAN" height="20.0" radius="9.5" width="20.0">
-                     <color><Color opacity="0.1" /></color>
-                  </DropShadow>
-               </effect>
-               <children>
-                  <VBox alignment="CENTER" spacing="8.0">
-                     <children>
-                        <StackPane maxHeight="80.0" maxWidth="80.0" prefHeight="80.0" prefWidth="80.0" style="-fx-background-color: #1E2939; -fx-background-radius: 8;">
-                           <children>
-                              <SVGPath content="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" fill="TRANSPARENT" scaleX="1.5" scaleY="1.5" stroke="WHITE" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2" />
-                           </children>
-                           <VBox.margin><Insets bottom="16.0" /></VBox.margin>
-                        </StackPane>
-                        <Label text="Change Password" textFill="#111827">
-                           <font><Font name="System Bold" size="24.0" /></font>
-                        </Label>
-                        <Label text="First-time login - please set a new password" textFill="#4B5563">
-                           <font><Font size="14.0" /></font>
-                        </Label>
-                     </children>
-                  </VBox>
+            <VBox fx:id="passwordChangeView" spacing="24"
+                  style="-fx-background-color: white;
+                         -fx-background-radius: 16;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.09), 20, 0, 0, 4);">
+                <padding><Insets top="36" right="36" bottom="36" left="36" /></padding>
 
-                  <VBox spacing="16.0">
-                     <children>
-                        <VBox spacing="8.0">
-                           <children>
-                              <Label text="New Password" textFill="#374151" />
-                              <PasswordField fx:id="txtNewPassword" prefHeight="45.0" promptText="Enter new password" style="-fx-background-radius: 8; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-color: white;" />
-                           </children>
-                        </VBox>
+                <VBox alignment="CENTER" spacing="8">
+                    <StackPane
+                        prefWidth="60" prefHeight="60" maxWidth="60"
+                        style="-fx-background-color: #10B981; -fx-background-radius: 12;">
+                        <VBox.margin><Insets bottom="8" /></VBox.margin>
+                        <SVGPath content="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M7 11V7a5 5 0 0 1 10 0v4 M12 16v-3"
+                                 fill="TRANSPARENT" stroke="WHITE"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                                 strokeWidth="2" scaleX="1.1" scaleY="1.1" />
+                    </StackPane>
+                    <Label text="Set Your Password"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="First-time login — choose a strong password"
+                           style="-fx-font-size: 13px; -fx-text-fill: #6B7280;" />
+                </VBox>
 
-                        <VBox spacing="8.0">
-                           <children>
-                              <Label text="Confirm Password" textFill="#374151" />
-                              <PasswordField fx:id="txtConfirmPassword" prefHeight="45.0" promptText="Confirm new password" style="-fx-background-radius: 8; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-background-color: white;" />
-                           </children>
-                        </VBox>
+                <!-- Info banner -->
+                <VBox style="-fx-background-color: #EFF6FF;
+                             -fx-border-color: #BFDBFE;
+                             -fx-border-radius: 8; -fx-background-radius: 8;">
+                    <padding><Insets top="10" right="14" bottom="10" left="14" /></padding>
+                    <Label text="ℹ  Min 8 chars · 1 uppercase · 1 lowercase · 1 digit · 1 symbol"
+                           textFill="#1E40AF" style="-fx-font-size: 12px;" wrapText="true" />
+                </VBox>
 
-                        <VBox fx:id="pwdErrorBox" managed="false" style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA; -fx-border-radius: 8; -fx-background-radius: 8;" visible="false">
-                           <padding><Insets bottom="12.0" left="16.0" right="16.0" top="12.0" /></padding>
-                           <children>
-                              <Label fx:id="lblPwdError" text="Passwords do not match" textFill="#B91C1C" wrapText="true" />
-                           </children>
-                        </VBox>
+                <VBox spacing="16">
 
-                        <Button maxWidth="Infinity" mnemonicParsing="false" onAction="#handlePasswordChange" prefHeight="48.0" style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-weight: bold; -fx-cursor: hand;" text="Set New Password">
-                           <font><Font size="14.0" /></font>
-                           <VBox.margin><Insets top="8.0" /></VBox.margin>
-                        </Button>
-                     </children>
-                  </VBox>
-               </children>
+                    <VBox spacing="6">
+                        <Label text="New Password"
+                               style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <HBox alignment="CENTER_LEFT"
+                              style="-fx-border-color: #D1D5DB; -fx-border-radius: 8;
+                                     -fx-background-color: #FAFAFA; -fx-background-radius: 8;
+                                     -fx-padding: 0 12 0 12;">
+                            <SVGPath content="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M7 11V7a5 5 0 0 1 10 0v4"
+                                     fill="TRANSPARENT" stroke="#9CA3AF"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                            <PasswordField fx:id="txtNewPassword"
+                                           promptText="New password"
+                                           prefHeight="38"
+                                           style="-fx-background-color: transparent;
+                                                  -fx-border-color: transparent;
+                                                  -fx-font-size: 13px;
+                                                  -fx-padding: 0 0 0 8;"
+                                           HBox.hgrow="ALWAYS" />
+                        </HBox>
+                    </VBox>
+
+                    <VBox spacing="6">
+                        <Label text="Confirm Password"
+                               style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <HBox alignment="CENTER_LEFT"
+                              style="-fx-border-color: #D1D5DB; -fx-border-radius: 8;
+                                     -fx-background-color: #FAFAFA; -fx-background-radius: 8;
+                                     -fx-padding: 0 12 0 12;">
+                            <SVGPath content="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M7 11V7a5 5 0 0 1 10 0v4"
+                                     fill="TRANSPARENT" stroke="#9CA3AF"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                            <PasswordField fx:id="txtConfirmPassword"
+                                           promptText="Confirm password"
+                                           prefHeight="38"
+                                           style="-fx-background-color: transparent;
+                                                  -fx-border-color: transparent;
+                                                  -fx-font-size: 13px;
+                                                  -fx-padding: 0 0 0 8;"
+                                           HBox.hgrow="ALWAYS" />
+                        </HBox>
+                    </VBox>
+
+                    <!-- Error box -->
+                    <VBox fx:id="pwdErrorBox"
+                          managed="false" visible="false"
+                          style="-fx-background-color: #FEF2F2;
+                                 -fx-border-color: #FECACA;
+                                 -fx-border-radius: 8; -fx-background-radius: 8;">
+                        <padding><Insets top="12" right="16" bottom="12" left="16" /></padding>
+                        <Label fx:id="lblPwdError"
+                               text="Passwords do not match"
+                               textFill="#B91C1C"
+                               wrapText="true"
+                               maxWidth="360"
+                               style="-fx-font-size: 13px;" />
+                    </VBox>
+
+                    <!-- Set password button -->
+                    <Button fx:id="btnSetPassword"
+                            text="Set Password &amp; Continue"
+                            maxWidth="Infinity"
+                            prefHeight="44"
+                            onAction="#handlePasswordChange"
+                            style="-fx-background-color: #10B981;
+                                   -fx-text-fill: white;
+                                   -fx-background-radius: 8;
+                                   -fx-font-size: 13px;
+                                   -fx-font-weight: 700;
+                                   -fx-cursor: hand;">
+                        <VBox.margin><Insets top="4" /></VBox.margin>
+                    </Button>
+
+                </VBox>
             </VBox>
-         </children>
-      </VBox>
+        </VBox>
 
-   </children>
+    </VBox>
+
 </StackPane>
