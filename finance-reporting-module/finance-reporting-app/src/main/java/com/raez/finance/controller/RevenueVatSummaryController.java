@@ -1,10 +1,11 @@
 package com.raez.finance.controller;
 
+import com.raez.finance.dao.RevenueVatDao;
+import com.raez.finance.dao.RevenueVatDaoInterface;
 import com.raez.finance.service.DashboardService;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.service.GlobalSettingsService;
-import com.raez.finance.service.MockDataProvider;
 import com.raez.finance.util.CurrencyUtil;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
@@ -81,6 +82,7 @@ public class RevenueVatSummaryController {
     // ── Services / state ──────────────────────────────────────────────────
     private MainLayoutController mainLayoutController;
     private final DashboardService dashboardService = new DashboardService();
+    private final RevenueVatDaoInterface    revenueVatDao    = new RevenueVatDao();
     private final ExecutorService  executor         = Executors.newSingleThreadExecutor();
     private final ObservableList<VatRow> vatItems   = FXCollections.observableArrayList();
 
@@ -219,24 +221,16 @@ public class RevenueVatSummaryController {
                     vat         = dashboardService.getTotalVatCollected(from, to, null);
                     cogs        = dashboardService.getTotalCogs(from, to, null);
                     totalOrders = dashboardService.getTotalOrders(from, to, null);
+                    for (RevenueVatDao.CategoryVatRow row : revenueVatDao.findCategoryVatRows(from, to)) {
+                        rows.add(new VatRow(row.category(), row.orders(), row.gross(), row.vat(), row.cogs()));
+                    }
                 } catch (Exception e) {
-                    MockDataProvider mock = MockDataProvider.getInstance();
-                    gross       = mock.getTotalSales(from, to, null);
-                    vat         = mock.getTotalVatCollected(from, to, null);
-                    cogs        = mock.getCogs(from, to, null);
-                    totalOrders = mock.getTotalOrders(from, to, null);
+                    gross       = 0;
+                    vat         = 0;
+                    cogs        = 0;
+                    totalOrders = 0;
                 }
                 net = gross - vat;
-
-                // Per-category breakdown from mock
-                MockDataProvider mock = MockDataProvider.getInstance();
-                for (String cat : List.of("Drones", "Robots", "Services", "Accessories")) {
-                    double g = mock.getTotalSales(from, to, cat);
-                    double v = mock.getTotalVatCollected(from, to, cat);
-                    double cg = mock.getCogs(from, to, cat);
-                    int    o = mock.getTotalOrders(from, to, cat);
-                    if (g > 0) rows.add(new VatRow(cat, o, g, v, cg));
-                }
                 return null;
             }
 
@@ -256,14 +250,6 @@ public class RevenueVatSummaryController {
                         (margin >= 30 ? "-fx-text-fill: #16A34A;" : "-fx-text-fill: #DC2626;"));
                 }
 
-                // TODO: replace with live DAO data once schema is finalised
-                if (rows.isEmpty()) {
-                    double vatRate = GlobalSettingsService.getInstance().getDefaultVatPercent() / 100.0;
-                    rows.add(new VatRow("Drones",      18, 124500, 124500 * vatRate, 124500 * 0.55));
-                    rows.add(new VatRow("Robots",      12,  89200,  89200 * vatRate,  89200 * 0.50));
-                    rows.add(new VatRow("Services",     8,  34800,  34800 * vatRate,  34800 * 0.30));
-                    rows.add(new VatRow("Accessories", 22,  18600,  18600 * vatRate,  18600 * 0.45));
-                }
                 vatItems.setAll(rows);
 
                 // Footer totals
@@ -354,6 +340,7 @@ public class RevenueVatSummaryController {
     @FXML private void handleExportPdf() { doExport("pdf"); }
 
     private void doExport(String format) {
+        if (!SessionManager.isAdmin()) return;
         javafx.stage.Window window = tableVatBreakdown != null && tableVatBreakdown.getScene() != null
             ? tableVatBreakdown.getScene().getWindow() : null;
 

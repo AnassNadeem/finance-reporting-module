@@ -1,6 +1,7 @@
 package com.raez.finance.controller;
 
 import com.raez.finance.dao.CustomerDao;
+import com.raez.finance.dao.CustomerDaoInterface;
 import com.raez.finance.model.TopBuyerRow;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
@@ -17,17 +18,19 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.Duration;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class CustomerInsightsController {
 
@@ -45,7 +48,7 @@ public class CustomerInsightsController {
 
     @FXML private BarChart<String, Number> chartFrequency;
 
-    @FXML private TableView<TopBuyerRow> tblTopBuyers;
+    @FXML private TableView<TopBuyerRow>           tblTopBuyers;
     @FXML private TableColumn<TopBuyerRow, Number> colRank;
     @FXML private TableColumn<TopBuyerRow, String> colName;
     @FXML private TableColumn<TopBuyerRow, String> colType;
@@ -55,20 +58,24 @@ public class CustomerInsightsController {
     @FXML private TableColumn<TopBuyerRow, Number> colAOV;
     @FXML private TableColumn<TopBuyerRow, String> colLastPurchase;
 
-    @FXML private VBox vboxRefundAlerts;
+    @FXML private VBox  vboxRefundAlerts;
     @FXML private Label lblRefundCount;
     @FXML private Label lblNoRefunds;
 
-    @FXML private VBox vboxProductIssues;
+    @FXML private VBox  vboxProductIssues;
     @FXML private Label lblIssueCount;
     @FXML private Label lblNoIssues;
 
     @FXML private MenuButton exportMenuButton;
 
-    // ── Services ──────────────────────────────────────────────────────────
-    private final CustomerDao customerDao = new CustomerDao();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    // ── Services ─────────────────────────────────────────────────────────
+    private final CustomerDaoInterface customerDao = new CustomerDao();
     private final ObservableList<TopBuyerRow> topBuyerItems = FXCollections.observableArrayList();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "insights-worker");
+        t.setDaemon(true);
+        return t;
+    });
     private MainLayoutController mainLayoutController;
 
     public void setMainLayoutController(MainLayoutController c) { this.mainLayoutController = c; }
@@ -84,16 +91,14 @@ public class CustomerInsightsController {
             exportMenuButton.setManaged(false);
         }
 
-        cmbCustomerFilter.setItems(FXCollections.observableArrayList("All Customers", "Companies", "Normal Users"));
+        cmbCustomerFilter.setItems(FXCollections.observableArrayList(
+            "All Customers", "Companies", "Normal Users"));
         cmbCustomerFilter.setValue("All Customers");
 
         bindColumns();
         tblTopBuyers.setItems(topBuyerItems);
         tblTopBuyers.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         applyRowFactory(tblTopBuyers);
-
-        // Chart style
-        chartFrequency.setStyle(".default-color0.chart-bar { -fx-bar-fill: #1E2939; }");
 
         cmbCustomerFilter.valueProperty().addListener((obs, o, n) -> loadData());
         loadData();
@@ -104,18 +109,19 @@ public class CustomerInsightsController {
     // ══════════════════════════════════════════════════════════════════════
 
     private void bindColumns() {
+        // Rank — medal emoji for top 3
         colRank.setCellValueFactory(new PropertyValueFactory<>("rank"));
         colRank.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(Number v, boolean empty) {
                 super.updateItem(v, empty); setText(null);
                 if (empty || v == null) return;
-                int rank = v.intValue();
-                String medal = rank == 1 ? "🥇" : rank == 2 ? "🥈" : rank == 3 ? "🥉" : "";
-                setText(medal.isEmpty() ? String.valueOf(rank) : medal);
-                setStyle("-fx-font-size: 13px; -fx-alignment: CENTER;");
+                int r = v.intValue();
+                setText(r == 1 ? "🥇" : r == 2 ? "🥈" : r == 3 ? "🥉" : String.valueOf(r));
+                setStyle("-fx-alignment: CENTER; -fx-font-size: 13px;");
             }
         });
 
+        // Name — bold
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(String v, boolean empty) {
@@ -126,21 +132,19 @@ public class CustomerInsightsController {
             }
         });
 
+        // Type — badge pill
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colType.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(String v, boolean empty) {
-                super.updateItem(v, empty);
-                setGraphic(null); setText(null);
+                super.updateItem(v, empty); setGraphic(null); setText(null);
                 if (empty || v == null) return;
                 Label badge = new Label(v);
-                boolean isCo = "Company".equalsIgnoreCase(v.trim());
+                boolean co = "Company".equalsIgnoreCase(v.trim());
                 badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;" +
-                               "-fx-padding: 2 8 2 8; -fx-background-radius: 999;" +
-                               (isCo ? "-fx-background-color: #DBEAFE; -fx-text-fill: #1E40AF;"
-                                     : "-fx-background-color: #F3F4F6; -fx-text-fill: #4B5563;"));
-                HBox w = new HBox(badge);
-                w.setAlignment(Pos.CENTER_LEFT);
-                setGraphic(w);
+                    "-fx-padding: 2 8 2 8; -fx-background-radius: 999;" +
+                    (co ? "-fx-background-color: #DBEAFE; -fx-text-fill: #1E40AF;"
+                        : "-fx-background-color: #F3F4F6; -fx-text-fill: #4B5563;"));
+                HBox w = new HBox(badge); w.setAlignment(Pos.CENTER_LEFT); setGraphic(w);
             }
         });
 
@@ -149,7 +153,8 @@ public class CustomerInsightsController {
         colSpent.setCellValueFactory(new PropertyValueFactory<>("totalSpent"));
         colSpent.setCellFactory(CurrencyUtil.currencyCellFactory());
 
-        colOrders.setCellValueFactory(new PropertyValueFactory<>("orderCount"));
+        // ── FIXED: was "orderCount" — correct property name is "totalOrders" ──
+        colOrders.setCellValueFactory(new PropertyValueFactory<>("totalOrders"));
 
         colAOV.setCellValueFactory(new PropertyValueFactory<>("avgOrderValue"));
         colAOV.setCellFactory(CurrencyUtil.currencyCellFactory());
@@ -165,114 +170,114 @@ public class CustomerInsightsController {
         String filter = cmbCustomerFilter.getValue();
 
         Task<Void> task = new Task<>() {
-            int total, companies;
+            // result fields populated in call(), consumed in succeeded()
+            int    total, companies;
             double totalRevenue, avgSpending, avgFrequency;
             List<CustomerDao.MonthlyCount> monthly;
-            List<TopBuyerRow> topBuyers;
+            List<TopBuyerRow>              topBuyers;
+            List<String>                   refundAlerts;
+            List<String>                   issueAlerts;
 
-            @Override protected Void call() throws Exception {
-                total      = customerDao.getTotalCustomerCount();
-                companies  = customerDao.getCompanyCustomerCount();
+            @Override
+            protected Void call() throws Exception {
+                total        = customerDao.getTotalCustomerCount();
+                companies    = customerDao.getCompanyCustomerCount();
                 totalRevenue = customerDao.getTotalRevenue();
                 avgSpending  = total > 0 ? totalRevenue / total : 0;
-                monthly    = customerDao.findMonthlyOrderCounts();
-                int totalOrders = monthly.stream().mapToInt(m -> m.count).sum();
-                avgFrequency = total > 0 && totalOrders > 0
-                    ? (double) totalOrders / 12 / total : 0;
+                monthly      = customerDao.findMonthlyOrderCounts();
 
-                // Apply filter to top buyers
+                int totalOrders = monthly.stream().mapToInt(m -> m.count).sum();
+                avgFrequency = (total > 0 && totalOrders > 0)
+                    ? (double) totalOrders / 12.0 / total : 0;
+
+                // Fetch all top buyers then filter client-side
+                topBuyers = customerDao.findTopBuyers(100);
                 String typeArg = switch (filter != null ? filter : "All Customers") {
                     case "Companies"    -> "Company";
                     case "Normal Users" -> "Individual";
                     default             -> null;
                 };
-                topBuyers = customerDao.findTopBuyers(100);
                 if (typeArg != null) {
                     final String ft = typeArg;
                     topBuyers = topBuyers.stream()
                         .filter(r -> ft.equalsIgnoreCase(r.getType())).toList();
                 }
-                return null;
-            }
 
-            @Override protected void succeeded() {
-                // KPI labels
-                animateLabel(lblTotalCustomers,   String.format("%,d", total));
-                animateLabel(lblAvgSpending,       CurrencyUtil.formatCurrency(avgSpending));
-                animateLabel(lblAvgFrequency,      String.format("%.1f / mo", avgFrequency));
-                animateLabel(lblCompanyCustomers,  String.format("%,d", companies));
-
-                if (lblCustomersSub  != null) lblCustomersSub.setText(companies + " companies, " + (total - companies) + " individuals");
-                if (lblCompanySub    != null) lblCompanySub.setText(String.format("%.0f%% of total", total > 0 ? (double) companies / total * 100 : 0));
-
-                // Table
-                topBuyerItems.setAll(topBuyers);
-                if (lblBuyerCount != null) lblBuyerCount.setText(topBuyers.size() + " customers");
-                if (lblTotalSpentSummary != null) {
-                    double totalSpent = topBuyers.stream().mapToDouble(TopBuyerRow::getTotalSpent).sum();
-                    lblTotalSpentSummary.setText("Combined total: " + CurrencyUtil.formatCurrency(totalSpent));
-                }
-                setTableHeight(tblTopBuyers, topBuyers.size());
-
-                // Chart
-                chartFrequency.getData().clear();
-                XYChart.Series<String, Number> series = new XYChart.Series<>();
-                series.setName("Orders");
-                for (CustomerDao.MonthlyCount m : monthly) {
-                    series.getData().add(new XYChart.Data<>(m.month, m.count));
-                }
-                chartFrequency.getData().add(series);
-                javafx.application.Platform.runLater(() ->
-                    chartFrequency.lookupAll(".default-color0.chart-bar")
-                        .forEach(n -> n.setStyle("-fx-bar-fill: #1E2939;")));
-
-                // Dynamic alert cards — data from DAO
-                buildAlerts();
-            }
-
-            @Override protected void failed() {
-                if (getException() != null) getException().printStackTrace();
-            }
-        };
-        executor.execute(task);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  ALERT CARDS  — built dynamically from DAO / analytics
-    // ══════════════════════════════════════════════════════════════════════
-
-    private void buildAlerts() {
-        Task<Void> alertTask = new Task<>() {
-            List<String> refundAlerts, issueAlerts;
-
-            @Override protected Void call() throws Exception {
-                // Fetch real alert data from DAO (returns empty list if none)
                 refundAlerts = customerDao.findRefundAlerts();
                 issueAlerts  = customerDao.findProductIssueAlerts();
                 return null;
             }
 
-            @Override protected void succeeded() {
+            @Override
+            protected void succeeded() {
+                // KPI labels with fade-in
+                fadeLabel(lblTotalCustomers,  String.format("%,d", total));
+                fadeLabel(lblAvgSpending,      CurrencyUtil.formatCurrency(avgSpending));
+                fadeLabel(lblAvgFrequency,     String.format("%.2f / mo", avgFrequency));
+                fadeLabel(lblCompanyCustomers, String.format("%,d", companies));
+
+                if (lblCustomersSub != null)
+                    lblCustomersSub.setText(companies + " companies, " +
+                        (total - companies) + " individuals");
+                if (lblCompanySub != null)
+                    lblCompanySub.setText(String.format("%.0f%% of total",
+                        total > 0 ? (double) companies / total * 100 : 0));
+
+                // Top buyers table
+                topBuyerItems.setAll(topBuyers);
+                if (lblBuyerCount != null)
+                    lblBuyerCount.setText(topBuyers.size() + " customers");
+                if (lblTotalSpentSummary != null) {
+                    double sum = topBuyers.stream().mapToDouble(TopBuyerRow::getTotalSpent).sum();
+                    lblTotalSpentSummary.setText("Combined total: " + CurrencyUtil.formatCurrency(sum));
+                }
+                setTableHeight(tblTopBuyers, topBuyers.size());
+
+                // Bar chart — Companies vs Individuals side by side
+                buildBarChart(monthly);
+
+                // Alert cards
                 populateAlertList(vboxRefundAlerts, lblNoRefunds, lblRefundCount,
                     refundAlerts, "#991B1B", "#FEF2F2");
                 populateAlertList(vboxProductIssues, lblNoIssues, lblIssueCount,
                     issueAlerts, "#92400E", "#FFFBEB");
             }
 
-            @Override protected void failed() {
+            @Override
+            protected void failed() {
                 if (getException() != null) getException().printStackTrace();
             }
         };
-        executor.execute(alertTask);
+        executor.execute(task);
     }
 
+    // ── Bar chart (monthly order volume) ─────────────────────────────────
+
+    private void buildBarChart(List<CustomerDao.MonthlyCount> monthly) {
+        if (chartFrequency == null) return;
+        chartFrequency.getData().clear();
+
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        series.setName("Orders");
+        for (CustomerDao.MonthlyCount m : monthly)
+            series.getData().add(new XYChart.Data<>(m.month, m.count));
+        chartFrequency.getData().add(series);
+
+        // Style bars after layout
+        javafx.application.Platform.runLater(() ->
+            chartFrequency.lookupAll(".default-color0.chart-bar")
+                .forEach(n -> n.setStyle("-fx-bar-fill: #1E2939;")));
+    }
+
+    // ── Alert card builder ────────────────────────────────────────────────
+
     private void populateAlertList(VBox container, Label emptyLabel, Label countLabel,
-                                    List<String> alerts, String textColor, String hoverBg) {
+                                    List<String> alerts, String textColour, String hoverBg) {
         if (container == null) return;
         container.getChildren().clear();
 
         if (alerts == null || alerts.isEmpty()) {
-            if (emptyLabel != null) { emptyLabel.setManaged(true); emptyLabel.setVisible(true); }
+            if (emptyLabel != null) { emptyLabel.setManaged(true);  emptyLabel.setVisible(true);  }
             if (countLabel != null) countLabel.setText("0");
             return;
         }
@@ -280,12 +285,19 @@ public class CustomerInsightsController {
         if (countLabel != null) countLabel.setText(String.valueOf(alerts.size()));
 
         for (String alert : alerts) {
+            // Separator between rows
+            if (!container.getChildren().isEmpty()) {
+                Separator sep = new Separator();
+                sep.setStyle("-fx-opacity: 0.4;");
+                container.getChildren().add(sep);
+            }
+
             HBox row = new HBox(10);
             row.setAlignment(Pos.TOP_LEFT);
-            row.setStyle("-fx-padding: 12 20 12 20; -fx-cursor: hand;");
+            row.setStyle("-fx-padding: 12 20 12 20;");
 
             Label dot = new Label("•");
-            dot.setStyle("-fx-font-size: 16px; -fx-text-fill: " + textColor + "; -fx-padding: 0 0 2 0;");
+            dot.setStyle("-fx-font-size: 16px; -fx-text-fill: " + textColour + ";");
 
             Label text = new Label(alert);
             text.setWrapText(true);
@@ -293,28 +305,72 @@ public class CustomerInsightsController {
             HBox.setHgrow(text, Priority.ALWAYS);
 
             row.getChildren().addAll(dot, text);
-
-            row.setOnMouseEntered(e -> row.setStyle("-fx-padding: 12 20 12 20; -fx-cursor: hand;" +
-                "-fx-background-color: " + hoverBg + ";"));
-            row.setOnMouseExited(e  -> row.setStyle("-fx-padding: 12 20 12 20; -fx-cursor: hand;"));
-
-            if (!container.getChildren().isEmpty()) {
-                Separator sep = new Separator();
-                sep.setStyle("-fx-opacity: 0.5;");
-                container.getChildren().add(sep);
-            }
+            row.setOnMouseEntered(e -> row.setStyle(
+                "-fx-padding: 12 20 12 20; -fx-background-color: " + hoverBg + ";"));
+            row.setOnMouseExited(e  -> row.setStyle("-fx-padding: 12 20 12 20;"));
             container.getChildren().add(row);
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  EXPORT  — builds List<String[]> from topBuyerItems
+    //            (ExportService does not accept TableView directly)
+    // ══════════════════════════════════════════════════════════════════════
+
+    @FXML private void handleExportCSV(ActionEvent e) { doExport("csv"); }
+    @FXML private void handleExportPDF(ActionEvent e) { doExport("pdf"); }
+
+    private void doExport(String format) {
+        if (!SessionManager.isAdmin()) return;
+        Window window = tblTopBuyers != null && tblTopBuyers.getScene() != null
+            ? tblTopBuyers.getScene().getWindow() : null;
+
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export Customer Insights");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+            "csv".equals(format) ? "CSV Files" : "PDF Files",
+            "csv".equals(format) ? "*.csv"     : "*.pdf"));
+        fc.setInitialFileName("customer_insights." + format);
+        File file = fc.showSaveDialog(window);
+        if (file == null) return;
+
+        try {
+            List<String[]> data = buildExportData();
+            if ("csv".equals(format)) ExportService.exportRowsToCSV(data, file);
+            else                       ExportService.exportRowsToPDF("Customer Insights — Top Buyers", data, file);
+            toast("success", format.toUpperCase() + " exported: " + file.getName());
+        } catch (Exception ex) {
+            toast("error", "Export failed: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown"));
+        }
+    }
+
+    private List<String[]> buildExportData() {
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"Rank","Customer","Type","Country",
+            "Total Spent","Total Orders","Avg Order Value","Last Purchase"});
+        for (TopBuyerRow r : topBuyerItems) {
+            rows.add(new String[]{
+                String.valueOf(r.getRank()),
+                r.getName(),
+                r.getType(),
+                r.getCountry(),
+                CurrencyUtil.formatCurrency(r.getTotalSpent()),
+                String.valueOf(r.getTotalOrders()),
+                CurrencyUtil.formatCurrency(r.getAvgOrderValue()),
+                r.getLastPurchase()
+            });
+        }
+        return rows;
     }
 
     // ══════════════════════════════════════════════════════════════════════
     //  UI HELPERS
     // ══════════════════════════════════════════════════════════════════════
 
-    private void animateLabel(Label lbl, String value) {
+    private void fadeLabel(Label lbl, String value) {
         if (lbl == null) return;
-        lbl.setOpacity(0);
         lbl.setText(value);
+        lbl.setOpacity(0);
         FadeTransition ft = new FadeTransition(Duration.millis(400), lbl);
         ft.setFromValue(0); ft.setToValue(1); ft.play();
     }
@@ -341,32 +397,6 @@ public class CustomerInsightsController {
                 ? "-fx-background-color: white;" : "-fx-background-color: #F9FAFB;"); });
             return row;
         });
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    //  EXPORT
-    // ══════════════════════════════════════════════════════════════════════
-
-    @FXML private void handleExportCSV(ActionEvent e) { doExport("csv"); }
-    @FXML private void handleExportPDF(ActionEvent e) { doExport("pdf"); }
-
-    private void doExport(String format) {
-        Window window = tblTopBuyers.getScene() != null ? tblTopBuyers.getScene().getWindow() : null;
-        FileChooser fc = new FileChooser();
-        fc.setTitle("Export Customer Insights");
-        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(
-            "csv".equals(format) ? "CSV Files" : "PDF Files",
-            "csv".equals(format) ? "*.csv"     : "*.pdf"));
-        fc.setInitialFileName("customer_insights." + format);
-        File file = fc.showSaveDialog(window);
-        if (file == null) return;
-        try {
-            if ("csv".equals(format)) ExportService.exportToCSV(tblTopBuyers, file);
-            else ExportService.exportToPDF(tblTopBuyers, "Customer Insights — Top Buyers", file);
-            toast("success", format.toUpperCase() + " exported: " + file.getName());
-        } catch (Exception ex) {
-            toast("error", "Export failed: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown"));
-        }
     }
 
     private void toast(String type, String msg) {

@@ -1,12 +1,12 @@
 package com.raez.finance.controller;
 
 import com.raez.finance.dao.ProductDao;
+import com.raez.finance.dao.ProductDaoInterface;
 import com.raez.finance.model.ProductReportRow;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
 import javafx.animation.FadeTransition;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -72,7 +72,7 @@ public class ProductProfitabilityController {
     @FXML private MenuButton exportMenuButton;
 
     // ── Services ──────────────────────────────────────────────────────────
-    private final ProductDao productDao = new ProductDao();
+    private final ProductDaoInterface productDao = new ProductDao();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final ObservableList<ProductReportRow> productItems = FXCollections.observableArrayList();
     private MainLayoutController mainLayoutController;
@@ -95,11 +95,7 @@ public class ProductProfitabilityController {
         tblProducts.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         applyRowFactory(tblProducts);
 
-        // Chart colours via CSS
-        chartProfitability.setStyle(
-            ".default-color0.chart-bar { -fx-bar-fill: #1E2939; }" +
-            ".default-color1.chart-bar { -fx-bar-fill: #10B981; }"
-        );
+        chartProfitability.getStyleClass().add("profitability-chart");
         buildChartLegend();
 
         loadCategoryOptions();
@@ -124,9 +120,10 @@ public class ProductProfitabilityController {
         colProfit.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(Number v, boolean empty) {
                 super.updateItem(v, empty); setText(null);
+                getStyleClass().removeAll("table-profit-positive", "table-profit-negative");
                 if (empty || v == null) return;
                 setText(CurrencyUtil.formatCurrency(v.doubleValue()));
-                setStyle(v.doubleValue() >= 0 ? "-fx-text-fill: #16A34A;" : "-fx-text-fill: #DC2626;");
+                getStyleClass().add(v.doubleValue() >= 0 ? "table-profit-positive" : "table-profit-negative");
             }
         });
 
@@ -138,13 +135,9 @@ public class ProductProfitabilityController {
                 if (empty || v == null) return;
                 double pct = v.doubleValue();
                 Label badge = new Label(String.format("%.1f%%", pct));
-                badge.setStyle("-fx-font-size: 10px; -fx-font-weight: 700;" +
-                               "-fx-padding: 2 7 2 7; -fx-background-radius: 999;" +
-                               (pct >= LOW_MARGIN_THRESHOLD
-                                    ? "-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;"
-                               : pct >= 20
-                                    ? "-fx-background-color: #FEF9C3; -fx-text-fill: #92400E;"
-                                    : "-fx-background-color: #FEE2E2; -fx-text-fill: #991B1B;"));
+                if (pct >= LOW_MARGIN_THRESHOLD) badge.getStyleClass().add("status-badge-paid");
+                else if (pct >= 20) badge.getStyleClass().add("status-badge-warning");
+                else badge.getStyleClass().add("status-badge-danger");
                 HBox w = new HBox(badge);
                 w.setAlignment(Pos.CENTER_LEFT);
                 setGraphic(w);
@@ -169,7 +162,8 @@ public class ProductProfitabilityController {
                     arrow = "– Flat"; colour = "#6B7280";
                 }
                 Label lbl = new Label(arrow);
-                lbl.setStyle("-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: " + colour + ";");
+                lbl.getStyleClass().add("table-trend-label");
+                lbl.setTextFill(javafx.scene.paint.Paint.valueOf(colour));
                 setGraphic(lbl);
             }
         });
@@ -250,14 +244,6 @@ public class ProductProfitabilityController {
                 }
                 chartProfitability.getData().add(revSeries);
                 chartProfitability.getData().add(profSeries);
-                // Re-apply bar colours after data load (JavaFX resets them)
-                Platform.runLater(() -> {
-                    chartProfitability.lookupAll(".default-color0.chart-bar")
-                        .forEach(n -> n.setStyle("-fx-bar-fill: #1E2939;"));
-                    chartProfitability.lookupAll(".default-color1.chart-bar")
-                        .forEach(n -> n.setStyle("-fx-bar-fill: #10B981;"));
-                });
-
                 // Performers
                 List<ProductReportRow> high = products.stream()
                     .filter(p -> p.getMarginPercent() >= LOW_MARGIN_THRESHOLD).toList();
@@ -382,6 +368,7 @@ public class ProductProfitabilityController {
     @FXML private void handleExportPDF(ActionEvent e) { doExport("pdf"); }
 
     private void doExport(String format) {
+        if (!SessionManager.isAdmin()) return;
         Window window = tblProducts.getScene() != null ? tblProducts.getScene().getWindow() : null;
         FileChooser fc = new FileChooser();
         fc.setTitle("Export Product Profitability");
