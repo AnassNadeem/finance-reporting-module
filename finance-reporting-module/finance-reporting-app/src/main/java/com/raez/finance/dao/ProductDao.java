@@ -13,201 +13,141 @@ import java.util.List;
 
 /**
  * Fetches product report rows for Detailed Reports (Product tab).
- * Revenue/cost/profit from OrderItem; Product has no cost column so cost is 0.
  */
-public class ProductDao {
+public class ProductDao implements ProductDaoInterface {
 
-    /**
-     * Fetch product aggregates: revenue = SUM(quantity*unitPrice), unitsSold = SUM(quantity).
-     * Optional date range and category filter (category name).
-     */
-    public List<ProductReportRow> findReportRows(LocalDate from, LocalDate to, String categoryFilter, String search) throws SQLException {
-        List<Object> params = new ArrayList<>();
+    private static final String FIND_SQL =
+        "SELECT p.productID, p.name, " +
+        "COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
+        "COALESCE(p.unitCost, 0) AS unitCost, " +
+        "p.price AS salePrice, " +
+        "COALESCE(SUM(CASE WHEN (? IS NULL OR o2.orderDate >= ?) AND (? IS NULL OR o2.orderDate <= ?) " +
+        "THEN oi2.quantity * oi2.unitPrice ELSE 0 END), 0) AS revenue, " +
+        "COALESCE(SUM(CASE WHEN (? IS NULL OR o2.orderDate >= ?) AND (? IS NULL OR o2.orderDate <= ?) " +
+        "THEN oi2.quantity ELSE 0 END), 0) AS unitsSold " +
+        "FROM Product p " +
+        "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
+        "LEFT JOIN OrderItem oi2 ON oi2.productID = p.productID " +
+        "LEFT JOIN \"Order\" o2 ON oi2.orderID = o2.orderID " +
+        "WHERE (? IS NULL OR c.categoryName = ?) " +
+        "AND (? IS NULL OR (p.name LIKE ? OR CAST(p.productID AS TEXT) LIKE ?)) " +
+        "GROUP BY p.productID, p.name, c.categoryName, p.unitCost, p.price " +
+        "ORDER BY revenue DESC " +
+        "LIMIT ? OFFSET ?";
 
-        String orderJoin;
-        if (from != null || to != null) {
-            orderJoin = "LEFT JOIN (OrderItem oi2 JOIN \"Order\" o2 ON oi2.orderID = o2.orderID AND 1=1 ";
-            if (from != null) { orderJoin += " AND o2.orderDate >= ?"; params.add(from + " 00:00:00"); }
-            if (to != null)   { orderJoin += " AND o2.orderDate <= ?"; params.add(to + " 23:59:59"); }
-            orderJoin += ") ON oi2.productID = p.productID ";
-        } else {
-            orderJoin = "LEFT JOIN OrderItem oi2 ON oi2.productID = p.productID ";
-        }
+    private static final String FIND_NO_LIMIT_SQL =
+        "SELECT p.productID, p.name, " +
+        "COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
+        "COALESCE(p.unitCost, 0) AS unitCost, " +
+        "p.price AS salePrice, " +
+        "COALESCE(SUM(CASE WHEN (? IS NULL OR o2.orderDate >= ?) AND (? IS NULL OR o2.orderDate <= ?) " +
+        "THEN oi2.quantity * oi2.unitPrice ELSE 0 END), 0) AS revenue, " +
+        "COALESCE(SUM(CASE WHEN (? IS NULL OR o2.orderDate >= ?) AND (? IS NULL OR o2.orderDate <= ?) " +
+        "THEN oi2.quantity ELSE 0 END), 0) AS unitsSold " +
+        "FROM Product p " +
+        "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
+        "LEFT JOIN OrderItem oi2 ON oi2.productID = p.productID " +
+        "LEFT JOIN \"Order\" o2 ON oi2.orderID = o2.orderID " +
+        "WHERE (? IS NULL OR c.categoryName = ?) " +
+        "AND (? IS NULL OR (p.name LIKE ? OR CAST(p.productID AS TEXT) LIKE ?)) " +
+        "GROUP BY p.productID, p.name, c.categoryName, p.unitCost, p.price " +
+        "ORDER BY revenue DESC";
 
-        StringBuilder sql = new StringBuilder(
-                "SELECT p.productID, p.name, COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
-                "COALESCE(p.unitCost, 0) AS unitCost, p.price AS salePrice, " +
-                "COALESCE(SUM(oi2.quantity * oi2.unitPrice), 0) AS revenue, " +
-                "COALESCE(SUM(oi2.quantity), 0) AS unitsSold " +
-                "FROM Product p " +
-                "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
-                orderJoin +
-                "WHERE 1=1 ");
-        if (categoryFilter != null && !categoryFilter.isBlank() && !"All Categories".equalsIgnoreCase(categoryFilter.trim())) {
-            sql.append(" AND c.categoryName = ?");
-            params.add(categoryFilter.trim());
-        }
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (p.name LIKE ? OR CAST(p.productID AS TEXT) LIKE ?)");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-        }
-        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price, p.unitCost ORDER BY revenue DESC");
+    private static final String COUNT_SQL =
+        "SELECT COUNT(*) " +
+        "FROM Product p " +
+        "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
+        "WHERE (? IS NULL OR c.categoryName = ?) " +
+        "AND (? IS NULL OR (p.name LIKE ? OR CAST(p.productID AS TEXT) LIKE ?))";
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  FIND (with optional pagination)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /** Fetch product rows without pagination (limit <= 0 = no limit). */
+    public List<ProductReportRow> findReportRows(
+            LocalDate from, LocalDate to,
+            String categoryFilter, String search) throws SQLException {
+        return findReportRows(from, to, categoryFilter, search, 0, 0);
+    }
+
+    /** Fetch product rows with optional pagination. Use limit <= 0 for no limit. */
+    public List<ProductReportRow> findReportRows(
+            LocalDate from, LocalDate to,
+            String categoryFilter, String search,
+            int limit, int offset) throws SQLException {
 
         List<ProductReportRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
-            }
+             PreparedStatement ps = conn.prepareStatement(limit > 0 ? FIND_SQL : FIND_NO_LIMIT_SQL)) {
+            bindFindParams(ps, from, to, categoryFilter, search, limit, offset, limit > 0);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                double revenue = rs.getDouble("revenue");
-                int unitsSold = rs.getInt("unitsSold");
-                double unitCost = rs.getDouble("unitCost");
-                double cost = unitCost * unitsSold;
-                double profit = revenue - cost;
+                double revenue   = rs.getDouble("revenue");
+                int    unitsSold = rs.getInt("unitsSold");
+                double unitCost  = rs.getDouble("unitCost");
+                double totalCost = unitCost * unitsSold;
+                double profit    = revenue - totalCost;
                 rows.add(new ProductReportRow(
-                        String.valueOf(rs.getInt("productID")),
-                        rs.getString("name"),
-                        rs.getString("categoryName"),
-                        cost,
-                        rs.getDouble("salePrice"),
-                        profit,
-                        unitsSold,
-                        revenue
+                    String.valueOf(rs.getInt("productID")),
+                    rs.getString("name"),
+                    rs.getString("categoryName"),
+                    unitCost,
+                    rs.getDouble("salePrice"),
+                    profit,
+                    unitsSold,
+                    revenue
                 ));
             }
         }
         return rows;
     }
 
-    /**
-     * Fetch product aggregates with optional pagination. Use limit &lt;= 0 for no limit.
-     */
-    public List<ProductReportRow> findReportRows(LocalDate from, LocalDate to, String categoryFilter, String search, int limit, int offset) throws SQLException {
-        return findReportRowsWithPagination(from, to, categoryFilter, search, limit, offset);
-    }
+    // ══════════════════════════════════════════════════════════════════════
+    //  COUNT (for pagination)
+    // ══════════════════════════════════════════════════════════════════════
 
-    private List<ProductReportRow> findReportRowsWithPagination(LocalDate from, LocalDate to, String categoryFilter, String search, int limit, int offset) throws SQLException {
-        List<Object> params = new ArrayList<>();
-        String orderJoin;
-        if (from != null || to != null) {
-            orderJoin = "LEFT JOIN (OrderItem oi2 JOIN \"Order\" o2 ON oi2.orderID = o2.orderID AND 1=1 ";
-            if (from != null) { orderJoin += " AND o2.orderDate >= ?"; params.add(from + " 00:00:00"); }
-            if (to != null)   { orderJoin += " AND o2.orderDate <= ?"; params.add(to + " 23:59:59"); }
-            orderJoin += ") ON oi2.productID = p.productID ";
-        } else {
-            orderJoin = "LEFT JOIN OrderItem oi2 ON oi2.productID = p.productID ";
-        }
-        StringBuilder sql = new StringBuilder(
-                "SELECT p.productID, p.name, COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
-                "COALESCE(p.unitCost, 0) AS unitCost, p.price AS salePrice, " +
-                "COALESCE(SUM(oi2.quantity * oi2.unitPrice), 0) AS revenue, " +
-                "COALESCE(SUM(oi2.quantity), 0) AS unitsSold " +
-                "FROM Product p " +
-                "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
-                orderJoin +
-                "WHERE 1=1 ");
-        if (categoryFilter != null && !categoryFilter.isBlank() && !"All Categories".equalsIgnoreCase(categoryFilter.trim())) {
-            sql.append(" AND c.categoryName = ?");
-            params.add(categoryFilter.trim());
-        }
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (p.name LIKE ? OR CAST(p.productID AS TEXT) LIKE ?)");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-        }
-        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price, p.unitCost ORDER BY revenue DESC");
-        if (limit > 0) {
-            params.add(limit);
-            params.add(offset);
-        }
-        String fullSql = (limit > 0)
-                ? "SELECT * FROM (" + sql + ") AS sub LIMIT ? OFFSET ?"
-                : sql.toString();
-        List<ProductReportRow> rows = new ArrayList<>();
+    public int countReportRows(
+            LocalDate from, LocalDate to,
+            String categoryFilter, String search) throws SQLException {
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(fullSql)) {
-            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                double revenue = rs.getDouble("revenue");
-                int unitsSold = rs.getInt("unitsSold");
-                double unitCost = rs.getDouble("unitCost");
-                double cost = unitCost * unitsSold;
-                double profit = revenue - cost;
-                rows.add(new ProductReportRow(
-                        String.valueOf(rs.getInt("productID")),
-                        rs.getString("name"),
-                        rs.getString("categoryName"),
-                        cost,
-                        rs.getDouble("salePrice"),
-                        profit,
-                        unitsSold,
-                        revenue
-                ));
-            }
-        }
-        return rows;
-    }
-
-    /** Count product report rows with same filters (for pagination). */
-    public int countReportRows(LocalDate from, LocalDate to, String categoryFilter, String search) throws SQLException {
-        List<Object> params = new ArrayList<>();
-        String orderJoin;
-        if (from != null || to != null) {
-            orderJoin = "LEFT JOIN (OrderItem oi2 JOIN \"Order\" o2 ON oi2.orderID = o2.orderID AND 1=1 ";
-            if (from != null) { orderJoin += " AND o2.orderDate >= ?"; params.add(from + " 00:00:00"); }
-            if (to != null)   { orderJoin += " AND o2.orderDate <= ?"; params.add(to + " 23:59:59"); }
-            orderJoin += ") ON oi2.productID = p.productID ";
-        } else {
-            orderJoin = "LEFT JOIN OrderItem oi2 ON oi2.productID = p.productID ";
-        }
-        StringBuilder sql = new StringBuilder(
-                "SELECT COUNT(*) FROM (SELECT p.productID FROM Product p " +
-                "LEFT JOIN Category c ON p.categoryID = c.categoryID " + orderJoin + "WHERE 1=1 ");
-        if (categoryFilter != null && !categoryFilter.isBlank() && !"All Categories".equalsIgnoreCase(categoryFilter.trim())) {
-            sql.append(" AND c.categoryName = ?"); params.add(categoryFilter.trim());
-        }
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (p.name LIKE ? OR CAST(p.productID AS TEXT) LIKE ?)");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-        }
-        sql.append(" GROUP BY p.productID, p.name, c.categoryName, p.price, p.unitCost) AS sub");
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+             PreparedStatement ps = conn.prepareStatement(COUNT_SQL)) {
+            String category = normalizeCategory(categoryFilter);
+            String term = normalizeSearch(search);
+            ps.setString(1, category);
+            ps.setString(2, category);
+            ps.setString(3, term);
+            ps.setString(4, term);
+            ps.setString(5, term);
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getInt(1) : 0;
         }
     }
 
-    /**
-     * Revenue and profit by category for Product Profitability chart.
-     * Uses same heuristic as product report: cost ≈ 60% of revenue.
-     */
+    // ══════════════════════════════════════════════════════════════════════
+    //  CATEGORY REVENUE / PROFIT (for Product Profitability chart)
+    // ══════════════════════════════════════════════════════════════════════
+
     public List<CategoryRevenueProfit> findCategoryRevenueProfit() throws SQLException {
-        String sql = "SELECT COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
-                "SUM(oi.quantity * oi.unitPrice) AS revenue, " +
-                "SUM(oi.quantity * COALESCE(p.unitCost, oi.unitPrice * 0.6)) AS cost, " +
-                "SUM(oi.quantity * oi.unitPrice) - SUM(oi.quantity * COALESCE(p.unitCost, oi.unitPrice * 0.6)) AS profit " +
-                "FROM OrderItem oi JOIN Product p ON oi.productID = p.productID " +
-                "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
-                "JOIN \"Order\" o ON oi.orderID = o.orderID " +
-                "GROUP BY c.categoryID, c.categoryName ORDER BY revenue DESC";
+        String sql =
+            "SELECT COALESCE(c.categoryName, 'Uncategorized') AS categoryName, " +
+            "SUM(oi.quantity * oi.unitPrice) AS revenue, " +
+            "SUM((oi.quantity * oi.unitPrice) - (oi.quantity * COALESCE(p.unitCost, 0))) AS profit " +
+            "FROM OrderItem oi " +
+            "JOIN Product p ON oi.productID = p.productID " +
+            "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
+            "JOIN \"Order\" o ON oi.orderID = o.orderID " +
+            "GROUP BY c.categoryID, c.categoryName ORDER BY revenue DESC";
+
         List<CategoryRevenueProfit> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                double rev = rs.getDouble("revenue");
-                double profit = rs.getDouble("profit");
-                list.add(new CategoryRevenueProfit(rs.getString("categoryName"), rev, profit));
+                list.add(new CategoryRevenueProfit(
+                    rs.getString("categoryName"),
+                    rs.getDouble("revenue"),
+                    rs.getDouble("profit")));
             }
         }
         return list;
@@ -217,26 +157,64 @@ public class ProductDao {
         public final String category;
         public final double revenue;
         public final double profit;
-        public CategoryRevenueProfit(String category, double revenue, double profit) {
-            this.category = category;
-            this.revenue = revenue;
-            this.profit = profit;
+        public CategoryRevenueProfit(String cat, double rev, double profit) {
+            this.category = cat; this.revenue = rev; this.profit = profit;
         }
     }
 
-    /**
-     * Distinct category names for the Category ComboBox (including "All Categories" in UI).
-     */
+    // ══════════════════════════════════════════════════════════════════════
+    //  CATEGORY NAMES (for filter ComboBox)
+    // ══════════════════════════════════════════════════════════════════════
+
     public List<String> findCategoryNames() throws SQLException {
         String sql = "SELECT categoryName FROM Category ORDER BY categoryName";
         List<String> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) {
-                list.add(rs.getString("categoryName"));
-            }
+            while (rs.next()) list.add(rs.getString("categoryName"));
         }
         return list;
+    }
+
+    private void bindFindParams(PreparedStatement ps, LocalDate from, LocalDate to, String categoryFilter, String search,
+                                int limit, int offset, boolean withLimit) throws SQLException {
+        String fromParam = from == null ? null : from + " 00:00:00";
+        String toParam = to == null ? null : to + " 23:59:59";
+        String category = normalizeCategory(categoryFilter);
+        String term = normalizeSearch(search);
+
+        int i = 1;
+        // revenue date condition
+        ps.setString(i++, fromParam);
+        ps.setString(i++, fromParam);
+        ps.setString(i++, toParam);
+        ps.setString(i++, toParam);
+        // units date condition
+        ps.setString(i++, fromParam);
+        ps.setString(i++, fromParam);
+        ps.setString(i++, toParam);
+        ps.setString(i++, toParam);
+        // filters
+        ps.setString(i++, category);
+        ps.setString(i++, category);
+        ps.setString(i++, term);
+        ps.setString(i++, term);
+        ps.setString(i++, term);
+        if (withLimit) {
+            ps.setInt(i++, limit);
+            ps.setInt(i, offset);
+        }
+    }
+
+    private String normalizeCategory(String categoryFilter) {
+        if (categoryFilter == null || categoryFilter.isBlank()) return null;
+        if ("All Categories".equalsIgnoreCase(categoryFilter.trim())) return null;
+        return categoryFilter.trim();
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null || search.isBlank()) return null;
+        return "%" + search.trim() + "%";
     }
 }

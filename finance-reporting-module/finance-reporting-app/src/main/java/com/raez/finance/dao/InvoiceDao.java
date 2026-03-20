@@ -12,49 +12,57 @@ import java.util.List;
 /**
  * Read-only access to Invoice table for the Invoices page.
  */
-public class InvoiceDao {
+public class InvoiceDao implements InvoiceDaoInterface {
+
+    private static final String FIND_INVOICES_SQL =
+        "SELECT i.invoiceID, i.invoiceNumber, i.status, i.totalAmount, i.currency, " +
+        "i.issuedAt, i.dueDate, i.paidAt, o.orderID, c.name AS customerName " +
+        "FROM Invoice i " +
+        "JOIN \"Order\" o ON i.orderID = o.orderID " +
+        "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR date(i.issuedAt) >= ?) " +
+        "AND (? IS NULL OR date(i.issuedAt) <= ?) " +
+        "AND (? IS NULL OR i.status = ?) " +
+        "AND (? IS NULL OR (i.invoiceNumber LIKE ? OR CAST(o.orderID AS TEXT) LIKE ? OR c.name LIKE ?)) " +
+        "ORDER BY i.issuedAt DESC, i.invoiceID DESC " +
+        "LIMIT ? OFFSET ?";
+
+    private static final String FIND_INVOICES_NO_LIMIT_SQL =
+        "SELECT i.invoiceID, i.invoiceNumber, i.status, i.totalAmount, i.currency, " +
+        "i.issuedAt, i.dueDate, i.paidAt, o.orderID, c.name AS customerName " +
+        "FROM Invoice i " +
+        "JOIN \"Order\" o ON i.orderID = o.orderID " +
+        "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR date(i.issuedAt) >= ?) " +
+        "AND (? IS NULL OR date(i.issuedAt) <= ?) " +
+        "AND (? IS NULL OR i.status = ?) " +
+        "AND (? IS NULL OR (i.invoiceNumber LIKE ? OR CAST(o.orderID AS TEXT) LIKE ? OR c.name LIKE ?)) " +
+        "ORDER BY i.issuedAt DESC, i.invoiceID DESC";
 
     public List<InvoiceRow> findInvoices(LocalDate from, LocalDate to, String statusFilter, String search, int limit, int offset) throws Exception {
-        StringBuilder sql = new StringBuilder(
-                "SELECT i.invoiceID, i.invoiceNumber, i.status, i.totalAmount, i.currency, " +
-                "i.issuedAt, i.dueDate, i.paidAt, o.orderID, c.name AS customerName " +
-                "FROM Invoice i " +
-                "JOIN \"Order\" o ON i.orderID = o.orderID " +
-                "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
-                "WHERE 1=1 ");
-        List<Object> params = new ArrayList<>();
-
-        if (from != null) {
-            sql.append(" AND date(i.issuedAt) >= ? ");
-            params.add(from.toString());
-        }
-        if (to != null) {
-            sql.append(" AND date(i.issuedAt) <= ? ");
-            params.add(to.toString());
-        }
-        if (statusFilter != null && !statusFilter.isBlank() && !"All".equalsIgnoreCase(statusFilter)) {
-            sql.append(" AND i.status = ? ");
-            params.add(statusFilter.trim());
-        }
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (i.invoiceNumber LIKE ? OR CAST(o.orderID AS TEXT) LIKE ? OR c.name LIKE ?) ");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-            params.add(term);
-        }
-        sql.append(" ORDER BY i.issuedAt DESC, i.invoiceID DESC ");
-        if (limit > 0) {
-            sql.append(" LIMIT ? OFFSET ? ");
-            params.add(limit);
-            params.add(offset);
-        }
+        String fromParam = from == null ? null : from.toString();
+        String toParam = to == null ? null : to.toString();
+        String statusParam = normalizeStatus(statusFilter);
+        String searchParam = normalizeSearch(search);
+        String sql = limit > 0 ? FIND_INVOICES_SQL : FIND_INVOICES_NO_LIMIT_SQL;
 
         List<InvoiceRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int i = 1;
+            ps.setString(i++, fromParam);
+            ps.setString(i++, fromParam);
+            ps.setString(i++, toParam);
+            ps.setString(i++, toParam);
+            ps.setString(i++, statusParam);
+            ps.setString(i++, statusParam);
+            ps.setString(i++, searchParam);
+            ps.setString(i++, searchParam);
+            ps.setString(i++, searchParam);
+            ps.setString(i++, searchParam);
+            if (limit > 0) {
+                ps.setInt(i++, limit);
+                ps.setInt(i, offset);
             }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
@@ -73,6 +81,17 @@ public class InvoiceDao {
             }
         }
         return rows;
+    }
+
+    private String normalizeStatus(String statusFilter) {
+        if (statusFilter == null || statusFilter.isBlank()) return null;
+        if ("All".equalsIgnoreCase(statusFilter.trim())) return null;
+        return statusFilter.trim();
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null || search.isBlank()) return null;
+        return "%" + search.trim() + "%";
     }
 
     public static class InvoiceRow {

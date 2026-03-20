@@ -14,49 +14,65 @@ import java.util.List;
 /**
  * Fetches order report rows for Detailed Reports (Order tab).
  */
-public class OrderDao {
+public class OrderDao implements OrderDaoInterface {
+
+    private static final String FIND_SQL =
+        "SELECT o.orderID, c.name AS customerName, o.totalAmount, o.orderDate, o.status " +
+        "FROM \"Order\" o " +
+        "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR o.orderDate >= ?) " +
+        "AND (? IS NULL OR o.orderDate <= ?) " +
+        "AND (? IS NULL OR o.status = ?) " +
+        "AND (? IS NULL OR (c.name LIKE ? OR CAST(o.orderID AS TEXT) LIKE ?)) " +
+        "ORDER BY o.orderDate DESC, o.orderID DESC " +
+        "LIMIT ? OFFSET ?";
+
+    private static final String FIND_NO_LIMIT_SQL =
+        "SELECT o.orderID, c.name AS customerName, o.totalAmount, o.orderDate, o.status " +
+        "FROM \"Order\" o " +
+        "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR o.orderDate >= ?) " +
+        "AND (? IS NULL OR o.orderDate <= ?) " +
+        "AND (? IS NULL OR o.status = ?) " +
+        "AND (? IS NULL OR (c.name LIKE ? OR CAST(o.orderID AS TEXT) LIKE ?)) " +
+        "ORDER BY o.orderDate DESC, o.orderID DESC";
+
+    private static final String COUNT_SQL =
+        "SELECT COUNT(*) " +
+        "FROM \"Order\" o " +
+        "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR o.orderDate >= ?) " +
+        "AND (? IS NULL OR o.orderDate <= ?) " +
+        "AND (? IS NULL OR o.status = ?) " +
+        "AND (? IS NULL OR (c.name LIKE ? OR CAST(o.orderID AS TEXT) LIKE ?))";
 
     /**
      * Fetch orders with optional date range, status filter, and search (customer name or order ID).
      * Use limit &lt;= 0 for no limit.
      */
     public List<OrderReportRow> findReportRows(LocalDate from, LocalDate to, String statusFilter, String search, int limit, int offset) throws SQLException {
-        StringBuilder sql = new StringBuilder(
-                "SELECT o.orderID, c.name AS customerName, o.totalAmount, o.orderDate, o.status " +
-                "FROM \"Order\" o " +
-                "JOIN CustomerRegistration c ON o.customerID = c.customerID WHERE 1=1");
-        List<Object> params = new ArrayList<>();
-
-        if (from != null) {
-            sql.append(" AND o.orderDate >= ?");
-            params.add(from + " 00:00:00");
-        }
-        if (to != null) {
-            sql.append(" AND o.orderDate <= ?");
-            params.add(to + " 23:59:59");
-        }
-        if (statusFilter != null && !statusFilter.isBlank() && !"All Status".equalsIgnoreCase(statusFilter.trim())) {
-            sql.append(" AND o.status = ?");
-            params.add(statusFilter.trim());
-        }
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (c.name LIKE ? OR CAST(o.orderID AS TEXT) LIKE ?)");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-        }
-        sql.append(" ORDER BY o.orderDate DESC, o.orderID DESC");
-        if (limit > 0) {
-            sql.append(" LIMIT ? OFFSET ?");
-            params.add(limit);
-            params.add(offset);
-        }
+        String fromParam = from == null ? null : from + " 00:00:00";
+        String toParam = to == null ? null : to + " 23:59:59";
+        String statusParam = normalizeStatus(statusFilter);
+        String searchLike = normalizeSearchLike(search);
+        String sql = limit > 0 ? FIND_SQL : FIND_NO_LIMIT_SQL;
 
         List<OrderReportRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int i = 1;
+            ps.setString(i++, fromParam);
+            ps.setString(i++, fromParam);
+            ps.setString(i++, toParam);
+            ps.setString(i++, toParam);
+            ps.setString(i++, statusParam);
+            ps.setString(i++, statusParam);
+            ps.setString(i++, searchLike);
+            ps.setString(i++, searchLike);
+            ps.setString(i++, searchLike);
+            if (limit > 0) {
+                ps.setInt(i++, limit);
+                ps.setInt(i, offset);
             }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
@@ -77,26 +93,36 @@ public class OrderDao {
 
     /** Count orders matching the same filters as findReportRows (for pagination). */
     public int countReportRows(LocalDate from, LocalDate to, String statusFilter, String search) throws SQLException {
-        StringBuilder sql = new StringBuilder(
-                "SELECT COUNT(*) FROM \"Order\" o JOIN CustomerRegistration c ON o.customerID = c.customerID WHERE 1=1");
-        List<Object> params = new ArrayList<>();
-        if (from != null) { sql.append(" AND o.orderDate >= ?"); params.add(from + " 00:00:00"); }
-        if (to != null) { sql.append(" AND o.orderDate <= ?"); params.add(to + " 23:59:59"); }
-        if (statusFilter != null && !statusFilter.isBlank() && !"All Status".equalsIgnoreCase(statusFilter.trim())) {
-            sql.append(" AND o.status = ?"); params.add(statusFilter.trim());
-        }
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (c.name LIKE ? OR CAST(o.orderID AS TEXT) LIKE ?)");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-        }
+        String fromParam = from == null ? null : from + " 00:00:00";
+        String toParam = to == null ? null : to + " 23:59:59";
+        String statusParam = normalizeStatus(statusFilter);
+        String searchLike = normalizeSearchLike(search);
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+             PreparedStatement ps = conn.prepareStatement(COUNT_SQL)) {
+            int i = 1;
+            ps.setString(i++, fromParam);
+            ps.setString(i++, fromParam);
+            ps.setString(i++, toParam);
+            ps.setString(i++, toParam);
+            ps.setString(i++, statusParam);
+            ps.setString(i++, statusParam);
+            ps.setString(i++, searchLike);
+            ps.setString(i++, searchLike);
+            ps.setString(i, searchLike);
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getInt(1) : 0;
         }
+    }
+
+    private String normalizeStatus(String statusFilter) {
+        if (statusFilter == null || statusFilter.isBlank()) return null;
+        if ("All Status".equalsIgnoreCase(statusFilter.trim())) return null;
+        return statusFilter.trim();
+    }
+
+    private String normalizeSearchLike(String search) {
+        if (search == null || search.isBlank()) return null;
+        return "%" + search.trim() + "%";
     }
 
     private String getProductSummary(Connection conn, int orderId) throws SQLException {
