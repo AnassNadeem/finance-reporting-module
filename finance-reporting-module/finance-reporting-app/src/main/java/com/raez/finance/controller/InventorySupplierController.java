@@ -1,7 +1,9 @@
 package com.raez.finance.controller;
 
+import com.raez.finance.dao.InventorySupplierDao;
+import com.raez.finance.dao.InventorySupplierDaoInterface;
 import com.raez.finance.service.ExportService;
-import com.raez.finance.service.MockDataProvider;
+import com.raez.finance.service.DashboardService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
 import javafx.collections.FXCollections;
@@ -62,7 +64,8 @@ public class InventorySupplierController {
 
     // ── Services / helpers ─────────────────────────────────────────────────
     private MainLayoutController mainLayoutController;
-    private final MockDataProvider mock = MockDataProvider.getInstance();
+    private final InventorySupplierDaoInterface inventorySupplierDao = new InventorySupplierDao();
+    private final DashboardService dashboardService = new DashboardService();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     private final ObservableList<SupplierRow>  supplierItems  = FXCollections.observableArrayList();
@@ -223,14 +226,23 @@ public class InventorySupplierController {
     private void loadDataAsync() {
         Task<Void> task = new Task<>() {
             double stockValue, cogs;
-            java.util.List<MockDataProvider.MockSupplier> suppliers;
+            java.util.List<InventorySupplierDao.SupplierSnapshot> suppliers;
+            java.util.List<InventorySupplierDao.LowStockSnapshot> lowStock;
 
             @Override protected Void call() {
-                stockValue = mock.getCurrentStockValue();
+                stockValue = 0;
+                cogs = 0;
+                suppliers = java.util.List.of();
+                lowStock = java.util.List.of();
                 LocalDate to   = LocalDate.now();
                 LocalDate from = to.minusMonths(3);
-                cogs      = mock.getCogs(from, to, null);
-                suppliers = mock.getSuppliers();
+                try {
+                    stockValue = inventorySupplierDao.getCurrentStockValue();
+                    cogs = dashboardService.getTotalCogs(from, to, null);
+                    suppliers = inventorySupplierDao.findSuppliers();
+                    lowStock = inventorySupplierDao.findLowStockItems();
+                } catch (Exception ignored) {
+                }
                 return null;
             }
 
@@ -241,11 +253,12 @@ public class InventorySupplierController {
 
                 // Supplier table
                 supplierItems.clear();
-                for (MockDataProvider.MockSupplier s : suppliers) {
+                for (InventorySupplierDao.SupplierSnapshot s : suppliers) {
                     supplierItems.add(new SupplierRow(
-                        s.name, s.contact,
-                        s.leadDays > 0 ? s.leadDays : 5 + Math.random() * 10,
-                        s.reliabilityScore * 100
+                        s.name(),
+                        s.contact(),
+                        s.leadDays() > 0 ? s.leadDays() : 0,
+                        s.reliabilityScore() * 100
                     ));
                 }
                 // Supplier count & avg reliability
@@ -258,20 +271,10 @@ public class InventorySupplierController {
                 }
 
                 lowStockItems.clear();
-                var rawLowStock = mock.getLowStockItems().stream()
-                    .map(i -> new LowStockRow(i.name, i.category, i.currentStock, i.reorderLevel))
+                var rawLowStock = lowStock.stream()
+                    .map(i -> new LowStockRow(i.productName(), i.categoryName(), i.currentStock(), i.reorderLevel()))
                     .toList();
                 lowStockItems.addAll(rawLowStock);
-                // TODO: replace with live inventory DAO once schema is finalised
-                if (lowStockItems.isEmpty()) {
-                    lowStockItems.addAll(java.util.List.of(
-                        new LowStockRow("XV2 Drones",           "Drones",      3, 10),
-                        new LowStockRow("AR7 Robots",           "Robots",      1,  5),
-                        new LowStockRow("Drone Accessories Kit","Accessories", 8, 20),
-                        new LowStockRow("Sensor Upgrade Kits",  "Services",    2,  8),
-                        new LowStockRow("Robot Arms Kit",       "Robots",      0,  3)
-                    ));
-                }
                 if (lblLowStockCount != null)
                     lblLowStockCount.setText(lowStockItems.size() + " item" + (lowStockItems.size() == 1 ? "" : "s"));
 
@@ -335,6 +338,7 @@ public class InventorySupplierController {
     @FXML private void handleExportPdf() { exportTable("pdf"); }
 
     private void exportTable(String format) {
+        if (!SessionManager.isAdmin()) return;
         javafx.stage.Window window = tableSuppliers.getScene() != null
             ? tableSuppliers.getScene().getWindow() : null;
 

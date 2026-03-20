@@ -191,9 +191,9 @@ public class TopBarController {
 
                     SVGPath icon = createSectionIcon(section);
                     Label primary = new Label(item[0]);
-                    primary.setStyle("-fx-font-weight: bold; -fx-font-size: 12px; -fx-text-fill: #111827;");
+                    primary.getStyleClass().add("search-result-primary");
                     Label secondary = new Label(item.length > 1 ? item[1] : "");
-                    secondary.setStyle("-fx-font-size: 11px; -fx-text-fill: #9CA3AF;");
+                    secondary.getStyleClass().add("search-result-secondary");
 
                     row.getChildren().addAll(icon, primary, secondary);
                     row.setOnMouseClicked(me -> {
@@ -207,12 +207,12 @@ public class TopBarController {
 
             if (!hasAny) {
                 Label noResults = new Label("No results found");
-                noResults.setStyle("-fx-text-fill: #9CA3AF; -fx-font-size: 12px; -fx-padding: 8;");
+                noResults.getStyleClass().add("search-no-results");
                 suggestionContent.getChildren().add(noResults);
             }
 
             Label hint = new Label("Press Enter for full results");
-            hint.setStyle("-fx-text-fill: #6B7280; -fx-font-size: 11px; -fx-padding: 6 0 0 0;");
+            hint.getStyleClass().add("search-hint");
             suggestionContent.getChildren().add(hint);
 
             showPopupBelow(suggestionPopup, txtSearch);
@@ -264,9 +264,9 @@ public class TopBarController {
 
         VBox nameBox = new VBox(2);
         Label nameLabel = new Label(displayName);
-        nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #111827;");
+        nameLabel.getStyleClass().add("profile-name");
         Label emailLabel = new Label(email);
-        emailLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #9CA3AF;");
+        emailLabel.getStyleClass().add("profile-email");
 
         HBox badgeRow = new HBox(6);
         badgeRow.setAlignment(Pos.CENTER_LEFT);

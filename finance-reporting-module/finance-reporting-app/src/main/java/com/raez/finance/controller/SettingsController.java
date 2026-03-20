@@ -15,298 +15,518 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 import javafx.util.Callback;
-
 import org.mindrot.jbcrypt.BCrypt;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class SettingsController {
 
-    private final FUserDao fUserDao = new FUserDao();
+    // ── Services ─────────────────────────────────────────────────────────
+    private final FUserDao             fUserDao       = new FUserDao();
     private final PasswordResetTokenDao resetTokenDao = new PasswordResetTokenDao();
-    private final RolePermissionDao rolePermissionDao = new RolePermissionDao();
-    private final UserService userService = new UserService();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private static final DateTimeFormatter DATE_ONLY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private final RolePermissionDao    rolePermDao    = new RolePermissionDao();
+    private final UserService          userService    = new UserService();
+    private final ExecutorService      executor       = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "settings-worker");
+        t.setDaemon(true);
+        return t;
+    });
 
+    private static final DateTimeFormatter DATE_FMT =
+        DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm");
+
+    // ── Injected from parent ─────────────────────────────────────────────
+    private MainLayoutController mainLayoutController;
+
+    public void setMainLayoutController(MainLayoutController mlc) {
+        this.mainLayoutController = mlc;
+    }
+
+    // ── FXML — root ──────────────────────────────────────────────────────
     @FXML private StackPane rootStackPane;
 
-    // --- Tabs ---
+    // ── FXML — tabs ──────────────────────────────────────────────────────
     @FXML private Button btnTabAccount;
     @FXML private Button btnTabUsers;
     @FXML private Button btnTabFinancial;
-    @FXML private VBox viewAccount;
-    @FXML private VBox viewUsers;
-    @FXML private VBox viewFinancial;
+    @FXML private VBox   viewAccount;
+    @FXML private VBox   viewUsers;
+    @FXML private VBox   viewFinancial;
 
-    // --- Company & Financial tab ---
-    @FXML private TextField txtCompanyName;
-    @FXML private TextField txtCompanyAddress;
-    @FXML private TextField txtVatPercent;
-    @FXML private ComboBox<String> cmbCurrency;
-    @FXML private ComboBox<String> cmbFinancialYearMonth;
-
-    // --- Account Tab Form ---
-    @FXML private Label lblAccountEmail;
-    @FXML private Label lblAccountName;
-    @FXML private Label lblAccountRole;
-    @FXML private Label lblAccountCreatedAt;
+    // ── FXML — Account tab ───────────────────────────────────────────────
+    @FXML private Label         lblAccountEmail;
+    @FXML private Label         lblAccountName;
+    @FXML private Label         lblAccountRole;
+    @FXML private Label         lblAccountCreatedAt;
     @FXML private PasswordField txtCurrentPwd;
     @FXML private PasswordField txtNewPwd;
     @FXML private PasswordField txtConfirmPwd;
 
-    // --- User Management Tab ---
-    @FXML private TableView<FUser> tblUsers;
-    @FXML private TableColumn<FUser, String> colUsername;
-    @FXML private TableColumn<FUser, String> colName;
-    @FXML private TableColumn<FUser, String> colEmail;
-    @FXML private TableColumn<FUser, String> colRole;
-    @FXML private TableColumn<FUser, String> colStatus;
-    @FXML private TableColumn<FUser, String> colLastLogin;
-    @FXML private TableColumn<FUser, String> colActions;
+    // ── FXML — User Management tab ───────────────────────────────────────
+    @FXML private TableView<FUser>             tblUsers;
+    @FXML private TableColumn<FUser, String>   colUsername;
+    @FXML private TableColumn<FUser, String>   colName;
+    @FXML private TableColumn<FUser, String>   colEmail;
+    @FXML private TableColumn<FUser, String>   colRole;
+    @FXML private TableColumn<FUser, String>   colStatus;
+    @FXML private TableColumn<FUser, String>   colLastLogin;
+    @FXML private TableColumn<FUser, String>   colActions;
 
-    // --- Modal Form ---
-    @FXML private StackPane modalOverlay;
-    @FXML private Label lblModalTitle;
-    @FXML private TextField txtModalUsername;
-    @FXML private PasswordField txtModalPassword;
+    // ── FXML — User modal ────────────────────────────────────────────────
+    @FXML private StackPane      modalOverlay;
+    @FXML private Label          lblModalTitle;
+    @FXML private TextField      txtModalUsername;
+    @FXML private PasswordField  txtModalPassword;
     @FXML private ComboBox<String> cmbModalRole;
-    @FXML private TextField txtModalFirstName;
-    @FXML private TextField txtModalLastName;
-    @FXML private TextField txtModalEmail;
-    @FXML private TextField txtModalPhone;
-    @FXML private TextField txtModalIdCard;
-    @FXML private TextField txtModalAddress;
-    @FXML private CheckBox chkModalActive;
-    @FXML private Button btnModalSave;
+    @FXML private TextField      txtModalFirstName;
+    @FXML private TextField      txtModalLastName;
+    @FXML private TextField      txtModalEmail;
+    @FXML private TextField      txtModalPhone;
+    @FXML private TextField      txtModalIdCard;
+    @FXML private TextField      txtModalAddress;
+    @FXML private CheckBox       chkModalActive;
+    @FXML private Button         btnModalSave;
 
-    private boolean isEditMode = false;
+    // ── FXML — Company & Financials tab ──────────────────────────────────
+    @FXML private TextField        txtCompanyName;
+    @FXML private TextField        txtCompanyAddress;
+    @FXML private TextField        txtVatPercent;
+    @FXML private ComboBox<String> cmbCurrency;
+    @FXML private ComboBox<String> cmbFinancialYearMonth;
+
+    // ── Internal state ───────────────────────────────────────────────────
+    private boolean isEditMode    = false;
+    private FUser   storedEditUser = null;
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  INIT
+    // ══════════════════════════════════════════════════════════════════════
 
     @FXML
     public void initialize() {
-        cmbModalRole.setItems(FXCollections.observableArrayList("Admin", "Finance User"));
-        cmbModalRole.setValue("Finance User");
+        // Role ComboBox seed
+        if (cmbModalRole != null) {
+            cmbModalRole.setItems(FXCollections.observableArrayList("Admin", "Finance User"));
+            cmbModalRole.setValue("Finance User");
+        }
+
+        // Currency + financial year
+        if (cmbCurrency != null)
+            cmbCurrency.setItems(FXCollections.observableArrayList("£", "$", "€", "¥", "CHF", "₹"));
+        if (cmbFinancialYearMonth != null)
+            cmbFinancialYearMonth.setItems(FXCollections.observableArrayList(
+                "January","February","March","April","May","June",
+                "July","August","September","October","November","December"));
 
         bindUserColumns();
 
-        if (!SessionManager.isAdmin()) {
-            btnTabUsers.setVisible(false);
-            btnTabUsers.setManaged(false);
-            viewUsers.setVisible(false);
-            viewUsers.setManaged(false);
-            if (btnTabFinancial != null) {
-                btnTabFinancial.setVisible(false);
-                btnTabFinancial.setManaged(false);
-            }
-            if (viewFinancial != null) {
-                viewFinancial.setVisible(false);
-                viewFinancial.setManaged(false);
-            }
+        boolean isAdmin = SessionManager.isAdmin();
+
+        // Hide admin-only tabs for non-admins
+        if (!isAdmin) {
+            hide(btnTabUsers);
+            hide(viewUsers);
+            hide(btnTabFinancial);
+            hide(viewFinancial);
         } else {
             refreshUsers();
         }
 
-        if (cmbCurrency != null) {
-            cmbCurrency.setItems(FXCollections.observableArrayList("£", "$", "€", "¥", "CHF", "₹"));
-            cmbCurrency.setValue("£");
-        }
-        if (cmbFinancialYearMonth != null) {
-            cmbFinancialYearMonth.setItems(FXCollections.observableArrayList(
-                    "January", "February", "March", "April", "May", "June",
-                    "July", "August", "September", "October", "November", "December"));
-            cmbFinancialYearMonth.setValue("January");
-        }
         switchTab("account");
         loadAccountDetails();
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  ACCOUNT TAB
+    // ══════════════════════════════════════════════════════════════════════
 
     private void loadAccountDetails() {
         if (lblAccountEmail == null) return;
         try {
             FUser user = SessionManager.getCurrentUser();
-            lblAccountEmail.setText(user.getEmail() != null ? user.getEmail() : "—");
-            String first = user.getFirstName() != null ? user.getFirstName() : "";
-            String last = user.getLastName() != null ? user.getLastName() : "";
-            String full = (first + " " + last).trim();
+            lblAccountEmail.setText(nvl(user.getEmail()));
+            String full = ((user.getFirstName() != null ? user.getFirstName() : "")
+                + " " + (user.getLastName() != null ? user.getLastName() : "")).trim();
             lblAccountName.setText(full.isEmpty() ? "—" : full);
             lblAccountRole.setText(user.getRole() != null ? user.getRole().name() : "—");
-            String createdAt = fUserDao.getCreatedAt(user.getId());
-            lblAccountCreatedAt.setText(createdAt != null ? formatCreatedAt(createdAt) : "—");
+            String ca = fUserDao.getCreatedAt(user.getId());
+            lblAccountCreatedAt.setText(formatTs(ca));
         } catch (Exception e) {
             lblAccountEmail.setText("—");
-            lblAccountName.setText("—");
-            lblAccountRole.setText("—");
-            lblAccountCreatedAt.setText("—");
+            if (lblAccountName    != null) lblAccountName.setText("—");
+            if (lblAccountRole    != null) lblAccountRole.setText("—");
+            if (lblAccountCreatedAt != null) lblAccountCreatedAt.setText("—");
         }
     }
 
-    private static String formatCreatedAt(String sqlTimestamp) {
-        if (sqlTimestamp == null) return "—";
+    @FXML
+    private void handleUpdatePassword(ActionEvent event) {
+        String current = txtCurrentPwd.getText();
+        String newPwd  = txtNewPwd.getText();
+        String confirm = txtConfirmPwd.getText();
+
+        if (current == null || current.isBlank()) {
+            toast("warning", "Enter your current password.");
+            return;
+        }
+        String err = ValidationUtils.validateNewPassword(newPwd);
+        if (err != null) { toast("warning", err); return; }
+        if (!newPwd.equals(confirm)) { toast("warning", "Passwords do not match."); return; }
+
+        FUser user;
+        try { user = SessionManager.getCurrentUser(); }
+        catch (Exception e) { toast("error", "Session expired. Please log in again."); return; }
+
+        if (!BCrypt.checkpw(current, user.getPasswordHash())) {
+            toast("error", "Current password is incorrect.");
+            return;
+        }
         try {
-            java.time.LocalDateTime dt = java.time.LocalDateTime.parse(sqlTimestamp.replace(" ", "T"));
-            return dt.format(DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm"));
+            fUserDao.updatePasswordByUserId(user.getId(),
+                BCrypt.hashpw(newPwd, BCrypt.gensalt(12)));
+            txtCurrentPwd.clear(); txtNewPwd.clear(); txtConfirmPwd.clear();
+            toast("success", "Password updated successfully.");
         } catch (Exception e) {
-            return sqlTimestamp;
+            toast("error", "Failed to update password: " + e.getMessage());
         }
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  USER MANAGEMENT TAB
+    // ══════════════════════════════════════════════════════════════════════
 
     private void bindUserColumns() {
-        colUsername.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getUsername()));
+        colUsername.setCellValueFactory(c ->
+            new javafx.beans.property.SimpleStringProperty(c.getValue().getUsername()));
+
         colName.setCellValueFactory(c -> {
-            String first = c.getValue().getFirstName() != null ? c.getValue().getFirstName() : "";
-            String last = c.getValue().getLastName() != null ? c.getValue().getLastName() : "";
-            String full = (first + " " + last).trim();
+            String f = c.getValue().getFirstName() != null ? c.getValue().getFirstName() : "";
+            String l = c.getValue().getLastName()  != null ? c.getValue().getLastName()  : "";
+            String full = (f + " " + l).trim();
             return new javafx.beans.property.SimpleStringProperty(full.isEmpty() ? "—" : full);
         });
-        colEmail.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().getEmail()));
-        colRole.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
+
+        colEmail.setCellValueFactory(c ->
+            new javafx.beans.property.SimpleStringProperty(c.getValue().getEmail()));
+
+        colRole.setCellValueFactory(c ->
+            new javafx.beans.property.SimpleStringProperty(
                 c.getValue().getRole() == UserRole.ADMIN ? "Admin" : "User"));
-        colStatus.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().isActive() ? "active" : "inactive"));
+
+        // Status as oval badge
+        colStatus.setCellValueFactory(c ->
+            new javafx.beans.property.SimpleStringProperty(
+                c.getValue().isActive() ? "Active" : "Inactive"));
         colStatus.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
+            @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText(null);
-                    setStyle("");
-                    return;
-                }
-                setText(item);
-                if ("active".equalsIgnoreCase(item)) {
-                    setStyle("-fx-background-color: #D1FAE5; -fx-background-radius: 4; -fx-padding: 4 10; -fx-text-fill: #065F46; -fx-alignment: center;");
-                } else {
-                    setStyle("-fx-background-color: #F3F4F6; -fx-background-radius: 4; -fx-padding: 4 10; -fx-text-fill: #4B5563; -fx-alignment: center;");
-                }
+                setGraphic(null); setText(null);
+                if (empty || item == null) return;
+                Label badge = new Label(item);
+                boolean active = "Active".equalsIgnoreCase(item);
+                badge.setStyle(
+                    "-fx-font-size: 10px; -fx-font-weight: 700;" +
+                    "-fx-padding: 2 10 2 10; -fx-background-radius: 999;" +
+                    (active
+                        ? "-fx-background-color: #DCFCE7; -fx-text-fill: #15803D;"
+                        : "-fx-background-color: #F3F4F6; -fx-text-fill: #4B5563;"));
+                HBox w = new HBox(badge);
+                w.setAlignment(Pos.CENTER_LEFT);
+                setGraphic(w);
             }
         });
-        colLastLogin.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(
-                c.getValue().getLastLogin() == null ? "—" : c.getValue().getLastLogin().format(DATE_ONLY_FMT)));
-        colActions.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(""));
-        colActions.setCellFactory(createActionsCellFactory());
+
+        colLastLogin.setCellValueFactory(c ->
+            new javafx.beans.property.SimpleStringProperty(
+                c.getValue().getLastLogin() == null ? "—"
+                    : c.getValue().getLastLogin()
+                        .format(DateTimeFormatter.ofPattern("dd MMM yyyy"))));
+
+        colActions.setCellValueFactory(c ->
+            new javafx.beans.property.SimpleStringProperty(""));
+        colActions.setCellFactory(buildActionsCellFactory());
     }
 
-    private Callback<TableColumn<FUser, String>, TableCell<FUser, String>> createActionsCellFactory() {
+    private Callback<TableColumn<FUser, String>, TableCell<FUser, String>> buildActionsCellFactory() {
         return col -> new TableCell<>() {
-            private final HBox box = new HBox(8);
-            private final Button btnEdit = new Button();
-            private final Button btnDelete = new Button();
-            private final Button btnToken = new Button();
+            private final Button btnEdit   = iconBtn(
+                "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5" +
+                "m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+                "#4B5563", "Edit user");
+            private final Button btnDelete = iconBtn(
+                "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7" +
+                "m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
+                "#DC2626", "Delete user");
+            private final Button btnToken  = iconBtn(
+                "M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1" +
+                "v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z",
+                "#4B5563", "Generate reset token");
 
-            {
-                box.setAlignment(Pos.CENTER_LEFT);
-                btnEdit.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
-                btnEdit.setTooltip(new Tooltip("Edit / Update"));
-                SVGPath editSvg = new SVGPath();
-                editSvg.setContent("M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z");
-                editSvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
-                editSvg.setStroke(javafx.scene.paint.Color.valueOf("#4B5563"));
-                editSvg.setStrokeWidth(2);
-                btnEdit.setGraphic(editSvg);
+            private final HBox box = new HBox(6, btnEdit, btnDelete, btnToken);
+            { box.setAlignment(Pos.CENTER_LEFT); }
 
-                btnDelete.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
-                btnDelete.setTooltip(new Tooltip("Delete"));
-                SVGPath deleteSvg = new SVGPath();
-                deleteSvg.setContent("M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16");
-                deleteSvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
-                deleteSvg.setStroke(javafx.scene.paint.Color.valueOf("#DC2626"));
-                deleteSvg.setStrokeWidth(2);
-                btnDelete.setGraphic(deleteSvg);
-
-                btnToken.setStyle("-fx-background-color: transparent; -fx-cursor: hand;");
-                btnToken.setTooltip(new Tooltip("Generate token"));
-                SVGPath keySvg = new SVGPath();
-                keySvg.setContent("M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z");
-                keySvg.setFill(javafx.scene.paint.Color.TRANSPARENT);
-                keySvg.setStroke(javafx.scene.paint.Color.valueOf("#4B5563"));
-                keySvg.setStrokeWidth(2);
-                btnToken.setGraphic(keySvg);
-
-                box.getChildren().addAll(btnEdit, btnDelete, btnToken);
-            }
-
-            @Override
-            protected void updateItem(String item, boolean empty) {
+            @Override protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || getTableRow() == null || getTableRow().getItem() == null) {
-                    setGraphic(null);
-                    return;
+                    setGraphic(null); return;
                 }
                 FUser user = getTableRow().getItem();
-                btnEdit.setOnAction(e -> showEditModal(user));
+                btnEdit.setOnAction(e   -> showEditModal(user));
                 btnDelete.setOnAction(e -> confirmAndDelete(user));
-                btnToken.setOnAction(e -> showResetTokenForUser(user));
+                btnToken.setOnAction(e  -> showResetTokenForUser(user));
                 setGraphic(box);
             }
         };
     }
 
+    private Button iconBtn(String svgContent, String strokeHex, String tooltip) {
+        Button btn = new Button();
+        btn.setStyle("-fx-background-color: transparent; -fx-cursor: hand;" +
+                     "-fx-border-color: transparent; -fx-padding: 4;");
+        btn.setTooltip(new Tooltip(tooltip));
+        SVGPath svg = new SVGPath();
+        svg.setContent(svgContent);
+        svg.setFill(Color.TRANSPARENT);
+        svg.setStroke(Color.web(strokeHex));
+        svg.setStrokeWidth(1.8);
+        btn.setGraphic(svg);
+        btn.setOnMouseEntered(e ->
+            btn.setStyle("-fx-background-color: #F3F4F6; -fx-cursor: hand;" +
+                         "-fx-border-color: transparent; -fx-padding: 4; -fx-background-radius: 6;"));
+        btn.setOnMouseExited(e ->
+            btn.setStyle("-fx-background-color: transparent; -fx-cursor: hand;" +
+                         "-fx-border-color: transparent; -fx-padding: 4;"));
+        return btn;
+    }
+
+    private void refreshUsers() {
+        if (tblUsers == null) return;
+        Task<List<FUser>> task = new Task<>() {
+            @Override protected List<FUser> call() throws Exception {
+                return fUserDao.findAll();
+            }
+        };
+        task.setOnSucceeded(e -> {
+            if (task.getValue() != null)
+                tblUsers.setItems(FXCollections.observableList(task.getValue()));
+        });
+        task.setOnFailed(e -> toast("error", "Failed to load users."));
+        executor.execute(task);
+    }
+
     private void confirmAndDelete(FUser user) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete User");
-        confirm.setHeaderText("Delete user \"" + (user.getUsername() != null ? user.getUsername() : user.getEmail()) + "\"?");
-        confirm.setContentText("Are you sure you want to delete this user? This action cannot be undone.");
-        confirm.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
+        Alert dlg = new Alert(Alert.AlertType.CONFIRMATION);
+        dlg.setTitle("Delete User");
+        dlg.setHeaderText("Delete \"" + nvl(user.getUsername()) + "\"?");
+        dlg.setContentText("This action cannot be undone.");
+        dlg.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
                 try {
                     fUserDao.deleteByUserId(user.getId());
                     refreshUsers();
-                    showSuccessToast("User deleted.");
+                    toast("success", "User deleted.");
                 } catch (Exception ex) {
-                    new Alert(Alert.AlertType.ERROR, "Could not delete user: " + ex.getMessage()).showAndWait();
+                    toast("error", "Could not delete user: " + ex.getMessage());
                 }
             }
         });
     }
 
-    private void refreshUsers() {
-        Task<List<FUser>> task = new Task<>() {
-            @Override
-            protected List<FUser> call() throws Exception {
-                return fUserDao.findAll();
-            }
-        };
-        task.setOnSucceeded(e -> {
-            if (task.getValue() != null) {
-                tblUsers.setItems(FXCollections.observableList(task.getValue()));
-            }
-        });
-        task.exceptionProperty().addListener((o, prev, ex) -> {
-            if (ex != null) {
-                new Alert(Alert.AlertType.ERROR, "Failed to load users: " + ex.getMessage()).showAndWait();
-            }
-        });
-        executor.execute(task);
+    // ── Modal ────────────────────────────────────────────────────────────
+
+    @FXML
+    private void handleShowCreateModal(ActionEvent event) {
+        storedEditUser = null;
+        isEditMode     = false;
+        if (lblModalTitle  != null) lblModalTitle.setText("Create New User");
+        if (btnModalSave   != null) btnModalSave.setText("Create User");
+        clearModal();
+        if (txtModalPassword != null) {
+            txtModalPassword.setDisable(true);
+            txtModalPassword.setPromptText("(auto-generated)");
+        }
+        showModal();
     }
 
-    // --- Tab Logic ---
+    public void showEditModal(FUser user) {
+        storedEditUser = user;
+        isEditMode     = true;
+        if (lblModalTitle  != null) lblModalTitle.setText("Edit User");
+        if (btnModalSave   != null) btnModalSave.setText("Update User");
+        if (txtModalUsername  != null) txtModalUsername.setText(nvl(user.getUsername()));
+        if (txtModalFirstName != null) txtModalFirstName.setText(nvl(user.getFirstName()));
+        if (txtModalLastName  != null) txtModalLastName.setText(nvl(user.getLastName()));
+        if (txtModalEmail     != null) txtModalEmail.setText(nvl(user.getEmail()));
+        if (txtModalPhone     != null) txtModalPhone.setText(nvl(user.getPhone()));
+        if (txtModalIdCard    != null) txtModalIdCard.clear();
+        if (txtModalAddress   != null) txtModalAddress.clear();
+        if (txtModalPassword  != null) {
+            txtModalPassword.clear();
+            txtModalPassword.setDisable(true);
+            txtModalPassword.setPromptText("(password not changed here)");
+        }
+        if (cmbModalRole   != null) cmbModalRole.setValue(user.getRole() == UserRole.ADMIN ? "Admin" : "Finance User");
+        if (chkModalActive != null) chkModalActive.setSelected(user.isActive());
+        showModal();
+    }
+
+    @FXML private void handleCloseModal(ActionEvent event) { hideModal(); }
 
     @FXML
-    private void handleTabAccount(ActionEvent event) { switchTab("account"); }
+    private void handleSaveUser(ActionEvent event) {
+        if (isEditMode) { saveEditUser(); return; }
+        // ── Create ──────────────────────────────────────────────────────
+        String username  = txt(txtModalUsername);
+        String email     = txt(txtModalEmail);
+        String firstName = txt(txtModalFirstName);
+        String lastName  = txt(txtModalLastName);
+        String phone     = txt(txtModalPhone);
+        String roleStr   = cmbModalRole != null ? cmbModalRole.getValue() : "Finance User";
+        boolean active   = chkModalActive == null || chkModalActive.isSelected();
 
-    @FXML
-    private void handleTabUsers(ActionEvent event) {
-        switchTab("users");
-        if (rolePermissionDao.hasPermission(SessionManager.getRole(), "MANAGE_USERS")) {
+        if (username.isEmpty())  { toast("warning", "Username is required.");      return; }
+        if (firstName.isEmpty()) { toast("warning", "First name is required.");    return; }
+        if (lastName.isEmpty())  { toast("warning", "Last name is required.");     return; }
+        if (email.isEmpty())     { toast("warning", "Email is required.");         return; }
+        if (!ValidationUtils.isRaezEmail(email)) {
+            toast("warning", "Email must end with @raez.org.uk."); return;
+        }
+
+        UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
+        String tempPwd = PasswordGenerator.generate();
+        try {
+            userService.createUser(email, username, tempPwd, role,
+                firstName, lastName, phone.isEmpty() ? null : phone, active);
             refreshUsers();
+            hideModal();
+            toast("success", "User created successfully.");
+            showTempPasswordDialog(email, tempPwd);
+        } catch (Exception ex) {
+            toast("error", "Could not create user: " + ex.getMessage());
         }
     }
 
-    @FXML
-    private void handleTabFinancial(ActionEvent event) {
-        switchTab("financial");
+    private void saveEditUser() {
+        FUser current = storedEditUser;
+        if (current == null) return;
+        String username  = txt(txtModalUsername);
+        String email     = txt(txtModalEmail);
+        String firstName = txt(txtModalFirstName);
+        String lastName  = txt(txtModalLastName);
+        String phone     = txt(txtModalPhone);
+        String roleStr   = cmbModalRole != null ? cmbModalRole.getValue() : "Finance User";
+        boolean active   = chkModalActive == null || chkModalActive.isSelected();
+
+        if (username.isEmpty() || email.isEmpty()) {
+            toast("warning", "Username and email are required."); return;
+        }
+        if (!ValidationUtils.isRaezEmail(email)) {
+            toast("warning", "Email must end with @raez.org.uk."); return;
+        }
+        UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
+        try {
+            fUserDao.updateUser(current.getId(), email, username,
+                firstName.isEmpty() ? null : firstName,
+                lastName.isEmpty()  ? null : lastName,
+                phone.isEmpty()     ? null : phone,
+                role, active);
+            storedEditUser = null;
+            refreshUsers();
+            hideModal();
+            toast("success", "User updated.");
+        } catch (Exception ex) {
+            toast("error", "Could not update user: " + ex.getMessage());
+        }
+    }
+
+    void showResetTokenForUser(FUser user) {
+        if (user == null) return;
+        String email = user.getEmail();
+        if (email == null || email.isBlank()) { toast("warning", "User has no email."); return; }
+        try {
+            String token = resetTokenDao.createToken(user.getId());
+            showResetTokenDialog(email.trim(), token);
+        } catch (Exception ex) {
+            toast("error", "Could not create reset token: " + ex.getMessage());
+        }
+    }
+
+    private void showResetTokenDialog(String email, String token) {
+        Alert dlg = new Alert(Alert.AlertType.INFORMATION);
+        dlg.setTitle("Password Reset Token");
+        dlg.setHeaderText("Share this one-time token with the user");
+        dlg.setContentText(
+            "The user must use this token via 'Forgot password' on the login screen.\n" +
+            "Token expires in 24 hours.\n\n" +
+            "Email: " + email + "\nToken: " + token);
+        ButtonType copy = new ButtonType("Copy Token", ButtonBar.ButtonData.APPLY);
+        dlg.getButtonTypes().setAll(copy, ButtonType.OK);
+        dlg.showAndWait().ifPresent(btn -> {
+            if (btn == copy) {
+                Clipboard cb = Clipboard.getSystemClipboard();
+                ClipboardContent cc = new ClipboardContent();
+                cc.putString(token);
+                cb.setContent(cc);
+                toast("success", "Token copied to clipboard.");
+            }
+        });
+    }
+
+    private void showTempPasswordDialog(String email, String tempPassword) {
+        Alert dlg = new Alert(Alert.AlertType.INFORMATION);
+        dlg.setTitle("Temporary Password");
+        dlg.setHeaderText("Share this temporary password with the new user");
+        dlg.setContentText(
+            "The user must log in and set a new password on first login.\n\n" +
+            "Email: " + email + "\nTemporary password: " + tempPassword);
+        ButtonType copy = new ButtonType("Copy to Clipboard", ButtonBar.ButtonData.APPLY);
+        dlg.getButtonTypes().setAll(copy, ButtonType.OK);
+        dlg.showAndWait().ifPresent(btn -> {
+            if (btn == copy) {
+                Clipboard cb = Clipboard.getSystemClipboard();
+                ClipboardContent cc = new ClipboardContent();
+                cc.putString(tempPassword);
+                cb.setContent(cc);
+                toast("success", "Password copied to clipboard.");
+            }
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  COMPANY & FINANCIALS TAB
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void loadFinancialSettings() {
+        GlobalSettingsService gs = GlobalSettingsService.getInstance();
+        if (txtCompanyName    != null) txtCompanyName.setText(gs.getCompanyName());
+        if (txtCompanyAddress != null) txtCompanyAddress.setText(gs.getCompanyAddress());
+        if (txtVatPercent     != null) txtVatPercent.setText(
+            String.valueOf((int) Math.round(gs.getDefaultVatPercent())));
+        if (cmbCurrency != null) {
+            String sym = gs.getDefaultCurrencySymbol();
+            cmbCurrency.setValue(cmbCurrency.getItems().contains(sym) ? sym : "£");
+        }
+        if (cmbFinancialYearMonth != null) {
+            int m = gs.getFinancialYearStartMonth();
+            if (m >= 1 && m <= 12)
+                cmbFinancialYearMonth.setValue(cmbFinancialYearMonth.getItems().get(m - 1));
+        }
     }
 
     @FXML
@@ -314,356 +534,142 @@ public class SettingsController {
         GlobalSettingsService gs = GlobalSettingsService.getInstance();
         try {
             double vat = 20.0;
-            if (txtVatPercent != null && txtVatPercent.getText() != null && !txtVatPercent.getText().isBlank()) {
+            if (txtVatPercent != null && !txtVatPercent.getText().isBlank()) {
                 vat = Double.parseDouble(txtVatPercent.getText().trim());
-                if (vat < 0 || vat > 100) {
-                    showAlert("Invalid VAT", "VAT percentage must be between 0 and 100.");
-                    return;
-                }
+                if (vat < 0 || vat > 100) { toast("warning", "VAT must be 0–100."); return; }
             }
             gs.setDefaultVatPercent(vat);
-            gs.setCompanyName(txtCompanyName != null ? txtCompanyName.getText() : "");
-            gs.setCompanyAddress(txtCompanyAddress != null ? txtCompanyAddress.getText() : "");
-            if (cmbCurrency != null && cmbCurrency.getValue() != null) gs.setDefaultCurrencySymbol(cmbCurrency.getValue());
+            gs.setCompanyName(    txtCompanyName    != null ? txtCompanyName.getText()    : "");
+            gs.setCompanyAddress( txtCompanyAddress != null ? txtCompanyAddress.getText() : "");
+            if (cmbCurrency           != null && cmbCurrency.getValue()           != null)
+                gs.setDefaultCurrencySymbol(cmbCurrency.getValue());
             if (cmbFinancialYearMonth != null && cmbFinancialYearMonth.getValue() != null) {
-                int month = cmbFinancialYearMonth.getItems().indexOf(cmbFinancialYearMonth.getValue()) + 1;
-                gs.setFinancialYearStartMonth(month);
+                int m = cmbFinancialYearMonth.getItems().indexOf(cmbFinancialYearMonth.getValue()) + 1;
+                gs.setFinancialYearStartMonth(m);
             }
             gs.save();
-            showAlert("Saved", "Company & financial settings have been saved. Reports and dashboard will use these values.");
+            toast("success", "Settings saved. Reports will reflect the new values.");
         } catch (NumberFormatException e) {
-            showAlert("Invalid VAT", "Please enter a valid number for VAT percentage (e.g. 20).");
+            toast("warning", "Enter a valid number for VAT (e.g. 20).");
         }
     }
 
-    private void showAlert(String title, String message) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle(title);
-        a.setHeaderText(null);
-        a.setContentText(message);
-        a.showAndWait();
-    }
+    // ══════════════════════════════════════════════════════════════════════
+    //  TAB SWITCHING
+    // ══════════════════════════════════════════════════════════════════════
+
+    @FXML private void handleTabAccount(ActionEvent e)  { switchTab("account");   }
+    @FXML private void handleTabUsers(ActionEvent e)    { switchTab("users");     }
+    @FXML private void handleTabFinancial(ActionEvent e){ switchTab("financial"); }
 
     private void switchTab(String tab) {
-        String activeStyle = "-fx-background-color: transparent; -fx-border-color: #1E2939; -fx-border-width: 0 0 3 0; -fx-text-fill: #1E2939; -fx-cursor: hand; -fx-font-weight: bold;";
-        String inactiveStyle = "-fx-background-color: transparent; -fx-border-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand;";
+        String active   = "-fx-background-color: transparent; -fx-border-color: #1E2939;" +
+                          "-fx-border-width: 0 0 3 0; -fx-text-fill: #1E2939;" +
+                          "-fx-cursor: hand; -fx-font-weight: bold;";
+        String inactive = "-fx-background-color: transparent; -fx-border-color: transparent;" +
+                          "-fx-text-fill: #4B5563; -fx-cursor: hand;";
 
-        btnTabAccount.setStyle(inactiveStyle);
-        btnTabUsers.setStyle(inactiveStyle);
-        if (btnTabFinancial != null) btnTabFinancial.setStyle(inactiveStyle);
-        viewAccount.setVisible(false);
-        viewAccount.setManaged(false);
-        viewUsers.setVisible(false);
-        viewUsers.setManaged(false);
-        if (viewFinancial != null) {
-            viewFinancial.setVisible(false);
-            viewFinancial.setManaged(false);
-        }
+        setStyle(btnTabAccount,  inactive); setStyle(btnTabUsers,     inactive);
+        setStyle(btnTabFinancial,inactive);
+        hide(viewAccount); hide(viewUsers); hide(viewFinancial);
 
-        if (tab.equals("account")) {
-            btnTabAccount.setStyle(activeStyle);
-            viewAccount.setVisible(true);
-            viewAccount.setManaged(true);
-            loadAccountDetails();
-        } else if (tab.equals("users")) {
-            btnTabUsers.setStyle(activeStyle);
-            viewUsers.setVisible(true);
-            viewUsers.setManaged(true);
-        } else if (tab.equals("financial") && btnTabFinancial != null && viewFinancial != null) {
-            btnTabFinancial.setStyle(activeStyle);
-            viewFinancial.setVisible(true);
-            viewFinancial.setManaged(true);
-            loadFinancialSettings();
+        switch (tab) {
+            case "account"   -> { setStyle(btnTabAccount,  active); show(viewAccount);   loadAccountDetails(); }
+            case "users"     -> { setStyle(btnTabUsers,    active); show(viewUsers);      refreshUsers(); }
+            case "financial" -> { setStyle(btnTabFinancial,active); show(viewFinancial); loadFinancialSettings(); }
         }
     }
 
-    private void loadFinancialSettings() {
-        GlobalSettingsService gs = GlobalSettingsService.getInstance();
-        if (txtCompanyName != null) txtCompanyName.setText(gs.getCompanyName());
-        if (txtCompanyAddress != null) txtCompanyAddress.setText(gs.getCompanyAddress());
-        if (txtVatPercent != null) txtVatPercent.setText(String.valueOf((int) Math.round(gs.getDefaultVatPercent())));
-        if (cmbCurrency != null) {
-            String sym = gs.getDefaultCurrencySymbol();
-            if (sym != null && cmbCurrency.getItems().contains(sym)) cmbCurrency.setValue(sym);
-            else cmbCurrency.setValue("£");
-        }
-        if (cmbFinancialYearMonth != null) {
-            int m = gs.getFinancialYearStartMonth();
-            if (m >= 1 && m <= 12) cmbFinancialYearMonth.setValue(cmbFinancialYearMonth.getItems().get(m - 1));
-        }
-    }
+    // ══════════════════════════════════════════════════════════════════════
+    //  TOAST
+    // ══════════════════════════════════════════════════════════════════════
 
-    // --- Form Actions ---
-
-    @FXML
-    private void handleUpdatePassword(ActionEvent event) {
-        String current = txtCurrentPwd.getText();
-        String newPwd = txtNewPwd.getText();
-        String confirm = txtConfirmPwd.getText();
-
-        if (current == null || current.isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "Enter your current password.").showAndWait();
+    /**
+     * Shows a toast. Prefers mainLayoutController.showToast() so it appears
+     * in the main content area (top-right). Falls back to local rootStackPane.
+     */
+    private void toast(String type, String message) {
+        if (mainLayoutController != null) {
+            mainLayoutController.showToast(type, message);
             return;
         }
-        String pwdError = ValidationUtils.validateNewPassword(newPwd);
-        if (pwdError != null) {
-            new Alert(Alert.AlertType.WARNING, pwdError).showAndWait();
-            return;
-        }
-        if (!newPwd.equals(confirm)) {
-            new Alert(Alert.AlertType.WARNING, "New password and confirmation do not match.").showAndWait();
-            return;
-        }
-
-        FUser user;
-        try {
-            user = SessionManager.getCurrentUser();
-        } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "Session expired. Please log in again.").showAndWait();
-            return;
-        }
-
-        if (!BCrypt.checkpw(current, user.getPasswordHash())) {
-            new Alert(Alert.AlertType.ERROR, "Current password is incorrect.").showAndWait();
-            return;
-        }
-
-        try {
-            String hash = BCrypt.hashpw(newPwd, BCrypt.gensalt(12));
-            fUserDao.updatePasswordByUserId(user.getId(), hash);
-            txtCurrentPwd.clear();
-            txtNewPwd.clear();
-            txtConfirmPwd.clear();
-            showSuccessToast("Password updated successfully.");
-        } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "Failed to update password: " + e.getMessage()).showAndWait();
-        }
-    }
-
-    /** Admin-only: generate reset token for a user (e.g. from User Management table). */
-    void showResetTokenForUser(FUser user) {
-        if (user == null) return;
-        String email = user.getEmail();
-        if (email == null || email.isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "User has no email.").showAndWait();
+        // Fallback: show inside settings' own StackPane
+        if (rootStackPane == null) {
+            new Alert(type.equals("error") ? Alert.AlertType.ERROR : Alert.AlertType.INFORMATION,
+                message).showAndWait();
             return;
         }
         try {
-            String token = resetTokenDao.createToken(user.getId());
-            showResetTokenDialog(email.trim(), token);
-        } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "Could not create reset token: " + e.getMessage()).showAndWait();
-        }
-    }
-
-    private void showResetTokenDialog(String email, String token) {
-        Alert dialog = new Alert(Alert.AlertType.INFORMATION);
-        dialog.setTitle("Password Reset Token");
-        dialog.setHeaderText("Share this one-time token with the user");
-        dialog.setContentText("The user must use this token on the login screen (Forgot password) to set a new password.\n\nToken expires in 24 hours.\n\nEmail: " + email + "\nToken: " + token);
-
-        ButtonType copyButton = new ButtonType("Copy Token", ButtonBar.ButtonData.APPLY);
-        dialog.getButtonTypes().setAll(copyButton, ButtonType.OK);
-
-        java.util.Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isPresent() && result.get() == copyButton) {
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-            ClipboardContent content = new ClipboardContent();
-            content.putString(token);
-            clipboard.setContent(content);
-            showSuccessToast("Token copied to clipboard.");
-        }
-    }
-
-    // --- Modal Logic ---
-
-    @FXML
-    private void handleShowCreateModal(ActionEvent event) {
-        storedEditUser = null;
-        isEditMode = false;
-        lblModalTitle.setText("Create New User");
-        btnModalSave.setText("Create User");
-        clearModal();
-        txtModalPassword.setDisable(true);
-        txtModalPassword.setPromptText("(auto-generated)");
-
-        modalOverlay.setVisible(true);
-        modalOverlay.setManaged(true);
-    }
-
-    public void showEditModal(FUser user) {
-        storedEditUser = user;
-        isEditMode = true;
-        lblModalTitle.setText("Edit User");
-        btnModalSave.setText("Update User");
-        txtModalUsername.setText(user.getUsername());
-        txtModalFirstName.setText(user.getFirstName() != null ? user.getFirstName() : "");
-        txtModalLastName.setText(user.getLastName() != null ? user.getLastName() : "");
-        txtModalEmail.setText(user.getEmail());
-        txtModalPhone.setText(user.getPhone() != null ? user.getPhone() : "");
-        if (txtModalIdCard != null) txtModalIdCard.clear();
-        if (txtModalAddress != null) txtModalAddress.clear();
-        txtModalPassword.clear();
-        txtModalPassword.setDisable(true);
-        cmbModalRole.setValue(user.getRole() == UserRole.ADMIN ? "Admin" : "Finance User");
-        chkModalActive.setSelected(user.isActive());
-        modalOverlay.setVisible(true);
-        modalOverlay.setManaged(true);
-    }
-
-    @FXML
-    private void handleCloseModal(ActionEvent event) {
-        modalOverlay.setVisible(false);
-        modalOverlay.setManaged(false);
-    }
-
-    @FXML
-    private void handleSaveUser(ActionEvent event) {
-        if (isEditMode) {
-            saveEditUser();
-            return;
-        }
-        String username = txtModalUsername.getText();
-        String email = txtModalEmail.getText();
-        String roleStr = cmbModalRole.getValue();
-        String firstName = txtModalFirstName.getText();
-        String lastName = txtModalLastName.getText();
-        String phone = txtModalPhone.getText();
-        boolean active = chkModalActive.isSelected();
-
-        if (username == null || username.isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "Username is required.").showAndWait();
-            return;
-        }
-        if (firstName == null || firstName.isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "First Name is required.").showAndWait();
-            return;
-        }
-        if (lastName == null || lastName.isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "Last Name is required.").showAndWait();
-            return;
-        }
-        if (email == null || email.isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "Email is required.").showAndWait();
-            return;
-        }
-        if (!ValidationUtils.isRaezEmail(email)) {
-            new Alert(Alert.AlertType.WARNING, "Email must be a valid @raez.org.uk address.").showAndWait();
-            return;
-        }
-        UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
-
-        String tempPassword = PasswordGenerator.generate();
-        try {
-            userService.createUser(email.trim(), username.trim(), tempPassword, role,
-                    firstName != null ? firstName.trim() : null,
-                    lastName != null ? lastName.trim() : null,
-                    phone != null && !phone.isBlank() ? phone.trim() : null,
-                    active);
-            refreshUsers();
-            handleCloseModal(null);
-            showSuccessToast("User created successfully.");
-            showTempPasswordDialog(email.trim(), tempPassword);
-        } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "Could not create user: " + e.getMessage()).showAndWait();
-        }
-    }
-
-    private void showTempPasswordDialog(String email, String tempPassword) {
-        Alert dialog = new Alert(Alert.AlertType.INFORMATION);
-        dialog.setTitle("Temporary Password");
-        dialog.setHeaderText("Share this temporary password with the user");
-        dialog.setContentText("The user must log in and set a new password on first login.\n\nEmail/Username: " + email + "\nTemporary password: " + tempPassword);
-
-        ButtonType copyButton = new ButtonType("Copy to Clipboard", ButtonBar.ButtonData.APPLY);
-        dialog.getButtonTypes().setAll(copyButton, ButtonType.OK);
-
-        java.util.Optional<ButtonType> result = dialog.showAndWait();
-        if (result.isPresent() && result.get() == copyButton) {
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-            ClipboardContent content = new ClipboardContent();
-            content.putString(tempPassword);
-            clipboard.setContent(content);
-            showSuccessToast("Password copied to clipboard.");
-        }
-    }
-
-    private void saveEditUser() {
-        FUser current = getStoredEditUser();
-        if (current == null) return;
-        String username = txtModalUsername.getText();
-        String email = txtModalEmail.getText();
-        String firstName = txtModalFirstName.getText();
-        String lastName = txtModalLastName.getText();
-        String phone = txtModalPhone.getText();
-        String roleStr = cmbModalRole.getValue();
-        boolean active = chkModalActive.isSelected();
-
-        if (username == null || username.isBlank() || email == null || email.isBlank()) {
-            new Alert(Alert.AlertType.WARNING, "Username and email are required.").showAndWait();
-            return;
-        }
-        if (!ValidationUtils.isRaezEmail(email)) {
-            new Alert(Alert.AlertType.WARNING, "Email must be a valid @raez.org.uk address.").showAndWait();
-            return;
-        }
-        UserRole role = "Admin".equals(roleStr) ? UserRole.ADMIN : UserRole.FINANCE_USER;
-        try {
-            fUserDao.updateUser(current.getId(), email.trim(), username.trim(),
-                    firstName != null ? firstName.trim() : null,
-                    lastName != null ? lastName.trim() : null,
-                    phone != null && !phone.isBlank() ? phone.trim() : null,
-                    role, active);
-            storedEditUser = null;
-            refreshUsers();
-            handleCloseModal(null);
-            showSuccessToast("User updated.");
-        } catch (Exception e) {
-            new Alert(Alert.AlertType.ERROR, "Could not update user: " + e.getMessage()).showAndWait();
-        }
-    }
-
-    private FUser storedEditUser = null;
-
-    private FUser getStoredEditUser() {
-        return storedEditUser;
-    }
-
-    private void showSuccessToast(String message) {
-        if (rootStackPane == null) return;
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/raez/finance/view/NotificationToast.fxml"));
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/com/raez/finance/view/NotificationToast.fxml"));
             Node toastNode = loader.load();
             NotificationToastController c = loader.getController();
             if (c != null) {
-                c.setNotification("success", message, () -> {
-                    if (rootStackPane.getChildren().contains(toastNode)) {
+                c.setNotification(type, message, () -> {
+                    if (rootStackPane.getChildren().contains(toastNode))
                         rootStackPane.getChildren().remove(toastNode);
-                    }
                 });
             }
             rootStackPane.getChildren().add(toastNode);
             StackPane.setAlignment(toastNode, Pos.TOP_RIGHT);
-            StackPane.setMargin(toastNode, new javafx.geometry.Insets(24, 24, 0, 24));
-        } catch (Exception e) {
+            StackPane.setMargin(toastNode, new Insets(24, 24, 0, 0));
+        } catch (Exception ex) {
             new Alert(Alert.AlertType.INFORMATION, message).showAndWait();
         }
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    //  HELPERS
+    // ══════════════════════════════════════════════════════════════════════
+
     private void clearModal() {
-        txtModalUsername.clear();
-        txtModalPassword.clear();
-        if (txtModalPassword != null) {
-            txtModalPassword.setDisable(false);
-            txtModalPassword.setPromptText("");
-        }
-        txtModalFirstName.clear();
-        txtModalLastName.clear();
-        txtModalEmail.clear();
-        txtModalPhone.clear();
-        if (txtModalIdCard != null) txtModalIdCard.clear();
-        if (txtModalAddress != null) txtModalAddress.clear();
-        cmbModalRole.setValue("Finance User");
-        chkModalActive.setSelected(true);
+        if (txtModalUsername  != null) txtModalUsername.clear();
+        if (txtModalPassword  != null) { txtModalPassword.clear(); txtModalPassword.setDisable(false); }
+        if (txtModalFirstName != null) txtModalFirstName.clear();
+        if (txtModalLastName  != null) txtModalLastName.clear();
+        if (txtModalEmail     != null) txtModalEmail.clear();
+        if (txtModalPhone     != null) txtModalPhone.clear();
+        if (txtModalIdCard    != null) txtModalIdCard.clear();
+        if (txtModalAddress   != null) txtModalAddress.clear();
+        if (cmbModalRole      != null) cmbModalRole.setValue("Finance User");
+        if (chkModalActive    != null) chkModalActive.setSelected(true);
+    }
+
+    private void showModal() {
+        if (modalOverlay != null) { modalOverlay.setVisible(true); modalOverlay.setManaged(true); }
+    }
+
+    private void hideModal() {
+        if (modalOverlay != null) { modalOverlay.setVisible(false); modalOverlay.setManaged(false); }
+    }
+
+    private void show(Node n) {
+        if (n != null) { n.setVisible(true);  ((javafx.scene.layout.Region) n).setManaged(true);  }
+    }
+
+    private void hide(Node n) {
+        if (n != null) { n.setVisible(false); ((javafx.scene.layout.Region) n).setManaged(false); }
+    }
+
+    private void setStyle(Button btn, String style) {
+        if (btn != null) btn.setStyle(style);
+    }
+
+    private String txt(TextField f) {
+        return f == null || f.getText() == null ? "" : f.getText().trim();
+    }
+
+    private String nvl(String s) { return s != null ? s : ""; }
+
+    private String formatTs(String ts) {
+        if (ts == null) return "—";
+        try { return java.time.LocalDateTime.parse(ts.replace(" ", "T")).format(DATE_FMT); }
+        catch (Exception e) { return ts; }
+    }
+
+    public void shutdown() {
+        executor.shutdown();
+        try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
+        catch (InterruptedException e) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
     }
 }

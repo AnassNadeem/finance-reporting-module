@@ -1,8 +1,9 @@
 package com.raez.finance.controller;
 
 import com.raez.finance.dao.AlertDao;
+import com.raez.finance.dao.AlertDaoInterface;
 import com.raez.finance.dao.FinancialAnomalyDao;
-import com.raez.finance.service.MockDataProvider;
+import com.raez.finance.dao.FinancialAnomalyDaoInterface;
 import javafx.animation.FadeTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -45,12 +46,9 @@ public class NotificationsAlertsController {
     @FXML private Button btnMarkAllRead;
 
     // ── Services ──────────────────────────────────────────────────────────
-    private final AlertDao            alertDao   = new AlertDao();
-    private final FinancialAnomalyDao anomalyDao = new FinancialAnomalyDao();
+    private final AlertDaoInterface            alertDao   = new AlertDao();
+    private final FinancialAnomalyDaoInterface anomalyDao = new FinancialAnomalyDao();
     private final ExecutorService     executor   = Executors.newSingleThreadExecutor();
-
-    private static final double LOW_MARGIN_THRESHOLD  = 15.0;
-    private static final double HIGH_REFUND_THRESHOLD = 10.0;
 
     // In-memory state (rows are re-rendered on filter change without reloading)
     private final ObservableList<AlertDao.AlertRow>            allAlerts      = FXCollections.observableArrayList();
@@ -85,29 +83,6 @@ public class NotificationsAlertsController {
             protected Void call() {
                 // ── Alerts ───────────────────────────────────────────────
                 try { alerts.addAll(alertDao.findAlerts(false)); } catch (Exception ignored) {}
-
-                // Threshold-based synthetic alerts from mock
-                MockDataProvider mock = MockDataProvider.getInstance();
-                LocalDate to   = LocalDate.now();
-                LocalDate from = to.minusMonths(3);
-
-                double sales   = safeDouble(() -> mock.getTotalSales(from, to, null));
-                double refunds = safeDouble(() -> mock.getRefunds(from, to, null));
-                if (sales > 0) {
-                    double rate = 100.0 * refunds / sales;
-                    if (rate >= HIGH_REFUND_THRESHOLD) {
-                        alerts.add(0, syntheticAlert("High Refund Rate", "HIGH",
-                            String.format("Refund rate %.1f%% exceeds %.0f%% threshold. Review returns and product quality.", rate, HIGH_REFUND_THRESHOLD)));
-                    }
-                }
-                for (MockDataProvider.MockProduct p : mock.getProducts()) {
-                    if (p.price <= 0) continue;
-                    double margin = 100.0 * (p.price - p.unitCost) / p.price;
-                    if (margin >= 0 && margin < LOW_MARGIN_THRESHOLD) {
-                        alerts.add(syntheticAlert("Low Profit Margin", "WARNING",
-                            String.format("Product \"%s\" has margin %.1f%% — below %.0f%% threshold.", p.name, margin, LOW_MARGIN_THRESHOLD)));
-                    }
-                }
 
                 // ── Anomalies ────────────────────────────────────────────
                 try { anomalies.addAll(anomalyDao.findAnomalies(false)); } catch (Exception ignored) {}
@@ -430,11 +405,6 @@ public class NotificationsAlertsController {
     //  HELPERS
     // ══════════════════════════════════════════════════════════════════════
 
-    private AlertDao.AlertRow syntheticAlert(String type, String severity, String message) {
-        return new AlertDao.AlertRow(0, type, severity, message,
-            LocalDate.now().toString(), null, null, false);
-    }
-
     private boolean isCritical(String severity) {
         return "CRITICAL".equalsIgnoreCase(severity) || "HIGH".equalsIgnoreCase(severity);
     }
@@ -461,10 +431,6 @@ public class NotificationsAlertsController {
         node.setOpacity(0);
         FadeTransition ft = new FadeTransition(Duration.millis(250), node);
         ft.setFromValue(0); ft.setToValue(1); ft.play();
-    }
-
-    private double safeDouble(java.util.concurrent.Callable<Double> fn) {
-        try { return fn.call(); } catch (Exception e) { return 0; }
     }
 
     public void shutdown() {
