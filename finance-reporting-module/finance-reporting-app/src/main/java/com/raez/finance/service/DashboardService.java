@@ -17,20 +17,32 @@ import java.util.List;
  */
 public class DashboardService {
 
+    private static final String CATEGORY_EXISTS_FOR_ORDER =
+        " AND (? IS NULL OR EXISTS ( " +
+        "SELECT 1 FROM OrderItem oi3 " +
+        "JOIN Product p3 ON oi3.productID = p3.productID " +
+        "LEFT JOIN Category c3 ON p3.categoryID = c3.categoryID " +
+        "WHERE oi3.orderID = o.orderID " +
+        "AND (c3.categoryName = ? OR (c3.categoryName IS NULL AND ? = 'Uncategorized')) " +
+        ")) ";
+
     /**
      * Total sales = SUM of successful payments. Optional category filter (by order items).
      */
     public double getTotalSales(LocalDate from, LocalDate to, String category) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(p.amountPaid), 0) FROM Payment p " +
-                "JOIN \"Order\" o ON p.orderID = o.orderID ";
-        if (hasCategoryFilter(category)) {
-            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
-                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
+        String sql = "SELECT COALESCE(SUM(p.amountPaid), 0) " +
+            "FROM Payment p JOIN \"Order\" o ON p.orderID = o.orderID " +
+            "WHERE p.paymentStatus = 'SUCCESS' " +
+            "AND (? IS NULL OR p.paymentDate >= ?) " +
+            "AND (? IS NULL OR p.paymentDate <= ?) " +
+            CATEGORY_EXISTS_FOR_ORDER;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            bindDate(ps, 1, from, to);
+            bindCategoryForOrder(ps, 5, category);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getDouble(1) : 0;
         }
-        sql += "WHERE p.paymentStatus = 'SUCCESS' ";
-        sql = appendDateFilter(sql, "p.paymentDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        return querySingleDoubleWithCategory(sql, from, to, category);
     }
 
     public double getTotalProfit(LocalDate from, LocalDate to, String category) throws SQLException {
@@ -40,28 +52,35 @@ public class DashboardService {
     }
 
     public double getOutstandingPayments(LocalDate from, LocalDate to, String category) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(o.totalAmount), 0) FROM \"Order\" o ";
-        if (hasCategoryFilter(category)) {
-            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
-                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
+        String sql = "SELECT COALESCE(SUM(o.totalAmount), 0) " +
+            "FROM \"Order\" o " +
+            "WHERE o.status NOT IN ('Cancelled') " +
+            "AND NOT EXISTS (SELECT 1 FROM Payment p WHERE p.orderID = o.orderID AND p.paymentStatus = 'SUCCESS') " +
+            "AND (? IS NULL OR o.orderDate >= ?) " +
+            "AND (? IS NULL OR o.orderDate <= ?) " +
+            CATEGORY_EXISTS_FOR_ORDER;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            bindDate(ps, 1, from, to);
+            bindCategoryForOrder(ps, 5, category);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getDouble(1) : 0;
         }
-        sql += "WHERE o.status NOT IN ('Cancelled') " +
-                "AND NOT EXISTS (SELECT 1 FROM Payment p WHERE p.orderID = o.orderID AND p.paymentStatus = 'SUCCESS') ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        return querySingleDoubleWithCategory(sql, from, to, category);
     }
 
     public double getRefunds(LocalDate from, LocalDate to, String category) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(r.refundAmount), 0) FROM Refund r JOIN \"Order\" o ON r.orderID = o.orderID ";
-        if (hasCategoryFilter(category)) {
-            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
-                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
+        String sql = "SELECT COALESCE(SUM(r.refundAmount), 0) " +
+            "FROM Refund r JOIN \"Order\" o ON r.orderID = o.orderID " +
+            "WHERE (? IS NULL OR r.refundDate >= ?) " +
+            "AND (? IS NULL OR r.refundDate <= ?) " +
+            CATEGORY_EXISTS_FOR_ORDER;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            bindDate(ps, 1, from, to);
+            bindCategoryForOrder(ps, 5, category);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getDouble(1) : 0;
         }
-        sql += "WHERE 1=1 ";
-        sql = appendDateFilter(sql, "r.refundDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        return querySingleDoubleWithCategory(sql, from, to, category);
     }
 
     /**
@@ -72,33 +91,34 @@ public class DashboardService {
     public double getTotalCogs(LocalDate from, LocalDate to, String category) throws SQLException {
         String sql = "SELECT COALESCE(SUM(oi.quantity * COALESCE(p2.unitCost, oi.unitPrice * 0.6)), 0) " +
                 "FROM OrderItem oi JOIN \"Order\" o ON oi.orderID = o.orderID " +
-                "JOIN Product p2 ON oi.productID = p2.productID ";
-        if (hasCategoryFilter(category)) {
-            sql += "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
+                "JOIN Product p2 ON oi.productID = p2.productID " +
+                "LEFT JOIN Category c ON p2.categoryID = c.categoryID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) " +
+                "AND (? IS NULL OR o.orderDate <= ?) " +
+                "AND (? IS NULL OR (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')))";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            bindDate(ps, 1, from, to);
+            bindCategoryForJoin(ps, 5, category);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getDouble(1) : 0;
         }
-        sql += "WHERE 1=1 ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        return querySingleDoubleWithCategory(sql, from, to, category);
     }
 
     /**
      * Total VAT collected from successful payments in period (gross amounts converted using global VAT rate).
      */
     public double getTotalVatCollected(LocalDate from, LocalDate to, String category) throws SQLException {
-        String sql = "SELECT p.amountPaid FROM Payment p JOIN \"Order\" o ON p.orderID = o.orderID ";
-        if (hasCategoryFilter(category)) {
-            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
-                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
-        }
-        sql += "WHERE p.paymentStatus = 'SUCCESS' ";
-        sql = appendDateFilter(sql, "p.paymentDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
+        String sql = "SELECT p.amountPaid FROM Payment p JOIN \"Order\" o ON p.orderID = o.orderID " +
+            "WHERE p.paymentStatus = 'SUCCESS' " +
+            "AND (? IS NULL OR p.paymentDate >= ?) " +
+            "AND (? IS NULL OR p.paymentDate <= ?) " +
+            CATEGORY_EXISTS_FOR_ORDER;
         List<Double> amounts = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
+            bindDate(ps, 1, from, to);
+            bindCategoryForOrder(ps, 5, category);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) amounts.add(rs.getDouble(1));
         }
@@ -117,30 +137,29 @@ public class DashboardService {
     }
 
     public int getTotalOrders(LocalDate from, LocalDate to, String category) throws SQLException {
-        String sql = "SELECT COUNT(DISTINCT o.orderID) FROM \"Order\" o ";
-        if (hasCategoryFilter(category)) {
-            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
-                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
+        String sql = "SELECT COUNT(DISTINCT o.orderID) FROM \"Order\" o " +
+            "WHERE (? IS NULL OR o.orderDate >= ?) " +
+            "AND (? IS NULL OR o.orderDate <= ?) " +
+            CATEGORY_EXISTS_FOR_ORDER;
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            bindDate(ps, 1, from, to);
+            bindCategoryForOrder(ps, 5, category);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
         }
-        sql += "WHERE 1=1 ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        return querySingleIntWithCategory(sql, from, to, category);
     }
 
     public double getAverageOrderValue(LocalDate from, LocalDate to, String category) throws SQLException {
-        String sql = "SELECT COALESCE(SUM(o.totalAmount), 0) / NULLIF(COUNT(DISTINCT o.orderID), 0) FROM \"Order\" o ";
-        if (hasCategoryFilter(category)) {
-            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
-                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
-        }
-        sql += "WHERE 1=1 ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
+        String sql = "SELECT COALESCE(SUM(o.totalAmount), 0) / NULLIF(COUNT(DISTINCT o.orderID), 0) " +
+            "FROM \"Order\" o " +
+            "WHERE (? IS NULL OR o.orderDate >= ?) " +
+            "AND (? IS NULL OR o.orderDate <= ?) " +
+            CATEGORY_EXISTS_FOR_ORDER;
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
+            bindDate(ps, 1, from, to);
+            bindCategoryForOrder(ps, 5, category);
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getDouble(1) : 0.0;
         }
@@ -150,14 +169,15 @@ public class DashboardService {
         String sql = "SELECT p.name FROM OrderItem oi " +
                 "JOIN Product p ON oi.productID = p.productID " +
                 "JOIN \"Order\" o ON oi.orderID = o.orderID " +
-                "LEFT JOIN Category c ON p.categoryID = c.categoryID WHERE 1=1 ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        sql += " GROUP BY p.productID ORDER BY SUM(oi.quantity * oi.unitPrice) DESC LIMIT 1";
+                "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) " +
+                "AND (? IS NULL OR o.orderDate <= ?) " +
+                "AND (? IS NULL OR (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized'))) " +
+                "GROUP BY p.productID ORDER BY SUM(oi.quantity) DESC LIMIT 1";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
+            bindDate(ps, 1, from, to);
+            bindCategoryForJoin(ps, 5, category);
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getString(1) : "—";
         }
@@ -168,20 +188,16 @@ public class DashboardService {
      */
     public List<DataPoint<String, Number>> getSalesTimeSeries(LocalDate from, LocalDate to, String category) throws SQLException {
         String sql = "SELECT DATE(o.orderDate) AS d, COALESCE(SUM(o.totalAmount), 0) " +
-                "FROM \"Order\" o ";
-        if (hasCategoryFilter(category)) {
-            sql += "JOIN OrderItem oi ON oi.orderID = o.orderID JOIN Product p2 ON oi.productID = p2.productID " +
-                    "LEFT JOIN Category c ON p2.categoryID = c.categoryID ";
-        }
-        sql += "WHERE 1=1 ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        sql += " GROUP BY d ORDER BY d";
+            "FROM \"Order\" o " +
+            "WHERE (? IS NULL OR o.orderDate >= ?) " +
+            "AND (? IS NULL OR o.orderDate <= ?) " +
+            CATEGORY_EXISTS_FOR_ORDER +
+            "GROUP BY d ORDER BY d";
         List<DataPoint<String, Number>> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
+            bindDate(ps, 1, from, to);
+            bindCategoryForOrder(ps, 5, category);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 String raw = rs.getString(1);
@@ -207,15 +223,16 @@ public class DashboardService {
                 "FROM OrderItem oi " +
                 "JOIN Product p ON oi.productID = p.productID " +
                 "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
-                "JOIN \"Order\" o ON oi.orderID = o.orderID WHERE 1=1 ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        sql += " GROUP BY c.categoryID, c.categoryName";
+                "JOIN \"Order\" o ON oi.orderID = o.orderID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) " +
+                "AND (? IS NULL OR o.orderDate <= ?) " +
+                "AND (? IS NULL OR (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized'))) " +
+                "GROUP BY c.categoryID, c.categoryName";
         List<DataPoint<String, Number>> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
+            bindDate(ps, 1, from, to);
+            bindCategoryForJoin(ps, 5, category);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
                 list.add(new DataPoint<>(rs.getString(1), rs.getDouble(2)));
@@ -231,15 +248,17 @@ public class DashboardService {
         String sql = "SELECT p.name, SUM(oi.quantity) AS qty, SUM(oi.quantity * oi.unitPrice) AS revenue " +
                 "FROM OrderItem oi JOIN Product p ON oi.productID = p.productID " +
                 "JOIN \"Order\" o ON oi.orderID = o.orderID " +
-                "LEFT JOIN Category c ON p.categoryID = c.categoryID WHERE 1=1 ";
-        sql = appendDateFilter(sql, "o.orderDate", from, to);
-        if (hasCategoryFilter(category)) sql += " AND (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized')) ";
-        sql += " GROUP BY p.productID ORDER BY qty DESC LIMIT " + Math.max(1, Math.min(limit, 20));
+                "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) " +
+                "AND (? IS NULL OR o.orderDate <= ?) " +
+                "AND (? IS NULL OR (c.categoryName = ? OR (c.categoryName IS NULL AND ? = 'Uncategorized'))) " +
+                "GROUP BY p.productID ORDER BY qty DESC LIMIT ?";
         List<TopProductRow> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
+            bindDate(ps, 1, from, to);
+            bindCategoryForJoin(ps, 5, category);
+            ps.setInt(8, Math.max(1, Math.min(limit, 20)));
             ResultSet rs = ps.executeQuery();
             int rank = 1;
             while (rs.next()) {
@@ -296,30 +315,6 @@ public class DashboardService {
         return list;
     }
 
-    private static boolean hasCategoryFilter(String category) {
-        return category != null && !category.isBlank() && !"All Categories".equalsIgnoreCase(category.trim());
-    }
-
-    private double querySingleDoubleWithCategory(String sql, LocalDate from, LocalDate to, String category) throws SQLException {
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getDouble(1) : 0.0;
-        }
-    }
-
-    private int querySingleIntWithCategory(String sql, LocalDate from, LocalDate to, String category) throws SQLException {
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            int idx = bindDateFilter(ps, 1, from, to);
-            if (hasCategoryFilter(category)) { ps.setString(idx++, category); ps.setString(idx++, category); }
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getInt(1) : 0;
-        }
-    }
-
     public static final class DataPoint<X, Y> {
         public final X x;
         public final Y y;
@@ -330,17 +325,33 @@ public class DashboardService {
         }
     }
 
-    private String appendDateFilter(String sql, String column, LocalDate from, LocalDate to) {
-        if (from != null) sql += " AND " + column + " >= ?";
-        if (to != null) sql += " AND " + column + " <= ?";
-        return sql;
+    private void bindDate(PreparedStatement ps, int start, LocalDate from, LocalDate to) throws SQLException {
+        String fromParam = from == null ? null : from + " 00:00:00";
+        String toParam = to == null ? null : to + " 23:59:59";
+        ps.setString(start, fromParam);
+        ps.setString(start + 1, fromParam);
+        ps.setString(start + 2, toParam);
+        ps.setString(start + 3, toParam);
     }
 
-    /** Binds from/to date params and returns the next parameter index. */
-    private int bindDateFilter(PreparedStatement ps, int startIdx, LocalDate from, LocalDate to) throws SQLException {
-        int idx = startIdx;
-        if (from != null) ps.setString(idx++, from + " 00:00:00");
-        if (to != null) ps.setString(idx++, to + " 23:59:59");
-        return idx;
+    private void bindCategoryForOrder(PreparedStatement ps, int start, String category) throws SQLException {
+        String value = normalizeCategory(category);
+        ps.setString(start, value);
+        ps.setString(start + 1, value);
+        ps.setString(start + 2, value);
+    }
+
+    private void bindCategoryForJoin(PreparedStatement ps, int start, String category) throws SQLException {
+        String value = normalizeCategory(category);
+        ps.setString(start, value);
+        ps.setString(start + 1, value);
+        ps.setString(start + 2, value);
+    }
+
+    private String normalizeCategory(String category) {
+        if (category == null || category.isBlank() || "All Categories".equalsIgnoreCase(category.trim())) {
+            return null;
+        }
+        return category.trim();
     }
 }
