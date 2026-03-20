@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Read-only access to FinancialAnomalies table for the Notifications & Alerts page.
  */
-public class FinancialAnomalyDao {
+public class FinancialAnomalyDao implements FinancialAnomalyDaoInterface {
 
     /**
      * Returns anomalies, optionally only unresolved. Ordered by alertDate descending.

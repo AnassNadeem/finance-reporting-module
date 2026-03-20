@@ -71,7 +71,17 @@ public class FUserDao {
         String username = rs.getString("username");
         String passwordHash = rs.getString("passwordHash");
         String roleStr = rs.getString("role");
-        UserRole role = roleStr == null ? UserRole.FINANCE_USER : UserRole.valueOf(roleStr.trim().toUpperCase().replace(" ", "_"));
+        String normalized = roleStr == null ? null : roleStr.trim().toUpperCase().replace(" ", "_");
+        // Backwards compatibility with older seed/test data: `role='USER'`
+        // should behave like a finance user.
+        UserRole role;
+        if (normalized == null || normalized.isBlank()) {
+            role = UserRole.FINANCE_USER;
+        } else if ("USER".equals(normalized) || "FINANCE".equals(normalized) || "FINANCEUSER".equals(normalized)) {
+            role = UserRole.FINANCE_USER;
+        } else {
+            role = UserRole.valueOf(normalized);
+        }
         String firstName = rs.getString("firstName");
         String lastName = rs.getString("lastName");
         String phone = rs.getString("phone");

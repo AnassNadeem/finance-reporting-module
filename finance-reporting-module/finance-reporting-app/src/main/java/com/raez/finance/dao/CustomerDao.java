@@ -15,55 +15,72 @@ import java.util.List;
  * Fetches customer report rows for Detailed Reports (Customer tab).
  * Schema has no type/country; type defaulted to "Individual", country from deliveryAddress.
  */
-public class CustomerDao {
+public class CustomerDao implements CustomerDaoInterface {
+
+    private static final String FIND_SQL =
+        "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
+        "COUNT(o.orderID) AS totalOrders, COALESCE(SUM(o.totalAmount), 0) AS totalSpent, COALESCE(MAX(o.orderDate), '') AS lastPurchase " +
+        "FROM CustomerRegistration c " +
+        "LEFT JOIN \"Order\" o ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR (c.name LIKE ? OR c.email LIKE ? OR CAST(c.customerID AS TEXT) LIKE ?)) " +
+        "AND (? IS NULL OR COALESCE(c.customerType, 'Individual') = ?) " +
+        "AND (? IS NULL OR c.name = ?) " +
+        "AND (? IS NULL OR c.deliveryAddress LIKE ?) " +
+        "GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress " +
+        "ORDER BY totalSpent DESC " +
+        "LIMIT ? OFFSET ?";
+
+    private static final String FIND_NO_LIMIT_SQL =
+        "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
+        "COUNT(o.orderID) AS totalOrders, COALESCE(SUM(o.totalAmount), 0) AS totalSpent, COALESCE(MAX(o.orderDate), '') AS lastPurchase " +
+        "FROM CustomerRegistration c " +
+        "LEFT JOIN \"Order\" o ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR (c.name LIKE ? OR c.email LIKE ? OR CAST(c.customerID AS TEXT) LIKE ?)) " +
+        "AND (? IS NULL OR COALESCE(c.customerType, 'Individual') = ?) " +
+        "AND (? IS NULL OR c.name = ?) " +
+        "AND (? IS NULL OR c.deliveryAddress LIKE ?) " +
+        "GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress " +
+        "ORDER BY totalSpent DESC";
+
+    private static final String COUNT_SQL =
+        "SELECT COUNT(*) FROM (" +
+        "SELECT c.customerID " +
+        "FROM CustomerRegistration c " +
+        "LEFT JOIN \"Order\" o ON o.customerID = c.customerID " +
+        "WHERE (? IS NULL OR (c.name LIKE ? OR c.email LIKE ? OR CAST(c.customerID AS TEXT) LIKE ?)) " +
+        "AND (? IS NULL OR COALESCE(c.customerType, 'Individual') = ?) " +
+        "AND (? IS NULL OR c.name = ?) " +
+        "AND (? IS NULL OR c.deliveryAddress LIKE ?) " +
+        "GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress" +
+        ") AS sub";
 
     /**
      * Fetch customers with order aggregates. Optional filters. Use limit &lt;= 0 for no limit.
      */
     public List<CustomerReportRow> findReportRows(String typeFilter, String countryFilter, String companyName, String search, int limit, int offset) throws SQLException {
-        StringBuilder sql = new StringBuilder(
-                "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
-                "COUNT(o.orderID) AS totalOrders, " +
-                "COALESCE(SUM(o.totalAmount), 0) AS totalSpent, " +
-                "COALESCE(MAX(o.orderDate), '') AS lastPurchase " +
-                "FROM CustomerRegistration c " +
-                "LEFT JOIN \"Order\" o ON o.customerID = c.customerID " +
-                "WHERE 1=1");
-        List<Object> params = new ArrayList<>();
-
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (c.name LIKE ? OR c.email LIKE ? OR CAST(c.customerID AS TEXT) LIKE ?)");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-            params.add(term);
-        }
-        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim()) && !"All Types".equalsIgnoreCase(typeFilter.trim())) {
-            sql.append(" AND COALESCE(c.customerType, 'Individual') = ?");
-            params.add(typeFilter.trim());
-        }
-        if (companyName != null && !companyName.isBlank()) {
-            sql.append(" AND c.name = ?");
-            params.add(companyName.trim());
-        }
-        if (countryFilter != null && !countryFilter.isBlank() && !"All".equalsIgnoreCase(countryFilter.trim())) {
-            sql.append(" AND c.deliveryAddress LIKE ?");
-            params.add("%" + countryFilter.trim() + "%");
-        }
-        sql.append(" GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress ORDER BY totalSpent DESC");
-        if (limit > 0) {
-            params.add(limit);
-            params.add(offset);
-        }
-        String fullSql = (limit > 0)
-                ? "SELECT * FROM (" + sql + ") AS sub LIMIT ? OFFSET ?"
-                : sql.toString();
+        String searchTerm = normalizeSearch(search);
+        String normalizedType = normalizeType(typeFilter);
+        String normalizedCompany = normalizeValue(companyName);
+        String countryLike = normalizeCountry(countryFilter);
+        String sql = limit > 0 ? FIND_SQL : FIND_NO_LIMIT_SQL;
 
         List<CustomerReportRow> rows = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(fullSql)) {
-            for (int i = 0; i < params.size(); i++) {
-                ps.setObject(i + 1, params.get(i));
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int i = 1;
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, normalizedType);
+            ps.setString(i++, normalizedType);
+            ps.setString(i++, normalizedCompany);
+            ps.setString(i++, normalizedCompany);
+            ps.setString(i++, countryLike);
+            ps.setString(i++, countryLike);
+            if (limit > 0) {
+                ps.setInt(i++, limit);
+                ps.setInt(i, offset);
             }
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
@@ -102,33 +119,23 @@ public class CustomerDao {
 
     /** Count customer report rows with same filters (for pagination). */
     public int countReportRows(String typeFilter, String countryFilter, String companyName, String search) throws SQLException {
-        StringBuilder sql = new StringBuilder(
-                "SELECT COUNT(*) FROM (SELECT c.customerID FROM CustomerRegistration c " +
-                "LEFT JOIN \"Order\" o ON o.customerID = c.customerID WHERE 1=1");
-        List<Object> params = new ArrayList<>();
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (c.name LIKE ? OR c.email LIKE ? OR CAST(c.customerID AS TEXT) LIKE ?)");
-            String term = "%" + search.trim() + "%";
-            params.add(term);
-            params.add(term);
-            params.add(term);
-        }
-        if (typeFilter != null && !typeFilter.isBlank() && !"All".equalsIgnoreCase(typeFilter.trim()) && !"All Types".equalsIgnoreCase(typeFilter.trim())) {
-            sql.append(" AND COALESCE(c.customerType, 'Individual') = ?");
-            params.add(typeFilter.trim());
-        }
-        if (companyName != null && !companyName.isBlank()) {
-            sql.append(" AND c.name = ?");
-            params.add(companyName.trim());
-        }
-        if (countryFilter != null && !countryFilter.isBlank() && !"All".equalsIgnoreCase(countryFilter.trim())) {
-            sql.append(" AND c.deliveryAddress LIKE ?");
-            params.add("%" + countryFilter.trim() + "%");
-        }
-        sql.append(" GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress) AS sub");
+        String searchTerm = normalizeSearch(search);
+        String normalizedType = normalizeType(typeFilter);
+        String normalizedCompany = normalizeValue(companyName);
+        String countryLike = normalizeCountry(countryFilter);
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+             PreparedStatement ps = conn.prepareStatement(COUNT_SQL)) {
+            int i = 1;
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, searchTerm);
+            ps.setString(i++, normalizedType);
+            ps.setString(i++, normalizedType);
+            ps.setString(i++, normalizedCompany);
+            ps.setString(i++, normalizedCompany);
+            ps.setString(i++, countryLike);
+            ps.setString(i, countryLike);
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getInt(1) : 0;
         }
@@ -290,5 +297,27 @@ public class CustomerDao {
             }
         }
         return list;
+    }
+
+    private String normalizeSearch(String search) {
+        if (search == null || search.isBlank()) return null;
+        return "%" + search.trim() + "%";
+    }
+
+    private String normalizeType(String typeFilter) {
+        if (typeFilter == null || typeFilter.isBlank()) return null;
+        if ("All".equalsIgnoreCase(typeFilter.trim()) || "All Types".equalsIgnoreCase(typeFilter.trim())) return null;
+        return typeFilter.trim();
+    }
+
+    private String normalizeCountry(String countryFilter) {
+        if (countryFilter == null || countryFilter.isBlank()) return null;
+        if ("All".equalsIgnoreCase(countryFilter.trim())) return null;
+        return "%" + countryFilter.trim() + "%";
+    }
+
+    private String normalizeValue(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.trim();
     }
 }

@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Read-only access to Alert table for the Notifications & Alerts page.
  */
-public class AlertDao {
+public class AlertDao implements AlertDaoInterface {
 
     /**
      * Returns alerts, optionally only unresolved. Ordered by createdAt descending.
