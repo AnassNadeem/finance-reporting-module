@@ -47,11 +47,11 @@ public class DirectUserSeeder {
     private static void seedUsers(Connection conn) throws Exception {
         String adminEmail = "admin@raez.org.uk";
         String adminUsername = "admin";
-        String adminPassword = "Admin123$";
+        String adminPassword = "Admin@123";
 
         String finEmail = "finance@raez.org.uk";
         String finUsername = "finance";
-        String finPassword = "Password1!";
+        String finPassword = "User@123";
 
         deleteIfExists(conn, adminEmail, adminUsername);
         deleteIfExists(conn, finEmail, finUsername);
