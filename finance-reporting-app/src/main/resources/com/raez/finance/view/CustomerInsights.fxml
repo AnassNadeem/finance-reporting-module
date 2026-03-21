@@ -1,0 +1,361 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Font?>
+<?import java.lang.String?>
+<?import javafx.collections.FXCollections?>
+
+<ScrollPane
+    fitToWidth="true"
+    hbarPolicy="NEVER"
+    vbarPolicy="AS_NEEDED"
+    style="-fx-background-color: transparent; -fx-background: #F9FAFB;"
+    xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="com.raez.finance.controller.CustomerInsightsController">
+
+    <content>
+        <VBox spacing="24" style="-fx-background-color: #F9FAFB;">
+            <padding><Insets top="28" right="28" bottom="32" left="28" /></padding>
+
+            <!-- ══════════════════════════
+                 HEADER
+            ══════════════════════════ -->
+            <HBox alignment="CENTER_LEFT" spacing="0">
+                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                    <Label text="Customer Insights"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Customer behaviour and performance analytics"
+                           style="-fx-font-size: 13px; -fx-text-fill: #6B7280;" />
+                </VBox>
+
+                <MenuButton
+                    fx:id="exportMenuButton"
+                    mnemonicParsing="false"
+                    styleClass="export-menu-button"
+                    text="Export">
+                    <graphic>
+                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" fill="TRANSPARENT" stroke="white" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                    </graphic>
+                    <items>
+                        <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" styleClass="export-menu-item" text="Export as CSV">
+                            <graphic>
+                                <SVGPath content="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="TRANSPARENT" stroke="#10B981" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                            </graphic>
+                        </MenuItem>
+                        <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" styleClass="export-menu-item" text="Export as PDF">
+                            <graphic>
+                                <SVGPath content="M14 3v4a1 1 0 0 0 1 1h4 M5 12V5a2 2 0 0 1 2-2h7l5 5v4 M5 18h1.5a1.5 1.5 0 0 0 0-3H5v6 M17 18h2 M20 15h-3v6 M11 15v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-1z" fill="TRANSPARENT" stroke="#EF4444" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                            </graphic>
+                        </MenuItem>
+                    </items>
+                </MenuButton>
+            </HBox>
+
+            <!-- ══════════════════════════
+                 KPI CARDS (4 columns)
+            ══════════════════════════ -->
+            <GridPane hgap="20" vgap="20">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                </columnConstraints>
+                <rowConstraints><RowConstraints /></rowConstraints>
+
+                <!-- Total Customers -->
+                <VBox GridPane.columnIndex="0" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <HBox style="-fx-background-color: #1E2939; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="TOTAL CUSTOMERS"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblTotalCustomers" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblCustomersSub" text="Active accounts"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+
+                <!-- Avg Spending -->
+                <VBox GridPane.columnIndex="1" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <HBox style="-fx-background-color: #10B981; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="AVG SPENDING"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblAvgSpending" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Per customer (lifetime)"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+
+                <!-- Avg Purchase Frequency -->
+                <VBox GridPane.columnIndex="2" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <HBox style="-fx-background-color: #8B5CF6; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="AVG PURCHASE FREQUENCY"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblAvgFrequency" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Orders per customer / month"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+
+                <!-- Company Customers -->
+                <VBox GridPane.columnIndex="3" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <HBox style="-fx-background-color: #F59E0B; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="COMPANY CUSTOMERS"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblCompanyCustomers" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblCompanySub" text="B2B accounts"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+            </GridPane>
+
+            <!-- ══════════════════════════
+                 FREQUENCY CHART CARD
+            ══════════════════════════ -->
+            <VBox style="-fx-background-color: white;
+                         -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                <HBox alignment="CENTER_LEFT" spacing="12"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0; -fx-padding: 18 24 18 24;">
+                    <VBox spacing="2" HBox.hgrow="ALWAYS">
+                        <Label text="Monthly Order Volume"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Order count per month in the selected period"
+                               style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
+                    </VBox>
+                    <VBox spacing="4" prefWidth="160">
+                        <Label text="Chart period"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <ComboBox fx:id="cmbChartDateRange"
+                                  prefWidth="160" prefHeight="32"
+                                  style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox fx:id="boxChartStartDate" spacing="4" prefWidth="140" managed="false" visible="false">
+                        <Label text="Start"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <DatePicker fx:id="dpChartStart" prefWidth="140" prefHeight="32" style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox fx:id="boxChartEndDate" spacing="4" prefWidth="140" managed="false" visible="false">
+                        <Label text="End"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <DatePicker fx:id="dpChartEnd" prefWidth="140" prefHeight="32" style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox spacing="4" prefWidth="180">
+                        <Label text="Filter"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <ComboBox fx:id="cmbCustomerFilter"
+                                  prefWidth="180" prefHeight="32"
+                                  style="-fx-font-size: 13px;" />
+                    </VBox>
+                </HBox>
+
+                <VBox style="-fx-padding: 16 24 16 24;">
+                    <BarChart fx:id="chartFrequency"
+                              prefHeight="280"
+                              legendVisible="false"
+                              animated="true"
+                              style="-fx-background-color: transparent;">
+                        <xAxis>
+                            <CategoryAxis side="BOTTOM"
+                                          style="-fx-tick-label-fill: #6B7280; -fx-font-size: 11px;" />
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis side="LEFT"
+                                        style="-fx-tick-label-fill: #6B7280; -fx-font-size: 11px;" />
+                        </yAxis>
+                    </BarChart>
+                </VBox>
+            </VBox>
+
+            <!-- ══════════════════════════
+                 TOP BUYERS TABLE CARD
+            ══════════════════════════ -->
+            <VBox style="-fx-background-color: white;
+                         -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                <HBox alignment="CENTER_LEFT" spacing="0"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0; -fx-padding: 18 24 18 24;">
+                    <VBox spacing="2" HBox.hgrow="ALWAYS">
+                        <Label text="Top Buyers"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Customers ranked by total spending"
+                               style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
+                    </VBox>
+                    <Label fx:id="lblBuyerCount" text=""
+                           style="-fx-font-size: 12px; -fx-text-fill: #6B7280;
+                                  -fx-background-color: #F3F4F6; -fx-background-radius: 999;
+                                  -fx-padding: 3 10 3 10;" />
+                </HBox>
+
+                <!--
+                  columnResizePolicy set in controller:
+                  tblTopBuyers.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS)
+                -->
+                <TableView fx:id="tblTopBuyers"
+                           styleClass="reports-table"
+                           style="-fx-background-color: transparent;
+                                  -fx-table-cell-border-color: transparent;
+                                  -fx-fixed-cell-size: 44;">
+                    <columns>
+                        <TableColumn fx:id="colRank"        text="#"               minWidth="48"  />
+                        <TableColumn fx:id="colName"        text="Customer Name"   minWidth="150" />
+                        <TableColumn fx:id="colType"        text="Type"            minWidth="90"  />
+                        <TableColumn fx:id="colCountry"     text="Country"         minWidth="90"  />
+                        <TableColumn fx:id="colSpent"       text="Total Spent"     minWidth="120" />
+                        <TableColumn fx:id="colOrders"      text="Orders"          minWidth="80"  />
+                        <TableColumn fx:id="colAOV"         text="Avg Order Value" minWidth="120" />
+                        <TableColumn fx:id="colLastPurchase" text="Last Purchase"  minWidth="110" />
+                    </columns>
+                    <placeholder>
+                        <VBox alignment="CENTER" spacing="8">
+                            <Label text="No customer data available"
+                                   style="-fx-text-fill: #6B7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                            <Label text="Customer purchasing data will appear here"
+                                   style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px;" />
+                        </VBox>
+                    </placeholder>
+                </TableView>
+
+                <HBox alignment="CENTER_LEFT"
+                      style="-fx-border-color: #E5E7EB transparent transparent transparent;
+                             -fx-border-width: 1 0 0 0; -fx-padding: 12 24 12 24;
+                             -fx-background-color: #FAFAFA; -fx-background-radius: 0 0 10 10;">
+                    <Label fx:id="lblTotalSpentSummary" text=""
+                           style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                </HBox>
+            </VBox>
+
+            <!-- ══════════════════════════
+                 ALERT CARDS  (2 columns)
+                 Content is injected dynamically by controller
+            ══════════════════════════ -->
+            <HBox spacing="20">
+
+                <!-- Refund Alerts -->
+                <VBox fx:id="cardRefundAlerts" HBox.hgrow="ALWAYS"
+                      style="-fx-background-color: white;
+                             -fx-border-color: #FECACA; -fx-border-radius: 10;
+                             -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                    <HBox alignment="CENTER_LEFT" spacing="8"
+                          style="-fx-background-color: #FEF2F2; -fx-background-radius: 10 10 0 0;
+                                 -fx-border-color: transparent transparent #FECACA transparent;
+                                 -fx-border-width: 0 0 1 0; -fx-padding: 14 20 14 20;">
+                        <Label text="🔴" style="-fx-font-size: 14px;" />
+                        <VBox spacing="1" HBox.hgrow="ALWAYS">
+                            <Label text="Refund &amp; Churn Alerts"
+                                   style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #991B1B;" />
+                            <Label text="Unusual patterns detected"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #FCA5A5;" />
+                        </VBox>
+                        <Label fx:id="lblRefundCount" text="0"
+                               style="-fx-font-size: 11px; -fx-text-fill: white;
+                                      -fx-background-color: #EF4444; -fx-background-radius: 999;
+                                      -fx-padding: 2 8 2 8;" />
+                    </HBox>
+
+                    <!-- Alert rows injected by controller -->
+                    <VBox fx:id="vboxRefundAlerts" spacing="0"
+                          style="-fx-padding: 0 0 8 0;" />
+
+                    <Label fx:id="lblNoRefunds"
+                           text="No unusual refund patterns detected"
+                           managed="false" visible="false"
+                           style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px; -fx-padding: 16 20 16 20;" />
+                </VBox>
+
+                <!-- Product Issues -->
+                <VBox fx:id="cardProductIssues" HBox.hgrow="ALWAYS"
+                      style="-fx-background-color: white;
+                             -fx-border-color: #FDE68A; -fx-border-radius: 10;
+                             -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                    <HBox alignment="CENTER_LEFT" spacing="8"
+                          style="-fx-background-color: #FFFBEB; -fx-background-radius: 10 10 0 0;
+                                 -fx-border-color: transparent transparent #FDE68A transparent;
+                                 -fx-border-width: 0 0 1 0; -fx-padding: 14 20 14 20;">
+                        <Label text="⚠️" style="-fx-font-size: 14px;" />
+                        <VBox spacing="1" HBox.hgrow="ALWAYS">
+                            <Label text="Customer Product Issues"
+                                   style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #92400E;" />
+                            <Label text="Issues requiring attention"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #FCD34D;" />
+                        </VBox>
+                        <Label fx:id="lblIssueCount" text="0"
+                               style="-fx-font-size: 11px; -fx-text-fill: white;
+                                      -fx-background-color: #F59E0B; -fx-background-radius: 999;
+                                      -fx-padding: 2 8 2 8;" />
+                    </HBox>
+
+                    <VBox fx:id="vboxProductIssues" spacing="0"
+                          style="-fx-padding: 0 0 8 0;" />
+
+                    <Label fx:id="lblNoIssues"
+                           text="No product issues flagged"
+                           managed="false" visible="false"
+                           style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px; -fx-padding: 16 20 16 20;" />
+                </VBox>
+
+            </HBox>
+
+        </VBox>
+    </content>
+</ScrollPane>

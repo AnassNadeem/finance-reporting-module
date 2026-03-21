@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" hbarPolicy="NEVER" style="-fx-background-color: transparent; -fx-background: #F9FAFB;"
+            xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.raez.finance.controller.AiInsightsController">
+    <content>
+        <VBox spacing="24" style="-fx-background-color: #F9FAFB;">
+            <padding><Insets top="28" right="28" bottom="32" left="28" /></padding>
+
+            <HBox alignment="CENTER_LEFT" spacing="16">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label styleClass="page-title" text="AI Insights" />
+                    <Label styleClass="page-subtitle" text="Forecasts and risk signals from your database (linear regression; indicative only)" />
+                </VBox>
+                <VBox spacing="6">
+                    <Label text="Category filter" textFill="#6B7280" style="-fx-font-size: 11px;" />
+                    <ComboBox fx:id="cmbCategory" prefWidth="200" prefHeight="36"
+                              style="-fx-background-color: white; -fx-border-color: #D1D5DB; -fx-border-radius: 8;" />
+                </VBox>
+            </HBox>
+
+            <GridPane hgap="20" vgap="20">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                </columnConstraints>
+                <rowConstraints><RowConstraints /></rowConstraints>
+
+                <VBox GridPane.columnIndex="0" spacing="8" styleClass="filter-card">
+                    <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
+                    <Label text="Next month revenue (est.)" textFill="#6B7280" style="-fx-font-size: 11px;" />
+                    <Label fx:id="lblRevForecast" text="—" style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblRevTrend" text="" textFill="#6B7280" style="-fx-font-size: 12px;" wrapText="true" />
+                </VBox>
+                <VBox GridPane.columnIndex="1" spacing="8" styleClass="filter-card">
+                    <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
+                    <Label text="New buyers (first order, next mo. est.)" textFill="#6B7280" style="-fx-font-size: 11px;" />
+                    <Label fx:id="lblAcqForecast" text="—" style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblAcqNote" text="" textFill="#6B7280" style="-fx-font-size: 11px;" wrapText="true" />
+                </VBox>
+                <VBox GridPane.columnIndex="2" spacing="8" styleClass="filter-card">
+                    <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
+                    <Label text="Dormant buyers (&gt;90 days)" textFill="#6B7280" style="-fx-font-size: 11px;" />
+                    <Label fx:id="lblChurn90" text="—" style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #DC2626;" />
+                    <Label text="Last paid order over 90 days ago" textFill="#9CA3AF" style="-fx-font-size: 11px;" />
+                </VBox>
+                <VBox GridPane.columnIndex="3" spacing="8" styleClass="filter-card">
+                    <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
+                    <Label text="Dormant (&gt;180 days) / No orders" textFill="#6B7280" style="-fx-font-size: 11px;" />
+                    <Label fx:id="lblChurn180" text="—" style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #B45309;" />
+                    <Label fx:id="lblNoOrders" text="" textFill="#9CA3AF" style="-fx-font-size: 11px;" wrapText="true" />
+                </VBox>
+            </GridPane>
+
+            <VBox spacing="8" style="-fx-background-color: #EFF6FF; -fx-border-color: #BFDBFE; -fx-border-radius: 8; -fx-background-radius: 8;">
+                <padding><Insets top="12" right="14" bottom="12" left="14" /></padding>
+                <Label fx:id="lblDisclaimer" wrapText="true" textFill="#1E40AF" style="-fx-font-size: 12px;"
+                       text="Acquisition uses the month of each customer’s first order as a proxy (no registration date in schema). Churn uses time since last order." />
+            </VBox>
+
+            <HBox spacing="24" alignment="CENTER_LEFT">
+                <VBox styleClass="filter-card" HBox.hgrow="ALWAYS" spacing="12">
+                    <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
+                    <Label text="Monthly revenue vs next-step estimate" styleClass="title-label" />
+                    <LineChart fx:id="chartRevenue" legendVisible="true" prefHeight="320" maxWidth="Infinity">
+                        <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                        <yAxis><NumberAxis side="LEFT" /></yAxis>
+                    </LineChart>
+                </VBox>
+                <VBox styleClass="filter-card" prefWidth="380" spacing="12">
+                    <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
+                    <Label text="At-risk customer mix" styleClass="title-label" />
+                    <BarChart fx:id="chartChurn" legendVisible="false" prefHeight="320" categoryGap="12">
+                        <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                        <yAxis><NumberAxis side="LEFT" /></yAxis>
+                    </BarChart>
+                </VBox>
+            </HBox>
+
+            <VBox styleClass="filter-card" spacing="12">
+                <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
+                <Label text="First-order acquisition by month (proxy)" styleClass="title-label" />
+                <LineChart fx:id="chartAcquisition" legendVisible="false" prefHeight="280" maxWidth="Infinity">
+                    <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
+                    <yAxis><NumberAxis side="LEFT" /></yAxis>
+                </LineChart>
+            </VBox>
+
+            <Region prefHeight="8" />
+        </VBox>
+    </content>
+</ScrollPane>

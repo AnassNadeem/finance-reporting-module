@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.text.*?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.geometry.*?>
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+
+<VBox
+    fx:id="rootContainer"
+    xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="com.raez.finance.controller.DetailedReportsController"
+    spacing="0"
+    style="-fx-background-color: #F9FAFB;">
+
+    <!--
+    ══════════════════════════════════════════════════════════
+      PAGE-LEVEL SCROLL  (fitToWidth=true so tables fill width
+      and never produce a horizontal scrollbar)
+    ══════════════════════════════════════════════════════════
+    -->
+    <ScrollPane
+        fx:id="pageScrollPane"
+        fitToWidth="true"
+        hbarPolicy="NEVER"
+        vbarPolicy="AS_NEEDED"
+        style="-fx-background-color: transparent; -fx-background: transparent;"
+        VBox.vgrow="ALWAYS">
+
+        <VBox spacing="24" style="-fx-background-color: #F9FAFB; -fx-padding: 28 28 28 28;">
+
+            <!-- ══════════════════════════
+                 HEADER
+            ══════════════════════════ -->
+            <HBox alignment="CENTER_LEFT" spacing="0">
+
+                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                    <Label text="Reports"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Detailed reports and analytics"
+                           style="-fx-font-size: 13px; -fx-text-fill: #6B7280;" />
+                </VBox>
+
+                <MenuButton
+                    fx:id="exportMenuButton"
+                    mnemonicParsing="false"
+                    styleClass="export-menu-button"
+                    text="Export">
+                    <graphic>
+                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" fill="TRANSPARENT" stroke="white" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                    </graphic>
+                    <items>
+                        <MenuItem fx:id="exportCsvItem" mnemonicParsing="false" onAction="#handleExportCsv" styleClass="export-menu-item" text="Export as CSV">
+                            <graphic>
+                                <SVGPath content="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="TRANSPARENT" stroke="#10B981" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                            </graphic>
+                        </MenuItem>
+                        <MenuItem fx:id="exportPdfItem" mnemonicParsing="false" onAction="#handleExportPdf" styleClass="export-menu-item" text="Export as PDF">
+                            <graphic>
+                                <SVGPath content="M14 3v4a1 1 0 0 0 1 1h4 M5 12V5a2 2 0 0 1 2-2h7l5 5v4 M5 18h1.5a1.5 1.5 0 0 0 0-3H5v6 M17 18h2 M20 15h-3v6 M11 15v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-1z" fill="TRANSPARENT" stroke="#EF4444" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                            </graphic>
+                        </MenuItem>
+                    </items>
+                </MenuButton>
+
+            </HBox>
+
+            <!-- ══════════════════════════
+                 MAIN CARD
+            ══════════════════════════ -->
+            <VBox
+                style="-fx-background-color: white;
+                       -fx-border-color: #E5E7EB;
+                       -fx-border-radius: 10;
+                       -fx-background-radius: 10;
+                       -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 8, 0, 0, 2);">
+
+                <!-- ── TAB BAR ── -->
+                <HBox spacing="0"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0;
+                             -fx-padding: 0 28 0 28;
+                             -fx-background-color: white;
+                             -fx-background-radius: 10 10 0 0;">
+
+                    <Button fx:id="tabOrders"
+                            text="Order Report"
+                            onAction="#handleTabOrders"
+                            style="-fx-background-color: transparent; -fx-cursor: hand;
+                                   -fx-padding: 15 4 13 4; -fx-font-size: 13px; -fx-font-weight: 600;
+                                   -fx-text-fill: #1E2939;
+                                   -fx-border-color: transparent transparent #1E2939 transparent;
+                                   -fx-border-width: 0 0 2 0;" />
+
+                    <Region prefWidth="32" />
+
+                    <Button fx:id="tabProducts"
+                            text="Product Report"
+                            onAction="#handleTabProducts"
+                            style="-fx-background-color: transparent; -fx-cursor: hand;
+                                   -fx-padding: 15 4 13 4; -fx-font-size: 13px;
+                                   -fx-text-fill: #6B7280;
+                                   -fx-border-color: transparent;
+                                   -fx-border-width: 0 0 2 0;" />
+
+                    <Region prefWidth="32" />
+
+                    <Button fx:id="tabCustomers"
+                            text="Customer Report"
+                            onAction="#handleTabCustomers"
+                            style="-fx-background-color: transparent; -fx-cursor: hand;
+                                   -fx-padding: 15 4 13 4; -fx-font-size: 13px;
+                                   -fx-text-fill: #6B7280;
+                                   -fx-border-color: transparent;
+                                   -fx-border-width: 0 0 2 0;" />
+                </HBox>
+
+                <!-- ── FILTER ROW ── -->
+                <VBox fx:id="filtersSection"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0; -fx-padding: 18 24 18 24;">
+
+                    <HBox spacing="12" alignment="BOTTOM_LEFT">
+
+                        <!-- Search -->
+                        <VBox spacing="5" HBox.hgrow="ALWAYS">
+                            <Label text="Search"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <HBox alignment="CENTER_LEFT"
+                                  style="-fx-border-color: #D1D5DB; -fx-border-radius: 7;
+                                         -fx-background-color: #FAFAFA; -fx-background-radius: 7;
+                                         -fx-padding: 0 10 0 10; -fx-border-width: 1;">
+                                <Label text="🔍"
+                                       style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 0 5 0 0;" />
+                                <TextField fx:id="searchField"
+                                           promptText="Search orders..."
+                                           onKeyReleased="#handleSearch"
+                                           style="-fx-background-color: transparent;
+                                                  -fx-border-color: transparent;
+                                                  -fx-font-size: 13px;
+                                                  -fx-pref-height: 32px;"
+                                           HBox.hgrow="ALWAYS" />
+                            </HBox>
+                        </VBox>
+
+                        <!-- Date Range -->
+                        <VBox spacing="5" prefWidth="172">
+                            <Label text="Date Range"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <ComboBox fx:id="dateRangeCombo"
+                                      prefWidth="172" prefHeight="34"
+                                      onAction="#handleDateRangeChange"
+                                      style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                        <!-- Custom start date -->
+                        <VBox fx:id="customStartDateBox" spacing="5" prefWidth="152"
+                              managed="false" visible="false">
+                            <Label text="Start Date"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <DatePicker fx:id="startDatePicker"
+                                        prefWidth="152" prefHeight="34"
+                                        style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                        <!-- Custom end date -->
+                        <VBox fx:id="customEndDateBox" spacing="5" prefWidth="152"
+                              managed="false" visible="false">
+                            <Label text="End Date"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <DatePicker fx:id="endDatePicker"
+                                        prefWidth="152" prefHeight="34"
+                                        style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                        <!-- Orders: Status -->
+                        <VBox fx:id="orderStatusBox" spacing="5" prefWidth="152">
+                            <Label text="Status"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <ComboBox fx:id="orderStatusCombo"
+                                      prefWidth="152" prefHeight="34"
+                                      onAction="#handleOrderStatusChange"
+                                      style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                        <!-- Orders: Category -->
+                        <VBox fx:id="orderCategoryBox" spacing="5" prefWidth="152">
+                            <Label text="Category"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <ComboBox fx:id="orderCategoryCombo"
+                                      prefWidth="152" prefHeight="34"
+                                      style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                        <!-- Products: Category -->
+                        <VBox fx:id="productCategoryBox" spacing="5" prefWidth="152"
+                              managed="false" visible="false">
+                            <Label text="Category"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <ComboBox fx:id="productCategoryCombo"
+                                      prefWidth="152" prefHeight="34"
+                                      onAction="#handleProductCategoryChange"
+                                      style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                        <!-- Customers: Type -->
+                        <VBox fx:id="customerTypeBox" spacing="5" prefWidth="152"
+                              managed="false" visible="false">
+                            <Label text="Customer Type"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <ComboBox fx:id="customerTypeCombo"
+                                      prefWidth="152" prefHeight="34"
+                                      onAction="#handleCustomerTypeChange"
+                                      style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                        <!-- Customers: Country -->
+                        <VBox fx:id="customerCountryBox" spacing="5" prefWidth="152"
+                              managed="false" visible="false">
+                            <Label text="Country"
+                                   style="-fx-font-size: 11px; -fx-font-weight: 700;
+                                          -fx-text-fill: #374151; -fx-padding: 0 0 0 1;" />
+                            <ComboBox fx:id="customerCountryCombo"
+                                      prefWidth="152" prefHeight="34"
+                                      onAction="#handleCustomerCountryChange"
+                                      style="-fx-font-size: 13px;" />
+                        </VBox>
+
+                    </HBox>
+                </VBox>
+
+                <!-- ══════════════════════════
+                     TABLES
+                     NOTE: columnResizePolicy MUST be set in
+                     the controller (Java), NOT in FXML.
+                     Use: table.setColumnResizePolicy(
+                            TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS)
+                ══════════════════════════ -->
+                <StackPane>
+
+                    <!-- ORDERS TABLE (6 columns) -->
+                    <TableView fx:id="ordersTable"
+                               styleClass="reports-table"
+                               style="-fx-background-color: transparent;
+                                      -fx-table-cell-border-color: transparent;
+                                      -fx-fixed-cell-size: 44;">
+                        <columns>
+                            <TableColumn fx:id="orderIdCol"       text="Order ID"  minWidth="90" />
+                            <TableColumn fx:id="orderCustomerCol" text="Customer"  minWidth="120" />
+                            <TableColumn fx:id="orderProductCol"  text="Product"   minWidth="120" />
+                            <TableColumn fx:id="orderAmountCol"   text="Amount"    minWidth="100" />
+                            <TableColumn fx:id="orderDateCol"     text="Date"      minWidth="100" />
+                            <TableColumn fx:id="orderStatusCol"   text="Status"    minWidth="90" />
+                        </columns>
+                        <placeholder>
+                            <VBox alignment="CENTER" spacing="8">
+                                <Label text="No orders found"
+                                       style="-fx-text-fill: #6B7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Label text="Try adjusting your filters or date range"
+                                       style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px;" />
+                            </VBox>
+                        </placeholder>
+                    </TableView>
+
+                    <!-- PRODUCTS TABLE (8 columns) -->
+                    <TableView fx:id="productsTable"
+                               visible="false" managed="false"
+                               styleClass="reports-table"
+                               style="-fx-background-color: transparent;
+                                      -fx-table-cell-border-color: transparent;
+                                      -fx-fixed-cell-size: 44;">
+                        <columns>
+                            <TableColumn fx:id="productIdCol"        text="Product ID" minWidth="90" />
+                            <TableColumn fx:id="productNameCol"      text="Name"       minWidth="110" />
+                            <TableColumn fx:id="productCategoryCol"  text="Category"   minWidth="90" />
+                            <TableColumn fx:id="productCostCol"      text="Cost"       minWidth="80" />
+                            <TableColumn fx:id="productSalePriceCol" text="Sale Price" minWidth="90" />
+                            <TableColumn fx:id="productProfitCol"    text="Profit"     minWidth="80" />
+                            <TableColumn fx:id="productUnitsCol"     text="Units Sold" minWidth="80" />
+                            <TableColumn fx:id="productRevenueCol"   text="Revenue"    minWidth="90" />
+                        </columns>
+                        <placeholder>
+                            <VBox alignment="CENTER" spacing="8">
+                                <Label text="No products found"
+                                       style="-fx-text-fill: #6B7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Label text="Try adjusting your filters or date range"
+                                       style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px;" />
+                            </VBox>
+                        </placeholder>
+                    </TableView>
+
+                    <!-- CUSTOMERS TABLE (8 columns) -->
+                    <TableView fx:id="customersTable"
+                               visible="false" managed="false"
+                               styleClass="reports-table"
+                               style="-fx-background-color: transparent;
+                                      -fx-table-cell-border-color: transparent;
+                                      -fx-fixed-cell-size: 44;">
+                        <columns>
+                            <TableColumn fx:id="custIdCol"           text="Customer ID"   minWidth="90" />
+                            <TableColumn fx:id="custNameCol"         text="Name"          minWidth="110" />
+                            <TableColumn fx:id="custTypeCol"         text="Type"          minWidth="80" />
+                            <TableColumn fx:id="custCountryCol"      text="Country"       minWidth="80" />
+                            <TableColumn fx:id="custOrdersCol"       text="Orders"        minWidth="70" />
+                            <TableColumn fx:id="custSpentCol"        text="Total Spent"   minWidth="100" />
+                            <TableColumn fx:id="custAvgOrderCol"     text="Avg Order"     minWidth="90" />
+                            <TableColumn fx:id="custLastPurchaseCol" text="Last Purchase" minWidth="100" />
+                        </columns>
+                        <placeholder>
+                            <VBox alignment="CENTER" spacing="8">
+                                <Label text="No customers found"
+                                       style="-fx-text-fill: #6B7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                                <Label text="Try adjusting your filters or date range"
+                                       style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px;" />
+                            </VBox>
+                        </placeholder>
+                    </TableView>
+
+                </StackPane>
+
+                <!-- ── PAGINATION ── -->
+                <HBox alignment="CENTER_LEFT"
+                      spacing="0"
+                      style="-fx-border-color: #E5E7EB transparent transparent transparent;
+                             -fx-border-width: 1 0 0 0;
+                             -fx-padding: 12 24 12 24;
+                             -fx-background-color: #FAFAFA;
+                             -fx-background-radius: 0 0 10 10;">
+
+                    <HBox alignment="CENTER_LEFT" spacing="10" HBox.hgrow="ALWAYS">
+                        <Label text="Rows per page:"
+                               style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                        <ComboBox fx:id="rowsPerPageCombo"
+                                  prefWidth="72" prefHeight="30"
+                                  onAction="#handleRowsPerPageChange"
+                                  style="-fx-font-size: 13px;">
+                            <items>
+                                <FXCollections fx:factory="observableArrayList">
+                                    <String fx:value="10" />
+                                    <String fx:value="20" />
+                                    <String fx:value="30" />
+                                    <String fx:value="40" />
+                                    <String fx:value="50" />
+                                </FXCollections>
+                            </items>
+                            <value><String fx:value="10" /></value>
+                        </ComboBox>
+                    </HBox>
+
+                    <HBox alignment="CENTER_RIGHT" spacing="10">
+                        <Label fx:id="pageInfoLabel"
+                               text="Page 1 of 1"
+                               style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+
+                        <Button fx:id="prevPageBtn"
+                                onAction="#handlePrevPage"
+                                style="-fx-background-color: white;
+                                       -fx-border-color: #E5E7EB; -fx-border-radius: 6;
+                                       -fx-background-radius: 6; -fx-cursor: hand;
+                                       -fx-padding: 4 10 4 10;">
+                            <graphic>
+                                <Label text="‹" style="-fx-font-size: 15px; -fx-text-fill: #374151;" />
+                            </graphic>
+                        </Button>
+
+                        <Button fx:id="nextPageBtn"
+                                onAction="#handleNextPage"
+                                style="-fx-background-color: white;
+                                       -fx-border-color: #E5E7EB; -fx-border-radius: 6;
+                                       -fx-background-radius: 6; -fx-cursor: hand;
+                                       -fx-padding: 4 10 4 10;">
+                            <graphic>
+                                <Label text="›" style="-fx-font-size: 15px; -fx-text-fill: #374151;" />
+                            </graphic>
+                        </Button>
+                    </HBox>
+
+                </HBox>
+
+            </VBox>
+            <!-- end MAIN CARD -->
+
+        </VBox>
+    </ScrollPane>
+
+</VBox>

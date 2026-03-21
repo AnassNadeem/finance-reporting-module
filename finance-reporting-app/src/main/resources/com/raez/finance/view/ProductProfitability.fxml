@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Font?>
+<?import java.lang.String?>
+<?import javafx.collections.FXCollections?>
+
+<ScrollPane
+    fitToWidth="true"
+    hbarPolicy="NEVER"
+    vbarPolicy="AS_NEEDED"
+    style="-fx-background-color: transparent; -fx-background: #F9FAFB;"
+    xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="com.raez.finance.controller.ProductProfitabilityController">
+
+    <content>
+        <VBox spacing="24" style="-fx-background-color: #F9FAFB;">
+            <padding><Insets top="28" right="28" bottom="32" left="28" /></padding>
+
+            <!-- ══════════════════════════
+                 HEADER
+            ══════════════════════════ -->
+            <HBox alignment="CENTER_LEFT" spacing="0">
+                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                    <Label text="Product Profitability"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Product performance and margin analysis"
+                           style="-fx-font-size: 13px; -fx-text-fill: #6B7280;" />
+                </VBox>
+
+                <MenuButton
+                    fx:id="exportMenuButton"
+                    mnemonicParsing="false"
+                    styleClass="export-menu-button"
+                    text="Export">
+                    <graphic>
+                        <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" fill="TRANSPARENT" stroke="white" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                    </graphic>
+                    <items>
+                        <MenuItem mnemonicParsing="false" onAction="#handleExportCSV" styleClass="export-menu-item" text="Export as CSV">
+                            <graphic>
+                                <SVGPath content="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="TRANSPARENT" stroke="#10B981" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                            </graphic>
+                        </MenuItem>
+                        <MenuItem mnemonicParsing="false" onAction="#handleExportPDF" styleClass="export-menu-item" text="Export as PDF">
+                            <graphic>
+                                <SVGPath content="M14 3v4a1 1 0 0 0 1 1h4 M5 12V5a2 2 0 0 1 2-2h7l5 5v4 M5 18h1.5a1.5 1.5 0 0 0 0-3H5v6 M17 18h2 M20 15h-3v6 M11 15v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-1z" fill="TRANSPARENT" stroke="#EF4444" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                            </graphic>
+                        </MenuItem>
+                    </items>
+                </MenuButton>
+            </HBox>
+
+            <!-- ══════════════════════════
+                 FILTER CARD
+            ══════════════════════════ -->
+            <VBox style="-fx-background-color: white;
+                         -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                <padding><Insets top="16" right="24" bottom="16" left="24" /></padding>
+                <HBox alignment="BOTTOM_LEFT" spacing="14">
+                    <VBox spacing="5" prefWidth="200">
+                        <Label text="Date range"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <ComboBox fx:id="cmbDateRange"
+                                  prefWidth="200" prefHeight="34"
+                                  style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox fx:id="boxProfitStartDate" spacing="5" prefWidth="152" managed="false" visible="false">
+                        <Label text="Start"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <DatePicker fx:id="dpProfitStart" prefWidth="152" prefHeight="34" style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox fx:id="boxProfitEndDate" spacing="5" prefWidth="152" managed="false" visible="false">
+                        <Label text="End"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <DatePicker fx:id="dpProfitEnd" prefWidth="152" prefHeight="34" style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox spacing="5" prefWidth="220">
+                        <Label text="Category"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <ComboBox fx:id="cmbCategoryFilter"
+                                  prefWidth="220" prefHeight="34"
+                                  style="-fx-font-size: 13px;" />
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <!-- ══════════════════════════
+                 KPI CARDS  (4 columns)
+            ══════════════════════════ -->
+            <GridPane hgap="20" vgap="20">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                    <ColumnConstraints percentWidth="25" />
+                </columnConstraints>
+                <rowConstraints><RowConstraints /></rowConstraints>
+
+                <!-- Total Revenue -->
+                <VBox GridPane.columnIndex="0" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <!-- colour bar accent -->
+                    <HBox style="-fx-background-color: #1E2939; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="TOTAL REVENUE"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblTotalRevenue" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblRevenueSub" text="All products"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+
+                <!-- Total Profit -->
+                <VBox GridPane.columnIndex="1" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <HBox style="-fx-background-color: #10B981; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="TOTAL PROFIT"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblTotalProfit" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblProfitSub" text="After costs"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+
+                <!-- Avg Margin -->
+                <VBox GridPane.columnIndex="2" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <HBox style="-fx-background-color: #8B5CF6; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="AVG MARGIN"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblAvgMargin" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="Profit / Revenue"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+
+                <!-- Low Margin Count -->
+                <VBox GridPane.columnIndex="3" spacing="0"
+                      style="-fx-background-color: white; -fx-border-color: #E5E7EB;
+                             -fx-border-radius: 10; -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20" /></padding>
+                    <HBox style="-fx-background-color: #F97316; -fx-background-radius: 4;"
+                          prefHeight="4" prefWidth="36" maxWidth="36">
+                        <VBox.margin><Insets bottom="14" /></VBox.margin>
+                    </HBox>
+                    <Label text="LOW MARGIN PRODUCTS"
+                           style="-fx-font-size: 10px; -fx-font-weight: 700;
+                                  -fx-text-fill: #9CA3AF; -fx-padding: 0 0 4 0;" />
+                    <Label fx:id="lblLowMarginCount" text="—"
+                           style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label fx:id="lblLowMarginSub" text="Below threshold"
+                           style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF; -fx-padding: 2 0 0 0;" />
+                </VBox>
+            </GridPane>
+
+            <!-- ══════════════════════════
+                 BAR CHART CARD
+            ══════════════════════════ -->
+            <VBox style="-fx-background-color: white;
+                         -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                <HBox alignment="CENTER_LEFT"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0; -fx-padding: 18 24 18 24;">
+                    <VBox spacing="2" HBox.hgrow="ALWAYS">
+                        <Label text="Profitability by Category"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Revenue vs profit per product category"
+                               style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
+                    </VBox>
+                    <!-- Legend indicators built dynamically in controller -->
+                    <HBox fx:id="chartLegend" spacing="16" alignment="CENTER_RIGHT" />
+                </HBox>
+
+                <VBox style="-fx-padding: 16 24 16 24;">
+                    <BarChart fx:id="chartProfitability"
+                              prefHeight="320"
+                              legendVisible="false"
+                              animated="true"
+                              style="-fx-background-color: transparent;">
+                        <xAxis>
+                            <CategoryAxis side="BOTTOM"
+                                          style="-fx-tick-label-fill: #6B7280; -fx-font-size: 12px;" />
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis side="LEFT"
+                                        style="-fx-tick-label-fill: #6B7280; -fx-font-size: 11px;" />
+                        </yAxis>
+                    </BarChart>
+                </VBox>
+            </VBox>
+
+            <!-- ══════════════════════════
+                 PRODUCT TABLE CARD
+            ══════════════════════════ -->
+            <VBox style="-fx-background-color: white;
+                         -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                <HBox alignment="CENTER_LEFT" spacing="0"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0; -fx-padding: 18 24 18 24;">
+                    <VBox spacing="2" HBox.hgrow="ALWAYS">
+                        <Label text="Product Analysis"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Detailed profitability metrics per product"
+                               style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
+                    </VBox>
+                    <Label fx:id="lblProductCount" text=""
+                           style="-fx-font-size: 12px; -fx-text-fill: #6B7280;
+                                  -fx-background-color: #F3F4F6; -fx-background-radius: 999;
+                                  -fx-padding: 3 10 3 10;" />
+                </HBox>
+
+                <!--
+                  columnResizePolicy set in controller:
+                  tblProducts.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS)
+                -->
+                <TableView fx:id="tblProducts"
+                           styleClass="reports-table"
+                           style="-fx-background-color: transparent;
+                                  -fx-table-cell-border-color: transparent;
+                                  -fx-fixed-cell-size: 44;">
+                    <columns>
+                        <TableColumn fx:id="colName"     text="Product Name" minWidth="160" />
+                        <TableColumn fx:id="colCategory" text="Category"     minWidth="100" />
+                        <TableColumn fx:id="colRevenue"  text="Revenue"      minWidth="110" />
+                        <TableColumn fx:id="colCost"     text="Cost"         minWidth="100" />
+                        <TableColumn fx:id="colProfit"   text="Profit"       minWidth="100" />
+                        <TableColumn fx:id="colMargin"   text="Margin %"     minWidth="90"  />
+                        <TableColumn fx:id="colUnits"    text="Units Sold"   minWidth="90"  />
+                        <TableColumn fx:id="colTrend"    text="Trend"        minWidth="80"  />
+                    </columns>
+                    <placeholder>
+                        <VBox alignment="CENTER" spacing="8">
+                            <Label text="No products found"
+                                   style="-fx-text-fill: #6B7280; -fx-font-size: 13px; -fx-font-weight: 600;" />
+                            <Label text="Try changing the category filter"
+                                   style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px;" />
+                        </VBox>
+                    </placeholder>
+                </TableView>
+
+                <HBox alignment="CENTER_LEFT"
+                      style="-fx-border-color: #E5E7EB transparent transparent transparent;
+                             -fx-border-width: 1 0 0 0; -fx-padding: 12 24 12 24;
+                             -fx-background-color: #FAFAFA; -fx-background-radius: 0 0 10 10;">
+                    <Label fx:id="lblTableSummary" text=""
+                           style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                </HBox>
+            </VBox>
+
+            <!-- ══════════════════════════
+                 PERFORMERS SPLIT CARDS
+            ══════════════════════════ -->
+            <HBox spacing="20">
+
+                <!-- High Performers -->
+                <VBox HBox.hgrow="ALWAYS"
+                      style="-fx-background-color: white;
+                             -fx-border-color: #A7F3D0; -fx-border-radius: 10;
+                             -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                    <HBox alignment="CENTER_LEFT" spacing="8"
+                          style="-fx-background-color: #ECFDF5; -fx-background-radius: 10 10 0 0;
+                                 -fx-border-color: transparent transparent #A7F3D0 transparent;
+                                 -fx-border-width: 0 0 1 0; -fx-padding: 14 20 14 20;">
+                        <Label text="✅" style="-fx-font-size: 14px;" />
+                        <VBox spacing="1" HBox.hgrow="ALWAYS">
+                            <Label text="High Performers"
+                                   style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #065F46;" />
+                            <Label text="Margin above threshold"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #6EE7B7;" />
+                        </VBox>
+                        <Label fx:id="lblHighCount" text="0"
+                               style="-fx-font-size: 11px; -fx-text-fill: white;
+                                      -fx-background-color: #10B981; -fx-background-radius: 999;
+                                      -fx-padding: 2 8 2 8;" />
+                    </HBox>
+
+                    <VBox fx:id="vboxHighPerformers" spacing="0"
+                          style="-fx-padding: 0 0 8 0;" />
+
+                    <!-- "no items" placeholder, shown/hidden by controller -->
+                    <Label fx:id="lblNoHighPerformers"
+                           text="No high performers in current filter"
+                           managed="false" visible="false"
+                           style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px; -fx-padding: 16 20 16 20;" />
+                </VBox>
+
+                <!-- Needs Attention -->
+                <VBox HBox.hgrow="ALWAYS"
+                      style="-fx-background-color: white;
+                             -fx-border-color: #FED7AA; -fx-border-radius: 10;
+                             -fx-background-radius: 10;
+                             -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);">
+
+                    <HBox alignment="CENTER_LEFT" spacing="8"
+                          style="-fx-background-color: #FFF7ED; -fx-background-radius: 10 10 0 0;
+                                 -fx-border-color: transparent transparent #FED7AA transparent;
+                                 -fx-border-width: 0 0 1 0; -fx-padding: 14 20 14 20;">
+                        <Label text="⚠️" style="-fx-font-size: 14px;" />
+                        <VBox spacing="1" HBox.hgrow="ALWAYS">
+                            <Label text="Needs Attention"
+                                   style="-fx-font-size: 14px; -fx-font-weight: 700; -fx-text-fill: #92400E;" />
+                            <Label text="Margin below threshold"
+                                   style="-fx-font-size: 11px; -fx-text-fill: #FDBA74;" />
+                        </VBox>
+                        <Label fx:id="lblLowCount" text="0"
+                               style="-fx-font-size: 11px; -fx-text-fill: white;
+                                      -fx-background-color: #F97316; -fx-background-radius: 999;
+                                      -fx-padding: 2 8 2 8;" />
+                    </HBox>
+
+                    <VBox fx:id="vboxNeedsAttention" spacing="0"
+                          style="-fx-padding: 0 0 8 0;" />
+
+                    <Label fx:id="lblNoNeedsAttention"
+                           text="All products are above margin threshold"
+                           managed="false" visible="false"
+                           style="-fx-text-fill: #9CA3AF; -fx-font-size: 12px; -fx-padding: 16 20 16 20;" />
+                </VBox>
+
+            </HBox>
+
+        </VBox>
+    </content>
+</ScrollPane>
