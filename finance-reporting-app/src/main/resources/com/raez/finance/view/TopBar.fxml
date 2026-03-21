@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<HBox alignment="CENTER_LEFT"
+      prefHeight="68.0"
+      styleClass="top-bar"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.raez.finance.controller.TopBarController">
+   <padding><Insets left="20.0" right="20.0" /></padding>
+   <children>
+
+      <!-- SEARCH PILL left-aligned slim pill -->
+      <HBox fx:id="searchPillHost"
+            alignment="CENTER_LEFT"
+            prefHeight="50.0" maxWidth="540.0" minWidth="260.0" prefWidth="400.0"
+            spacing="8.0" styleClass="search-pill">
+         <padding><Insets left="14.0" right="10.0" /></padding>
+         <children>
+            <SVGPath content="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                     fill="TRANSPARENT" stroke="#9CA3AF"
+                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.8" />
+            <TextField fx:id="txtSearch"
+                       promptText="Search orders, products, customers..."
+                       style="-fx-background-color: transparent; -fx-prompt-text-fill: #9CA3AF; -fx-text-fill: #111827; -fx-font-size: 13px; -fx-focus-color: transparent; -fx-faint-focus-color: transparent; -fx-padding: 0;"
+                       HBox.hgrow="ALWAYS" />
+            <Button fx:id="btnClearSearch" mnemonicParsing="false" visible="false" managed="false"
+                    style="-fx-background-color: #E5E7EB; -fx-background-radius: 999; -fx-padding: 3 3 3 3; -fx-cursor: hand; -fx-border-color: transparent;">
+               <graphic>
+                  <SVGPath content="M6 18L18 6M6 6l12 12"
+                           fill="TRANSPARENT" stroke="#6B7280"
+                           strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+               </graphic>
+            </Button>
+         </children>
+      </HBox>
+
+      <!-- SPACER -->
+      <Region HBox.hgrow="ALWAYS" />
+
+      <!-- RIGHT CLUSTER -->
+      <HBox alignment="CENTER_RIGHT" spacing="6.0">
+         <children>
+
+            <!-- Full Report button (admin only, hidden in initialize() for Finance User) -->
+            <Button fx:id="btnFullReport"
+                    mnemonicParsing="false" onAction="#handleFullReport" text="Full Report"
+                    style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-font-size: 12.5px; -fx-font-weight: 700; -fx-background-radius: 8; -fx-padding: 9 16 9 16; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(30,41,57,0.28), 7, 0, 0, 2);">
+               <graphic>
+                  <SVGPath content="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z M14 2v6h6 M12 18v-6 M9 15h6"
+                           fill="TRANSPARENT" stroke="white"
+                           strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.6" />
+               </graphic>
+               <HBox.margin><Insets right="2.0" /></HBox.margin>
+            </Button>
+
+            <!-- Notification bell + live badge -->
+            <Button fx:id="btnNotifications"
+                    mnemonicParsing="false" onAction="#handleNotificationsClick"
+                    style="-fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 8 10 8 10; -fx-cursor: hand; -fx-border-color: transparent;">
+               <graphic>
+                  <StackPane prefWidth="24.0" prefHeight="26.0">
+                     <children>
+                        <SVGPath content="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 01-3.46 0"
+                                 fill="TRANSPARENT" stroke="#4B5563"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.9" />
+                        <Label fx:id="lblNotificationBadge" visible="false" managed="false" text=""
+                               style="-fx-background-color: #EF4444; -fx-text-fill: white; -fx-font-size: 8.5px; -fx-font-weight: 700; -fx-min-width: 15; -fx-min-height: 15; -fx-alignment: center; -fx-background-radius: 999; -fx-padding: 0 3 0 3;"
+                               StackPane.alignment="TOP_RIGHT">
+                           <StackPane.margin><Insets top="-3.0" right="-3.0" /></StackPane.margin>
+                        </Label>
+                     </children>
+                  </StackPane>
+               </graphic>
+            </Button>
+
+            <!-- Divider -->
+            <Region prefWidth="1.0" prefHeight="26.0" style="-fx-background-color: #E5E7EB;">
+               <HBox.margin><Insets left="4.0" right="4.0" /></HBox.margin>
+            </Region>
+
+            <!-- Profile button -->
+            <Button fx:id="btnProfile" mnemonicParsing="false" onAction="#handleProfileClick"
+                    style="-fx-background-color: transparent; -fx-background-radius: 10; -fx-padding: 5 8 5 8; -fx-cursor: hand; -fx-border-color: transparent;">
+               <graphic>
+                  <HBox alignment="CENTER_LEFT" spacing="10.0">
+                     <children>
+                        <StackPane fx:id="avatarStack" prefHeight="36.0" prefWidth="36.0"
+                                   style="-fx-background-radius: 999; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 6, 0, 0, 1);">
+                           <children>
+                              <Label fx:id="lblInitials" text="AD" textFill="WHITE">
+                                 <font><Font name="System Bold" size="13.0" /></font>
+                              </Label>
+                           </children>
+                        </StackPane>
+                        <VBox alignment="CENTER_LEFT" spacing="1.0">
+                           <children>
+                              <Label fx:id="lblName" text="System Admin" textFill="#111827">
+                                 <font><Font name="System Bold" size="13.0" /></font>
+                              </Label>
+                              <Label fx:id="lblRole" text="Admin" textFill="#6B7280">
+                                 <font><Font size="11.0" /></font>
+                              </Label>
+                           </children>
+                        </VBox>
+                        <SVGPath fx:id="profileChevron" content="M6 9l6 6 6-6"
+                                 fill="TRANSPARENT" stroke="#9CA3AF"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                     </children>
+                  </HBox>
+               </graphic>
+            </Button>
+
+         </children>
+      </HBox>
+   </children>
+</HBox>
