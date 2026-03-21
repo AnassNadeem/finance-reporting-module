@@ -1,0 +1,501 @@
+package com.raez.finance.controller;
+
+import com.raez.finance.dao.ProductDao;
+import com.raez.finance.dao.ProductDaoInterface;
+import com.raez.finance.model.ProductReportRow;
+import com.raez.finance.service.ExportService;
+import com.raez.finance.service.SessionManager;
+import com.raez.finance.util.CurrencyUtil;
+import javafx.animation.FadeTransition;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.geometry.Pos;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.XYChart;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+import javafx.util.Duration;
+
+import java.io.File;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+public class ProductProfitabilityController {
+
+    // ── Margin threshold ──────────────────────────────────────────────────
+    private static final double LOW_MARGIN_THRESHOLD = 35.0;
+
+    // ── FXML ─────────────────────────────────────────────────────────────
+    @FXML private ComboBox<String> cmbCategoryFilter;
+    @FXML private ComboBox<String> cmbDateRange;
+    @FXML private VBox              boxProfitStartDate;
+    @FXML private VBox              boxProfitEndDate;
+    @FXML private DatePicker        dpProfitStart;
+    @FXML private DatePicker        dpProfitEnd;
+
+    @FXML private Label lblTotalRevenue;
+    @FXML private Label lblRevenueSub;
+    @FXML private Label lblTotalProfit;
+    @FXML private Label lblProfitSub;
+    @FXML private Label lblAvgMargin;
+    @FXML private Label lblLowMarginCount;
+    @FXML private Label lblLowMarginSub;
+    @FXML private Label lblProductCount;
+    @FXML private Label lblTableSummary;
+
+    @FXML private BarChart<String, Number> chartProfitability;
+    @FXML private HBox chartLegend;
+
+    @FXML private TableView<ProductReportRow>           tblProducts;
+    @FXML private TableColumn<ProductReportRow, String> colName;
+    @FXML private TableColumn<ProductReportRow, String> colCategory;
+    @FXML private TableColumn<ProductReportRow, Number> colRevenue;
+    @FXML private TableColumn<ProductReportRow, Number> colCost;
+    @FXML private TableColumn<ProductReportRow, Number> colProfit;
+    @FXML private TableColumn<ProductReportRow, Number> colMargin;
+    @FXML private TableColumn<ProductReportRow, Number> colUnits;
+    @FXML private TableColumn<ProductReportRow, String> colTrend;
+
+    @FXML private VBox  vboxHighPerformers;
+    @FXML private Label lblHighCount;
+    @FXML private Label lblNoHighPerformers;
+    @FXML private VBox  vboxNeedsAttention;
+    @FXML private Label lblLowCount;
+    @FXML private Label lblNoNeedsAttention;
+
+    @FXML private MenuButton exportMenuButton;
+
+    // ── Services ──────────────────────────────────────────────────────────
+    private final ProductDaoInterface productDao    = new ProductDao();
+    private final ExecutorService     executor      = Executors.newSingleThreadExecutor();
+    private final ObservableList<ProductReportRow> productItems = FXCollections.observableArrayList();
+    private MainLayoutController mainLayoutController;
+
+    public void setMainLayoutController(MainLayoutController c) { this.mainLayoutController = c; }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  INIT
+    // ══════════════════════════════════════════════════════════════════════
+
+    @FXML
+    public void initialize() {
+        if (exportMenuButton != null && !SessionManager.isAdmin()) {
+            exportMenuButton.setVisible(false);
+            exportMenuButton.setManaged(false);
+        }
+
+        bindColumns();
+        tblProducts.setItems(productItems);
+        tblProducts.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
+        applyRowFactory(tblProducts);
+
+        chartProfitability.getStyleClass().add("profitability-chart");
+        buildChartLegend();
+
+        loadCategoryOptions();
+        if (cmbDateRange != null) {
+            cmbDateRange.setItems(FXCollections.observableArrayList(
+                "Last 7 Days", "Last 30 Days", "Last 1 Year", "Year to Date", "All Time", "Custom"));
+            cmbDateRange.setValue("All Time");
+            cmbDateRange.valueProperty().addListener((obs, o, n) -> {
+                boolean custom = "Custom".equals(n);
+                if (boxProfitStartDate != null) {
+                    boxProfitStartDate.setVisible(custom);
+                    boxProfitStartDate.setManaged(custom);
+                }
+                if (boxProfitEndDate != null) {
+                    boxProfitEndDate.setVisible(custom);
+                    boxProfitEndDate.setManaged(custom);
+                }
+                loadData();
+            });
+        }
+        if (dpProfitStart != null) dpProfitStart.valueProperty().addListener((o, a, b) -> loadData());
+        if (dpProfitEnd != null) dpProfitEnd.valueProperty().addListener((o, a, b) -> loadData());
+        cmbCategoryFilter.valueProperty().addListener((obs, o, n) -> loadData());
+    }
+
+    private LocalDate[] resolveProfitDateRange() {
+        LocalDate to = LocalDate.now();
+        LocalDate from;
+        String val = cmbDateRange != null ? cmbDateRange.getValue() : "All Time";
+        if (val == null) val = "All Time";
+        from = switch (val) {
+            case "Custom" -> {
+                LocalDate s = dpProfitStart != null ? dpProfitStart.getValue() : null;
+                LocalDate e = dpProfitEnd != null ? dpProfitEnd.getValue() : null;
+                if (e != null) to = e;
+                yield s != null ? s : to.minusYears(1);
+            }
+            case "Last 7 Days" -> to.minusDays(7);
+            case "Last 30 Days" -> to.minusDays(30);
+            case "Last 1 Year" -> to.minusYears(1);
+            case "Year to Date" -> to.withDayOfYear(1);
+            case "All Time" -> null;
+            default -> null;
+        };
+        if (from != null && from.isAfter(to)) from = to;
+        return new LocalDate[]{from, to};
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  COLUMN BINDING
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void bindColumns() {
+        colName.setCellValueFactory(new PropertyValueFactory<>("name"));
+        colCategory.setCellValueFactory(new PropertyValueFactory<>("category"));
+
+        colRevenue.setCellValueFactory(new PropertyValueFactory<>("revenue"));
+        colRevenue.setCellFactory(CurrencyUtil.currencyCellFactory());
+
+        colCost.setCellValueFactory(new PropertyValueFactory<>("cost"));
+        colCost.setCellFactory(CurrencyUtil.currencyCellFactory());
+
+        colProfit.setCellValueFactory(new PropertyValueFactory<>("profit"));
+        colProfit.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(Number v, boolean empty) {
+                super.updateItem(v, empty); setText(null);
+                getStyleClass().removeAll("table-profit-positive", "table-profit-negative");
+                if (empty || v == null) return;
+                setText(CurrencyUtil.formatCurrency(v.doubleValue()));
+                getStyleClass().add(v.doubleValue() >= 0 ? "table-profit-positive" : "table-profit-negative");
+            }
+        });
+
+        colMargin.setCellValueFactory(new PropertyValueFactory<>("marginPercent"));
+        colMargin.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(Number v, boolean empty) {
+                super.updateItem(v, empty);
+                setGraphic(null); setText(null);
+                if (empty || v == null) return;
+                double pct = v.doubleValue();
+                Label badge = new Label(String.format("%.1f%%", pct));
+                if (pct >= LOW_MARGIN_THRESHOLD)
+                    badge.getStyleClass().add("status-badge-paid");
+                else if (pct >= 20)
+                    badge.getStyleClass().add("status-badge-warning");
+                else
+                    badge.getStyleClass().add("status-badge-danger");
+                HBox w = new HBox(badge);
+                w.setAlignment(Pos.CENTER_LEFT);
+                setGraphic(w);
+            }
+        });
+
+        colUnits.setCellValueFactory(new PropertyValueFactory<>("unitsSold"));
+
+        colTrend.setCellValueFactory(new PropertyValueFactory<>("trend"));
+        colTrend.setCellFactory(col -> new TableCell<>() {
+            @Override protected void updateItem(String v, boolean empty) {
+                super.updateItem(v, empty);
+                setGraphic(null); setText(null);
+                if (empty || v == null) return;
+                String arrow;
+                String colour;
+                if (v.equalsIgnoreCase("up") || v.contains("▲") || v.contains("+")) {
+                    arrow = "▲ Up"; colour = "#16A34A";
+                } else if (v.equalsIgnoreCase("down") || v.contains("▼") || v.contains("-")) {
+                    arrow = "▼ Down"; colour = "#DC2626";
+                } else {
+                    arrow = "– Flat"; colour = "#6B7280";
+                }
+                Label lbl = new Label(arrow);
+                lbl.getStyleClass().add("table-trend-label");
+                lbl.setTextFill(javafx.scene.paint.Paint.valueOf(colour));
+                setGraphic(lbl);
+            }
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  DATA LOADING
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void loadCategoryOptions() {
+        Task<List<String>> task = new Task<>() {
+            @Override protected List<String> call() throws Exception {
+                return productDao.findCategoryNames();
+            }
+        };
+        task.setOnSucceeded(e -> {
+            ObservableList<String> options = FXCollections.observableArrayList("All Categories");
+            if (task.getValue() != null) options.addAll(task.getValue());
+            cmbCategoryFilter.setItems(options);
+            cmbCategoryFilter.setValue("All Categories");
+        });
+        executor.execute(task);
+    }
+
+    private void loadData() {
+        String categoryFilter = cmbCategoryFilter.getValue();
+        final LocalDate[] range = resolveProfitDateRange();
+
+        Task<Void> task = new Task<>() {
+            List<ProductReportRow>                   products;
+            List<ProductDao.CategoryRevenueProfit>   catData;
+            double totalRevenue, totalProfit, avgMargin;
+            long   lowCount;
+
+            @Override protected Void call() throws Exception {
+                products     = productDao.findReportRows(range[0], range[1], categoryFilter, null);
+                List<ProductDao.CategoryRevenueProfit> raw =
+                    productDao.findCategoryRevenueProfit(range[0], range[1]);
+                if (categoryFilter != null && !"All Categories".equalsIgnoreCase(categoryFilter.trim())) {
+                    String cf = categoryFilter.trim();
+                    catData = raw.stream()
+                        .filter(c -> cf.equalsIgnoreCase(c.category))
+                        .collect(Collectors.toList());
+                } else {
+                    catData = raw;
+                }
+                totalRevenue = products.stream().mapToDouble(ProductReportRow::getRevenue).sum();
+                totalProfit  = products.stream().mapToDouble(ProductReportRow::getProfit).sum();
+                avgMargin    = products.isEmpty() ? 0
+                    : products.stream().mapToDouble(ProductReportRow::getMarginPercent).average().orElse(0);
+                lowCount = products.stream()
+                    .filter(p -> p.getMarginPercent() < LOW_MARGIN_THRESHOLD).count();
+                return null;
+            }
+
+            @Override protected void succeeded() {
+                // KPI labels
+                animateLabel(lblTotalRevenue,    CurrencyUtil.formatCurrency(totalRevenue));
+                animateLabel(lblTotalProfit,     CurrencyUtil.formatCurrency(totalProfit));
+                animateLabel(lblAvgMargin,       String.format("%.1f%%", avgMargin));
+                animateLabel(lblLowMarginCount,  String.valueOf(lowCount));
+
+                if (lblRevenueSub  != null) lblRevenueSub.setText(products.size() + " products");
+                if (lblProfitSub   != null) lblProfitSub.setText(String.format("%.1f%% margin overall", avgMargin));
+                if (lblLowMarginSub != null)
+                    lblLowMarginSub.setText("Below " + (int) LOW_MARGIN_THRESHOLD + "% threshold");
+
+                // Table
+                productItems.setAll(products);
+                if (lblProductCount != null) lblProductCount.setText(products.size() + " products");
+                if (lblTableSummary != null)
+                    lblTableSummary.setText(String.format(
+                        "Total: %s revenue · %s profit",
+                        CurrencyUtil.formatCurrency(totalRevenue),
+                        CurrencyUtil.formatCurrency(totalProfit)));
+                setTableHeight(tblProducts, products.size());
+
+                // Chart
+                chartProfitability.getData().clear();
+                XYChart.Series<String, Number> revSeries  = new XYChart.Series<>();
+                revSeries.setName("Revenue");
+                XYChart.Series<String, Number> profSeries = new XYChart.Series<>();
+                profSeries.setName("Profit");
+                for (ProductDao.CategoryRevenueProfit c : catData) {
+                    revSeries.getData().add(new XYChart.Data<>(c.category, c.revenue));
+                    profSeries.getData().add(new XYChart.Data<>(c.category, c.profit));
+                }
+                chartProfitability.getData().add(revSeries);
+                chartProfitability.getData().add(profSeries);
+
+                // Apply colours after nodes exist
+                javafx.application.Platform.runLater(() -> {
+                    chartProfitability.lookupAll(".default-color0.chart-bar")
+                        .forEach(n -> n.setStyle("-fx-bar-fill: #1E2939;"));
+                    chartProfitability.lookupAll(".default-color1.chart-bar")
+                        .forEach(n -> n.setStyle("-fx-bar-fill: #10B981;"));
+                });
+
+                // Performers
+                List<ProductReportRow> high = products.stream()
+                    .filter(p -> p.getMarginPercent() >= LOW_MARGIN_THRESHOLD).toList();
+                List<ProductReportRow> low  = products.stream()
+                    .filter(p -> p.getMarginPercent() < LOW_MARGIN_THRESHOLD && p.getRevenue() > 0).toList();
+
+                buildPerformerList(vboxHighPerformers, lblNoHighPerformers, lblHighCount,
+                    high, "#166534", "#ECFDF5");
+                buildPerformerList(vboxNeedsAttention, lblNoNeedsAttention, lblLowCount,
+                    low,  "#92400E", "#FFF7ED");
+            }
+
+            @Override protected void failed() {
+                if (getException() != null) getException().printStackTrace();
+            }
+        };
+        executor.execute(task);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  EXPORT  — fixed: uses exportRowsToCSV / exportRowsToPDF with data list
+    // ══════════════════════════════════════════════════════════════════════
+
+    @FXML private void handleExportCSV(ActionEvent e) { doExport("csv"); }
+    @FXML private void handleExportPDF(ActionEvent e) { doExport("pdf"); }
+
+    private void doExport(String format) {
+        if (!SessionManager.isAdmin()) return;
+        Window window = tblProducts.getScene() != null ? tblProducts.getScene().getWindow() : null;
+        FileChooser fc = new FileChooser();
+        fc.setTitle("Export Product Profitability");
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+            "csv".equals(format) ? "CSV Files" : "PDF Files",
+            "csv".equals(format) ? "*.csv"     : "*.pdf"));
+        fc.setInitialFileName("product_profitability." + format);
+        File file = fc.showSaveDialog(window);
+        if (file == null) return;
+        try {
+            List<String[]> data = buildExportData();
+            if ("csv".equals(format)) ExportService.exportRowsToCSV(data, file);
+            else                       ExportService.exportRowsToPDF("Product Profitability Report", data, file);
+            toast("success", format.toUpperCase() + " exported: " + file.getName());
+        } catch (Exception ex) {
+            toast("error", "Export failed: " +
+                (ex.getMessage() != null ? ex.getMessage() : "Unknown error"));
+        }
+    }
+
+    /**
+     * Builds a List<String[]> from the current table items.
+     * ExportService.exportRowsToCSV / exportRowsToPDF require this format —
+     * never pass a TableView directly (exportToCSV(TableView) does not exist).
+     */
+    private List<String[]> buildExportData() {
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{
+            "Product", "Category", "Revenue", "Cost", "Profit", "Margin %", "Units Sold", "Trend"
+        });
+        for (ProductReportRow p : productItems) {
+            rows.add(new String[]{
+                p.getName(),
+                p.getCategory(),
+                CurrencyUtil.formatCurrency(p.getRevenue()),
+                CurrencyUtil.formatCurrency(p.getCost()),
+                CurrencyUtil.formatCurrency(p.getProfit()),
+                String.format("%.1f%%", p.getMarginPercent()),
+                String.valueOf(p.getUnitsSold()),
+                p.getTrend() != null ? p.getTrend() : "—"
+            });
+        }
+        return rows;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    //  UI HELPERS
+    // ══════════════════════════════════════════════════════════════════════
+
+    private void buildPerformerList(VBox container, Label emptyLabel, Label countLabel,
+                                    List<ProductReportRow> rows,
+                                    String textColor, String hoverBg) {
+        container.getChildren().clear();
+        if (rows.isEmpty()) {
+            if (emptyLabel != null) { emptyLabel.setManaged(true);  emptyLabel.setVisible(true);  }
+            if (countLabel != null) countLabel.setText("0");
+            return;
+        }
+        if (emptyLabel != null) { emptyLabel.setManaged(false); emptyLabel.setVisible(false); }
+        if (countLabel != null) countLabel.setText(String.valueOf(rows.size()));
+
+        for (ProductReportRow p : rows) {
+            HBox row = new HBox(12);
+            row.setAlignment(Pos.CENTER_LEFT);
+            row.setStyle("-fx-padding: 10 20 10 20; -fx-cursor: hand;");
+
+            Label name = new Label(p.getName());
+            name.setStyle("-fx-font-size: 13px; -fx-font-weight: 600; -fx-text-fill: " + textColor + ";");
+            name.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(name, javafx.scene.layout.Priority.ALWAYS);
+
+            Label margin = new Label(String.format("%.1f%%", p.getMarginPercent()));
+            margin.setStyle("-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: " + textColor + ";");
+
+            Label rev = new Label(CurrencyUtil.formatCurrency(p.getRevenue()));
+            rev.setStyle("-fx-font-size: 11px; -fx-text-fill: #9CA3AF;");
+
+            row.getChildren().addAll(name, rev, margin);
+            row.setOnMouseEntered(e -> row.setStyle(
+                "-fx-padding: 10 20 10 20; -fx-cursor: hand; -fx-background-color: " + hoverBg + ";"));
+            row.setOnMouseExited(e  -> row.setStyle("-fx-padding: 10 20 10 20; -fx-cursor: hand;"));
+
+            if (!container.getChildren().isEmpty()) {
+                Separator sep = new Separator();
+                sep.setStyle("-fx-padding: 0 20 0 20; -fx-background-color: transparent;");
+                container.getChildren().add(sep);
+            }
+            container.getChildren().add(row);
+        }
+    }
+
+    private void buildChartLegend() {
+        if (chartLegend == null) return;
+        chartLegend.getChildren().clear();
+        String[][] entries = {{"#1E2939", "Revenue"}, {"#10B981", "Profit"}};
+        for (String[] e : entries) {
+            Rectangle dot = new Rectangle(10, 10);
+            dot.setFill(Color.web(e[0]));
+            dot.setArcWidth(3); dot.setArcHeight(3);
+            Label lbl = new Label(e[1]);
+            lbl.setStyle("-fx-font-size: 12px; -fx-text-fill: #6B7280;");
+            HBox item = new HBox(6, dot, lbl);
+            item.setAlignment(Pos.CENTER);
+            chartLegend.getChildren().add(item);
+        }
+    }
+
+    private void animateLabel(Label lbl, String value) {
+        if (lbl == null) return;
+        lbl.setOpacity(0);
+        lbl.setText(value);
+        FadeTransition ft = new FadeTransition(Duration.millis(400), lbl);
+        ft.setFromValue(0); ft.setToValue(1); ft.play();
+    }
+
+    private void setTableHeight(TableView<?> t, int rows) {
+        if (t == null) return;
+        double h = 38 + Math.max(rows, 4) * 44.0;
+        t.setPrefHeight(h); t.setMinHeight(h);
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void applyRowFactory(TableView table) {
+        table.setRowFactory(tv -> {
+            TableRow row = new TableRow() {
+                @Override protected void updateItem(Object item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setStyle(empty || item == null ? "-fx-background-color: transparent;"
+                        : getIndex() % 2 == 0 ? "-fx-background-color: white;"
+                                               : "-fx-background-color: #F9FAFB;");
+                }
+            };
+            row.setOnMouseEntered(e -> {
+                if (!row.isEmpty()) row.setStyle("-fx-background-color: #EFF6FF; -fx-cursor: hand;");
+            });
+            row.setOnMouseExited(e -> {
+                if (!row.isEmpty()) row.setStyle(row.getIndex() % 2 == 0
+                    ? "-fx-background-color: white;" : "-fx-background-color: #F9FAFB;");
+            });
+            return row;
+        });
+    }
+
+    private void toast(String type, String msg) {
+        if (mainLayoutController != null) mainLayoutController.showToast(type, msg);
+        else new Alert(
+            "success".equals(type) ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR,
+            msg).showAndWait();
+    }
+
+    public void shutdown() {
+        executor.shutdown();
+        try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
+        catch (InterruptedException ex) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
+    }
+}
