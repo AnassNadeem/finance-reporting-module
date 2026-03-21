@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
+
+<ScrollPane fitToWidth="true" style="-fx-background-color: transparent; -fx-background: #F9FAFB;" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.raez.finance.controller.AuditLogController">
+   <content>
+      <VBox spacing="24.0" style="-fx-background-color: #F9FAFB;">
+         <padding>
+            <Insets bottom="32.0" left="32.0" right="32.0" top="32.0" />
+         </padding>
+         <children>
+            <VBox spacing="8">
+               <children>
+                  <Label text="Audit Log" textFill="#111827">
+                     <font><Font name="System Bold" size="24.0" /></font>
+                  </Label>
+                  <Label text="Customer updates and stock movements (admin only)" textFill="#4B5563">
+                     <font><Font size="14.0" /></font>
+                  </Label>
+               </children>
+            </VBox>
+
+            <Label fx:id="lblAccessDenied" visible="false" managed="false" text="You do not have access to this page." textFill="#B91C1C">
+               <font><Font name="System Bold" size="15.0" /></font>
+            </Label>
+
+            <VBox fx:id="toolbarBox" spacing="12" style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding><Insets bottom="16.0" left="20.0" right="20.0" top="16.0" /></padding>
+               <children>
+                  <HBox alignment="CENTER_LEFT" spacing="12">
+                     <children>
+                        <Label text="From" textFill="#6B7280" />
+                        <DatePicker fx:id="dpFrom" prefWidth="140" />
+                        <Label text="To" textFill="#6B7280" />
+                        <DatePicker fx:id="dpTo" prefWidth="140" />
+                        <Label text="Source" textFill="#6B7280" />
+                        <ComboBox fx:id="cmbSource" prefWidth="200" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button fx:id="btnApply" text="Refresh" styleClass="primary-button" />
+                        <MenuButton fx:id="exportMenuButton" mnemonicParsing="false" styleClass="export-menu-button" text="Export">
+                           <graphic>
+                              <SVGPath content="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12
+" fill="TRANSPARENT" stroke="white" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
+                           </graphic>
+                           <items>
+                              <MenuItem fx:id="exportCsvItem" mnemonicParsing="false" onAction="#handleExportCsv" styleClass="export-menu-item" text="Export as CSV">
+                                 <graphic>
+                                    <SVGPath content="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" fill="TRANSPARENT" stroke="#10B981" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                                 </graphic>
+                              </MenuItem>
+                              <MenuItem fx:id="exportPdfItem" mnemonicParsing="false" onAction="#handleExportPdf" styleClass="export-menu-item" text="Export as PDF">
+                                 <graphic>
+                                    <SVGPath content="M14 3v4a1 1 0 0 0 1 1h4 M5 12V5a2 2 0 0 1 2-2h7l5 5v4 M5 18h1.5a1.5 1.5 0 0 0 0-3H5v6 M17 18h2 M20 15h-3v6 M11 15v6h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-1z" fill="TRANSPARENT" stroke="#EF4444" strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="2.0" />
+                                 </graphic>
+                              </MenuItem>
+                           </items>
+                        </MenuButton>
+                     </children>
+                  </HBox>
+               </children>
+            </VBox>
+
+            <VBox fx:id="tableBox" spacing="8" style="-fx-background-color: white; -fx-border-color: #E5E7EB; -fx-border-radius: 8; -fx-background-radius: 8;">
+               <padding><Insets bottom="16.0" left="20.0" right="20.0" top="16.0" /></padding>
+               <children>
+                  <Label text="Activity" textFill="#111827"><font><Font name="System Bold" size="16.0" /></font></Label>
+                  <TableView fx:id="tblAudit" prefHeight="480" styleClass="reports-table">
+                     <columns>
+                        <TableColumn fx:id="colDate" prefWidth="150" text="Time" />
+                        <TableColumn fx:id="colSource" prefWidth="130" text="Source" />
+                        <TableColumn fx:id="colUser" prefWidth="100" text="User" />
+                        <TableColumn fx:id="colAction" prefWidth="120" text="Action" />
+                        <TableColumn fx:id="colEntity" prefWidth="120" text="Entity" />
+                        <TableColumn fx:id="colDetails" prefWidth="280" text="Details" />
+                     </columns>
+                  </TableView>
+               </children>
+            </VBox>
+         </children>
+      </VBox>
+   </content>
+</ScrollPane>

@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.text.Font?>
+<?import java.lang.String?>
+<?import javafx.collections.FXCollections?>
+
+<ScrollPane
+    fitToWidth="true"
+    hbarPolicy="NEVER"
+    vbarPolicy="AS_NEEDED"
+    style="-fx-background-color: transparent; -fx-background: #F9FAFB;"
+    xmlns="http://javafx.com/javafx/21"
+    xmlns:fx="http://javafx.com/fxml/1"
+    fx:controller="com.raez.finance.controller.NotificationsAlertsController">
+
+    <content>
+        <VBox spacing="24" style="-fx-background-color: #F9FAFB;">
+            <padding><Insets top="28" right="28" bottom="32" left="28" /></padding>
+
+            <!-- ══════════════════════════
+                 HEADER
+            ══════════════════════════ -->
+            <HBox alignment="CENTER_LEFT" spacing="0">
+                <VBox spacing="3" HBox.hgrow="ALWAYS">
+                    <Label text="Notifications &amp; Alerts"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                    <Label text="System notifications and important alerts"
+                           style="-fx-font-size: 13px; -fx-text-fill: #6B7280;" />
+                </VBox>
+
+                <!-- Mark all read button -->
+                <Button fx:id="btnMarkAllRead"
+                        text="Mark all read"
+                        onAction="#handleMarkAllRead"
+                        style="-fx-background-color: white; -fx-text-fill: #374151;
+                               -fx-font-size: 13px; -fx-font-weight: 600;
+                               -fx-border-color: #D1D5DB; -fx-border-radius: 8;
+                               -fx-background-radius: 8; -fx-cursor: hand;
+                               -fx-padding: 8 16 8 16;" />
+            </HBox>
+
+            <!-- ══════════════════════════
+                 SUMMARY STRIP  (KPI badges)
+            ══════════════════════════ -->
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <VBox alignment="CENTER" spacing="2"
+                      style="-fx-background-color: #FEF2F2; -fx-border-color: #FECACA;
+                             -fx-border-radius: 8; -fx-background-radius: 8;
+                             -fx-padding: 12 20 12 20; -fx-min-width: 120;">
+                    <Label fx:id="lblCriticalCount" text="0"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #DC2626;" />
+                    <Label text="Critical" style="-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #991B1B;" />
+                </VBox>
+                <VBox alignment="CENTER" spacing="2"
+                      style="-fx-background-color: #FEFCE8; -fx-border-color: #FDE047;
+                             -fx-border-radius: 8; -fx-background-radius: 8;
+                             -fx-padding: 12 20 12 20; -fx-min-width: 120;">
+                    <Label fx:id="lblWarningCount" text="0"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #CA8A04;" />
+                    <Label text="Warnings" style="-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #713F12;" />
+                </VBox>
+                <VBox alignment="CENTER" spacing="2"
+                      style="-fx-background-color: #EFF6FF; -fx-border-color: #BFDBFE;
+                             -fx-border-radius: 8; -fx-background-radius: 8;
+                             -fx-padding: 12 20 12 20; -fx-min-width: 120;">
+                    <Label fx:id="lblInfoCount" text="0"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #2563EB;" />
+                    <Label text="Info" style="-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #1E40AF;" />
+                </VBox>
+                <VBox alignment="CENTER" spacing="2"
+                      style="-fx-background-color: #F0FDF4; -fx-border-color: #BBF7D0;
+                             -fx-border-radius: 8; -fx-background-radius: 8;
+                             -fx-padding: 12 20 12 20; -fx-min-width: 120;">
+                    <Label fx:id="lblResolvedCount" text="0"
+                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #16A34A;" />
+                    <Label text="Resolved" style="-fx-font-size: 11px; -fx-font-weight: 600; -fx-text-fill: #15803D;" />
+                </VBox>
+                <Region HBox.hgrow="ALWAYS" />
+                <!-- Filter -->
+                <VBox spacing="4">
+                    <Label text="Show" style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                    <ComboBox fx:id="cmbFilter"
+                              prefWidth="160" prefHeight="32"
+                              onAction="#handleFilterChange"
+                              style="-fx-font-size: 13px;">
+                        <items>
+                            <FXCollections fx:factory="observableArrayList">
+                                <String fx:value="All" />
+                                <String fx:value="Unread" />
+                                <String fx:value="Critical" />
+                                <String fx:value="Warnings" />
+                                <String fx:value="Info" />
+                                <String fx:value="Resolved" />
+                            </FXCollections>
+                        </items>
+                        <value><String fx:value="All" /></value>
+                    </ComboBox>
+                </VBox>
+            </HBox>
+
+            <!-- ══════════════════════════
+                 CRITICAL ALERTS CARD
+            ══════════════════════════ -->
+            <VBox style="-fx-background-color: white;
+                         -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 8, 0, 0, 2);">
+
+                <!-- Card header -->
+                <HBox alignment="CENTER_LEFT" spacing="8"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0; -fx-padding: 18 24 18 24;">
+                    <Label text="🚨" style="-fx-font-size: 16px;" />
+                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                        <Label text="Critical Alerts"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Issues requiring immediate attention"
+                               style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
+                    </VBox>
+                    <Label fx:id="badgeCritical" text="0"
+                           style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: white;
+                                  -fx-background-color: #EF4444; -fx-background-radius: 999;
+                                  -fx-padding: 3 10 3 10;" />
+                </HBox>
+
+                <!-- Alert rows (injected by controller) -->
+                <VBox fx:id="vboxAlerts" spacing="0">
+                    <!-- populated dynamically -->
+                </VBox>
+
+                <!-- Empty state -->
+                <Label fx:id="lblNoAlerts"
+                       text="✅  No critical alerts — all systems normal"
+                       managed="false" visible="false"
+                       style="-fx-text-fill: #16A34A; -fx-font-size: 13px;
+                              -fx-font-weight: 600; -fx-padding: 20 24 20 24;" />
+
+                <!-- Card footer -->
+                <HBox alignment="CENTER_RIGHT"
+                      style="-fx-border-color: #E5E7EB transparent transparent transparent;
+                             -fx-border-width: 1 0 0 0; -fx-padding: 10 24 10 24;
+                             -fx-background-color: #FAFAFA; -fx-background-radius: 0 0 10 10;">
+                    <Button fx:id="btnResolveAllAlerts"
+                            text="Resolve all"
+                            onAction="#handleResolveAllAlerts"
+                            style="-fx-background-color: transparent; -fx-text-fill: #6B7280;
+                                   -fx-font-size: 12px; -fx-cursor: hand;
+                                   -fx-border-color: transparent;" />
+                </HBox>
+            </VBox>
+
+            <!-- ══════════════════════════
+                 ALL NOTIFICATIONS CARD
+            ══════════════════════════ -->
+            <VBox style="-fx-background-color: white;
+                         -fx-border-color: #E5E7EB; -fx-border-radius: 10;
+                         -fx-background-radius: 10;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.07), 8, 0, 0, 2);">
+
+                <HBox alignment="CENTER_LEFT" spacing="8"
+                      style="-fx-border-color: transparent transparent #E5E7EB transparent;
+                             -fx-border-width: 0 0 1 0; -fx-padding: 18 24 18 24;">
+                    <Label text="🔔" style="-fx-font-size: 16px;" />
+                    <VBox spacing="1" HBox.hgrow="ALWAYS">
+                        <Label text="All Notifications"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                        <Label text="Financial anomalies and system events"
+                               style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
+                    </VBox>
+                    <Label fx:id="badgeUnread" text="0 unread"
+                           style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #2563EB;
+                                  -fx-background-color: #DBEAFE; -fx-background-radius: 999;
+                                  -fx-padding: 3 10 3 10;" />
+                </HBox>
+
+                <!-- Notification rows (injected by controller) -->
+                <VBox fx:id="vboxNotifications" spacing="0">
+                    <!-- populated dynamically -->
+                </VBox>
+
+                <!-- Empty state -->
+                <Label fx:id="lblNoNotifications"
+                       text="No notifications to display"
+                       managed="false" visible="false"
+                       style="-fx-text-fill: #9CA3AF; -fx-font-size: 13px;
+                              -fx-padding: 20 24 20 24;" />
+
+                <HBox alignment="CENTER_RIGHT"
+                      style="-fx-border-color: #E5E7EB transparent transparent transparent;
+                             -fx-border-width: 1 0 0 0; -fx-padding: 10 24 10 24;
+                             -fx-background-color: #FAFAFA; -fx-background-radius: 0 0 10 10;">
+                    <Button fx:id="btnResolveAllNotifs"
+                            text="Mark all resolved"
+                            onAction="#handleResolveAllNotifs"
+                            style="-fx-background-color: transparent; -fx-text-fill: #6B7280;
+                                   -fx-font-size: 12px; -fx-cursor: hand;
+                                   -fx-border-color: transparent;" />
+                </HBox>
+            </VBox>
+
+        </VBox>
+    </content>
+</ScrollPane>
