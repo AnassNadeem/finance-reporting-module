@@ -22,3 +22,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+# SQLite runtime sidecars (do not commit lock files)
+*.db-shm
+*.db-wal
+
+# Eclipse / workspace
+.metadata/
+
+# VS Code (optional local settings)
+**/.vscode/
