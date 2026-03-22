@@ -11,7 +11,9 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fetches customer report rows for Detailed Reports (Customer tab).
@@ -229,10 +231,172 @@ public class CustomerDao implements CustomerDaoInterface {
         return list;
     }
 
+    /**
+     * Monthly order counts split by customer type (Company vs Individual) for grouped bar charts.
+     */
+    public List<MonthlySplit> findMonthlyOrderCountsByCustomerType(LocalDate from, LocalDate end) throws SQLException {
+        String sql = "SELECT strftime('%Y-%m', o.orderDate) AS month, " +
+                "COALESCE(c.customerType, 'Individual') AS ctype, COUNT(*) AS cnt " +
+                "FROM \"Order\" o " +
+                "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) AND (? IS NULL OR o.orderDate <= ?) " +
+                "GROUP BY month, ctype ORDER BY month";
+        Map<String, int[]> byMonth = new LinkedHashMap<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            bindOrderDateFilter(ps, 1, from, end);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String month = rs.getString("month");
+                    String ctype = rs.getString("ctype");
+                    int cnt = rs.getInt("cnt");
+                    int[] pair = byMonth.computeIfAbsent(month, k -> new int[2]);
+                    if (ctype != null && "Company".equalsIgnoreCase(ctype.trim())) {
+                        pair[0] += cnt;
+                    } else {
+                        pair[1] += cnt;
+                    }
+                }
+            }
+        }
+        List<MonthlySplit> list = new ArrayList<>();
+        for (Map.Entry<String, int[]> e : byMonth.entrySet()) {
+            int[] p = e.getValue();
+            list.add(new MonthlySplit(e.getKey(), p[0], p[1]));
+        }
+        return list;
+    }
+
     public static final class MonthlyCount {
         public final String month;
         public final int count;
         public MonthlyCount(String month, int count) { this.month = month; this.count = count; }
+    }
+
+    /** One calendar month with order counts for companies vs individuals. */
+    public static final class MonthlySplit {
+        public final String month;
+        public final int companyCount;
+        public final int individualCount;
+        public MonthlySplit(String month, int companyCount, int individualCount) {
+            this.month = month;
+            this.companyCount = companyCount;
+            this.individualCount = individualCount;
+        }
+    }
+
+    /**
+     * Top buyers in a date range, optionally filtered by customer type (Company / Individual).
+     * Rank is 1-based within the full sorted result (use {@code offset} for pagination).
+     */
+    public List<TopBuyerRow> findTopBuyersInRange(LocalDate from, LocalDate to, String insightCustomerTypeFilter, int limit, int offset) throws SQLException {
+        String normalizedType = normalizeInsightCustomerType(insightCustomerTypeFilter);
+        String sql = "SELECT c.customerID, c.name, COALESCE(c.customerType, 'Individual') AS customerType, c.deliveryAddress, " +
+                "COUNT(o.orderID) AS totalOrders, COALESCE(SUM(o.totalAmount), 0) AS totalSpent, " +
+                "COALESCE(MAX(o.orderDate), '') AS lastPurchase " +
+                "FROM CustomerRegistration c " +
+                "INNER JOIN \"Order\" o ON o.customerID = c.customerID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) AND (? IS NULL OR o.orderDate <= ?) " +
+                "AND (? IS NULL OR COALESCE(c.customerType, 'Individual') = ?) " +
+                "GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress " +
+                "ORDER BY totalSpent DESC " +
+                "LIMIT ? OFFSET ?";
+        List<TopBuyerRow> rows = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int i = 1;
+            i = bindOrderDateFilter(ps, i, from, to);
+            if (normalizedType == null) {
+                ps.setNull(i++, Types.VARCHAR);
+                ps.setNull(i++, Types.VARCHAR);
+            } else {
+                ps.setString(i++, normalizedType);
+                ps.setString(i++, normalizedType);
+            }
+            ps.setInt(i++, limit <= 0 ? 100 : limit);
+            ps.setInt(i, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                int rank = offset + 1;
+                while (rs.next()) {
+                    int totalOrders = rs.getInt("totalOrders");
+                    double totalSpent = rs.getDouble("totalSpent");
+                    double aov = totalOrders > 0 ? totalSpent / totalOrders : 0;
+                    String last = rs.getString("lastPurchase");
+                    if (last != null && last.length() >= 10) last = last.substring(0, 10);
+                    else if (last == null || last.isEmpty()) last = "—";
+                    rows.add(new TopBuyerRow(rank++, rs.getString("name"),
+                            rs.getString("customerType") != null ? rs.getString("customerType") : "Individual",
+                            rs.getString("deliveryAddress") != null ? rs.getString("deliveryAddress") : "—",
+                            totalSpent, totalOrders, aov, last));
+                }
+            }
+        }
+        return rows;
+    }
+
+    /** Number of customers matching top-buyer filters (for pagination). */
+    public int countTopBuyersInRange(LocalDate from, LocalDate to, String insightCustomerTypeFilter) throws SQLException {
+        String normalizedType = normalizeInsightCustomerType(insightCustomerTypeFilter);
+        String sql = "SELECT COUNT(*) FROM (" +
+                "SELECT c.customerID " +
+                "FROM CustomerRegistration c " +
+                "INNER JOIN \"Order\" o ON o.customerID = c.customerID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) AND (? IS NULL OR o.orderDate <= ?) " +
+                "AND (? IS NULL OR COALESCE(c.customerType, 'Individual') = ?) " +
+                "GROUP BY c.customerID, c.name, c.customerType, c.deliveryAddress" +
+                ") AS t";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int i = 1;
+            i = bindOrderDateFilter(ps, i, from, to);
+            if (normalizedType == null) {
+                ps.setNull(i++, Types.VARCHAR);
+                ps.setNull(i++, Types.VARCHAR);
+            } else {
+                ps.setString(i++, normalizedType);
+                ps.setString(i++, normalizedType);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    /**
+     * Sum of order totals in range for orders matching the same customer-type filter as top buyers
+     * (combined spend across all matching customers).
+     */
+    public double sumOrderTotalInBuyerFilterRange(LocalDate from, LocalDate to, String insightCustomerTypeFilter) throws SQLException {
+        String normalizedType = normalizeInsightCustomerType(insightCustomerTypeFilter);
+        String sql = "SELECT COALESCE(SUM(o.totalAmount), 0) FROM \"Order\" o " +
+                "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
+                "WHERE (? IS NULL OR o.orderDate >= ?) AND (? IS NULL OR o.orderDate <= ?) " +
+                "AND (? IS NULL OR COALESCE(c.customerType, 'Individual') = ?)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            int i = 1;
+            i = bindOrderDateFilter(ps, i, from, to);
+            if (normalizedType == null) {
+                ps.setNull(i++, Types.VARCHAR);
+                ps.setNull(i++, Types.VARCHAR);
+            } else {
+                ps.setString(i++, normalizedType);
+                ps.setString(i++, normalizedType);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getDouble(1) : 0;
+            }
+        }
+    }
+
+    /** "All Customers" / "Companies" / "Normal Users" → null / "Company" / "Individual". */
+    private static String normalizeInsightCustomerType(String filter) {
+        if (filter == null) return null;
+        String f = filter.trim();
+        if (f.isEmpty() || "All Customers".equalsIgnoreCase(f)) return null;
+        if ("Companies".equalsIgnoreCase(f)) return "Company";
+        if ("Normal Users".equalsIgnoreCase(f)) return "Individual";
+        return f;
     }
 
     /** Total customer count and total revenue for KPIs (avg spending = totalRevenue/count). */
@@ -275,7 +439,7 @@ public class CustomerDao implements CustomerDaoInterface {
                 "FROM Refund r " +
                 "JOIN \"Order\" o ON r.orderID = o.orderID " +
                 "JOIN CustomerRegistration c ON o.customerID = c.customerID " +
-                "WHERE r.status IN ('REQUESTED','APPROVED','PROCESSED') " +
+                "WHERE UPPER(TRIM(COALESCE(r.status,''))) IN ('REQUESTED','APPROVED','PROCESSED') " +
                 "GROUP BY c.customerID, c.name " +
                 "HAVING refundCount >= 2 OR totalRefunded >= 500 " +
                 "ORDER BY totalRefunded DESC LIMIT 10";

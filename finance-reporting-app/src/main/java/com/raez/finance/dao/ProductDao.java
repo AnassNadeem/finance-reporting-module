@@ -142,7 +142,7 @@ public class ProductDao implements ProductDaoInterface {
             "LEFT JOIN Category c ON p.categoryID = c.categoryID " +
             "JOIN \"Order\" o ON oi.orderID = o.orderID " +
             "WHERE (? IS NULL OR o.orderDate >= ?) AND (? IS NULL OR o.orderDate <= ?) " +
-            "GROUP BY c.categoryID, c.categoryName ORDER BY revenue DESC";
+            "GROUP BY COALESCE(c.categoryName, 'Uncategorized') ORDER BY revenue DESC";
 
         String fromParam = from == null ? null : from + " 00:00:00";
         String toParam = to == null ? null : to + " 23:59:59";
