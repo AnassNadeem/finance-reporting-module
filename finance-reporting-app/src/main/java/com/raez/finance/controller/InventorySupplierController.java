@@ -18,6 +18,9 @@ import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -437,12 +440,87 @@ public class InventorySupplierController {
             if ("csv".equals(format)) {
                 ExportService.exportToCSV(tableSuppliers, file);
             } else {
-                ExportService.exportToPDF(tableSuppliers, "Inventory & Supplier Performance Report", file);
+                ExportService.exportMergedReport("Inventory & Suppliers",
+                    buildMergedInventoryExportData(), file);
             }
             showToast("success", format.toUpperCase() + " exported: " + file.getName());
         } catch (Exception e) {
             showToast("error", "Export failed: " + (e.getMessage() != null ? e.getMessage() : "Unknown error"));
         }
+    }
+
+    /** Same rich structure as profile Full Report inventory export: KPIs, chart, suppliers, low stock, products. */
+    private List<String[]> buildMergedInventoryExportData() throws Exception {
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        InventorySupplierDao inv = new InventorySupplierDao();
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"__COVER__",
+            "Inventory & Suppliers",
+            "Stock, suppliers, and low-stock alerts",
+            date});
+        double stockVal = inv.getCurrentStockValue();
+        int lowCount = inv.countLowStockProducts();
+        int oos = inv.countOutOfStockProducts();
+        int supCount = inv.countSuppliers();
+        rows.add(new String[]{"__SECTION__",
+            "Overview",
+            "Snapshot"});
+        rows.add(new String[]{"__KPI__",
+            "Stock Value", CurrencyUtil.formatCurrency(stockVal),
+            "Low Stock SKUs", String.valueOf(lowCount),
+            "Out of Stock", String.valueOf(oos),
+            "Suppliers", String.valueOf(supCount)});
+        List<String> bar = new ArrayList<>();
+        bar.add("__BARCHART__");
+        bar.add("Supplier reliability (score)");
+        for (var s : inv.findSuppliers()) {
+            bar.add(s.name());
+            bar.add(String.valueOf(s.reliabilityScore()));
+        }
+        if (bar.size() > 2) {
+            rows.add(bar.toArray(new String[0]));
+        }
+        rows.add(new String[]{"__SECTION__",
+            "Suppliers",
+            "Lead times and reliability"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Supplier", "Contact", "Email", "Lead Days", "Reliability %"});
+        for (var s : inv.findSuppliers()) {
+            rows.add(new String[]{
+                s.name(),
+                s.contact() != null ? s.contact() : "",
+                s.email() != null ? s.email() : "",
+                String.format("%.0f", s.leadDays()),
+                String.format("%.1f", s.reliabilityScore())
+            });
+        }
+        rows.add(new String[]{"__SECTION__",
+            "Low stock",
+            "Items at or below reorder level"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Product", "Category", "Qty", "Reorder at"});
+        for (var l : inv.findLowStockItems()) {
+            rows.add(new String[]{l.productName(), l.categoryName(),
+                String.valueOf(l.currentStock()), String.valueOf(l.reorderLevel())});
+        }
+        rows.add(new String[]{"__SECTION__",
+            "Product inventory",
+            "Margin and status"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Product", "Category", "Stock", "Reorder", "Unit Cost", "Sale", "Margin %", "Status"});
+        for (var p : inv.findProductInventoryRows()) {
+            rows.add(new String[]{
+                p.name(),
+                p.category(),
+                String.valueOf(p.stockLevel()),
+                String.valueOf(p.reorderLevel()),
+                CurrencyUtil.formatCurrency(p.unitCost()),
+                CurrencyUtil.formatCurrency(p.salePrice()),
+                String.format("%.1f%%", p.marginPercent()),
+                p.statusLabel()
+            });
+        }
+        return rows;
     }
 
     private java.util.List<String[]> buildExportData() {

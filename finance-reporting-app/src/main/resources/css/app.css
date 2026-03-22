@@ -989,6 +989,15 @@
     -fx-font-size: 11px;
 }
 
+/* Customer Insights — monthly volume: extra bottom padding for rotated tick labels (rotation set in code) */
+.insights-monthly-chart {
+    -fx-padding: 0 0 4 0;
+}
+.insights-monthly-chart .axis {
+    -fx-tick-label-fill: #6B7280;
+    -fx-font-size: 10px;
+}
+
 
 /* =========================================================================
    16. PROFILE DROPDOWN & AVATAR

@@ -19,6 +19,7 @@ import javafx.stage.FileChooser;
 
 import java.io.File;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -342,6 +343,67 @@ public class RevenueVatSummaryController {
                 CurrencyUtil.formatCurrency(r.getVat()),
                 CurrencyUtil.formatCurrency(r.getNet()),
                 String.format("%.1f%%", r.getMargin())
+            });
+        }
+        return rows;
+    }
+
+    /** Rich PDF: KPIs, gross-by-category bar chart, and category table (matches on-screen summary). */
+    private List<String[]> buildMergedRevenueVatExportData() throws Exception {
+        LocalDate[] r = resolveRange();
+        LocalDate from = r[0];
+        LocalDate to = r[1];
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"__COVER__",
+            "Revenue & VAT Summary",
+            "Gross, net, and tax liabilities",
+            date});
+        double gross = dashboardService.getTotalSales(from, to, null);
+        double vatAmt = dashboardService.getTotalVatCollected(from, to, null);
+        double net = gross - vatAmt;
+        double cogs = dashboardService.getTotalCogs(from, to, null);
+        double margin = net > 0 ? ((net - cogs) / net) * 100 : 0;
+        int totalOrders = dashboardService.getTotalOrders(from, to, null);
+        rows.add(new String[]{"__SECTION__",
+            "Summary",
+            "Period totals"});
+        rows.add(new String[]{"__KPI__",
+            "Gross Revenue", CurrencyUtil.formatCurrency(gross),
+            "VAT Collected", CurrencyUtil.formatCurrency(vatAmt),
+            "Net Revenue", CurrencyUtil.formatCurrency(net),
+            "Gross Margin", String.format("%.1f%%", margin)});
+        rows.add(new String[]{"__KPI__",
+            "Total Orders", String.valueOf(totalOrders),
+            "COGS (approx)", CurrencyUtil.formatCurrency(cogs),
+            "Period", from.format(DateTimeFormatter.ISO_LOCAL_DATE) + " to " + to.format(DateTimeFormatter.ISO_LOCAL_DATE)});
+
+        List<String> vatChart = new ArrayList<>();
+        vatChart.add("__BARCHART__");
+        vatChart.add("Gross revenue by category");
+        for (RevenueVatDao.CategoryVatRow cat : revenueVatDao.findCategoryVatRows(from, to)) {
+            vatChart.add(cat.category());
+            vatChart.add(String.valueOf((long) cat.gross()));
+        }
+        if (vatChart.size() > 2) {
+            rows.add(vatChart.toArray(new String[0]));
+        }
+
+        rows.add(new String[]{"__SECTION__",
+            "Category breakdown",
+            "Orders, gross, VAT, net, margin"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Category", "Orders", "Gross", "VAT", "Net", "Margin %"});
+        for (RevenueVatDao.CategoryVatRow cat : revenueVatDao.findCategoryVatRows(from, to)) {
+            double rNet = cat.gross() - cat.vat();
+            double rMar = rNet > 0 && cat.cogs() >= 0 ? ((rNet - cat.cogs()) / rNet) * 100 : 0;
+            rows.add(new String[]{
+                cat.category(),
+                String.valueOf(cat.orders()),
+                CurrencyUtil.formatCurrency(cat.gross()),
+                CurrencyUtil.formatCurrency(cat.vat()),
+                CurrencyUtil.formatCurrency(rNet),
+                String.format("%.1f%%", rMar)
             });
         }
         return rows;
