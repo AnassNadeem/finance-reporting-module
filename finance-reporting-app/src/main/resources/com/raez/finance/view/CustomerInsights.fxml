@@ -6,6 +6,7 @@
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.chart.BarChart?>
@@ -173,11 +174,11 @@
                     <VBox spacing="2" HBox.hgrow="ALWAYS">
                         <Label text="Monthly Order Volume"
                                style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-                        <Label text="Order count per month in the selected period"
+                        <Label text="Companies vs individuals — order count per month"
                                style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
                     </VBox>
                     <VBox spacing="4" prefWidth="160">
-                        <Label text="Chart period"
+                        <Label text="Date Range"
                                style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
                         <ComboBox fx:id="cmbChartDateRange"
                                   prefWidth="160" prefHeight="32"
@@ -193,24 +194,19 @@
                                style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
                         <DatePicker fx:id="dpChartEnd" prefWidth="140" prefHeight="32" style="-fx-font-size: 13px;" />
                     </VBox>
-                    <VBox spacing="4" prefWidth="180">
-                        <Label text="Filter"
-                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
-                        <ComboBox fx:id="cmbCustomerFilter"
-                                  prefWidth="180" prefHeight="32"
-                                  style="-fx-font-size: 13px;" />
-                    </VBox>
                 </HBox>
 
-                <VBox style="-fx-padding: 16 24 16 24;">
+                <VBox style="-fx-padding: 12 24 28 24;">
                     <BarChart fx:id="chartFrequency"
-                              prefHeight="280"
-                              legendVisible="false"
-                              animated="true"
+                              styleClass="insights-monthly-chart"
+                              prefHeight="320"
+                              minHeight="320"
+                              legendVisible="true"
+                              animated="false"
                               style="-fx-background-color: transparent;">
                         <xAxis>
                             <CategoryAxis side="BOTTOM"
-                                          style="-fx-tick-label-fill: #6B7280; -fx-font-size: 11px;" />
+                                          style="-fx-tick-label-fill: #6B7280; -fx-font-size: 10px;" />
                         </xAxis>
                         <yAxis>
                             <NumberAxis side="LEFT"
@@ -243,6 +239,34 @@
                                   -fx-padding: 3 10 3 10;" />
                 </HBox>
 
+                <HBox alignment="CENTER_LEFT" spacing="12"
+                      style="-fx-padding: 16 24 14 24;">
+                    <VBox spacing="4" prefWidth="160">
+                        <Label text="Date Range"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <ComboBox fx:id="cmbBuyerDateRange"
+                                  prefWidth="160" prefHeight="32"
+                                  style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox fx:id="boxBuyerStartDate" spacing="4" prefWidth="140" managed="false" visible="false">
+                        <Label text="Start"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <DatePicker fx:id="dpBuyerStart" prefWidth="140" prefHeight="32" style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox fx:id="boxBuyerEndDate" spacing="4" prefWidth="140" managed="false" visible="false">
+                        <Label text="End"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <DatePicker fx:id="dpBuyerEnd" prefWidth="140" prefHeight="32" style="-fx-font-size: 13px;" />
+                    </VBox>
+                    <VBox spacing="4" prefWidth="180">
+                        <Label text="Customer type"
+                               style="-fx-font-size: 11px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                        <ComboBox fx:id="cmbBuyerCustomerFilter"
+                                  prefWidth="180" prefHeight="32"
+                                  style="-fx-font-size: 13px;" />
+                    </VBox>
+                </HBox>
+
                 <!--
                   columnResizePolicy set in controller:
                   tblTopBuyers.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS)
@@ -272,12 +296,55 @@
                     </placeholder>
                 </TableView>
 
-                <HBox alignment="CENTER_LEFT"
+                <HBox alignment="CENTER_LEFT" spacing="0"
                       style="-fx-border-color: #E5E7EB transparent transparent transparent;
                              -fx-border-width: 1 0 0 0; -fx-padding: 12 24 12 24;
                              -fx-background-color: #FAFAFA; -fx-background-radius: 0 0 10 10;">
                     <Label fx:id="lblTotalSpentSummary" text=""
                            style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <HBox alignment="CENTER_RIGHT" spacing="10">
+                        <Label text="Rows per page:"
+                               style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                        <ComboBox fx:id="cmbBuyerRowsPerPage"
+                                  prefWidth="72" prefHeight="30"
+                                  onAction="#handleBuyerRowsPerPageChange"
+                                  style="-fx-font-size: 13px;">
+                            <items>
+                                <FXCollections fx:factory="observableArrayList">
+                                    <String fx:value="10" />
+                                    <String fx:value="20" />
+                                    <String fx:value="30" />
+                                    <String fx:value="40" />
+                                    <String fx:value="50" />
+                                </FXCollections>
+                            </items>
+                            <value><String fx:value="10" /></value>
+                        </ComboBox>
+                        <Label fx:id="lblBuyerPageInfo"
+                               text="Page 1 of 1"
+                               style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                        <Button fx:id="btnBuyerPrevPage"
+                                onAction="#handleBuyerPrevPage"
+                                style="-fx-background-color: white;
+                                       -fx-border-color: #E5E7EB; -fx-border-radius: 6;
+                                       -fx-background-radius: 6; -fx-cursor: hand;
+                                       -fx-padding: 4 10 4 10;">
+                            <graphic>
+                                <Label text="‹" style="-fx-font-size: 15px; -fx-text-fill: #374151;" />
+                            </graphic>
+                        </Button>
+                        <Button fx:id="btnBuyerNextPage"
+                                onAction="#handleBuyerNextPage"
+                                style="-fx-background-color: white;
+                                       -fx-border-color: #E5E7EB; -fx-border-radius: 6;
+                                       -fx-background-radius: 6; -fx-cursor: hand;
+                                       -fx-padding: 4 10 4 10;">
+                            <graphic>
+                                <Label text="›" style="-fx-font-size: 15px; -fx-text-fill: #374151;" />
+                            </graphic>
+                        </Button>
+                    </HBox>
                 </HBox>
             </VBox>
 

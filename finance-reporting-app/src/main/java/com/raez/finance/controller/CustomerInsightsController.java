@@ -13,7 +13,10 @@ import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
+import javafx.geometry.Side;
 import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -26,22 +29,33 @@ import javafx.util.Duration;
 
 import java.io.File;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 public class CustomerInsightsController {
 
     // ── FXML ─────────────────────────────────────────────────────────────
-    @FXML private ComboBox<String> cmbCustomerFilter;
     @FXML private ComboBox<String> cmbChartDateRange;
     @FXML private VBox              boxChartStartDate;
     @FXML private VBox              boxChartEndDate;
     @FXML private DatePicker        dpChartStart;
     @FXML private DatePicker        dpChartEnd;
+
+    @FXML private ComboBox<String> cmbBuyerDateRange;
+    @FXML private VBox              boxBuyerStartDate;
+    @FXML private VBox              boxBuyerEndDate;
+    @FXML private DatePicker        dpBuyerStart;
+    @FXML private DatePicker        dpBuyerEnd;
+    @FXML private ComboBox<String> cmbBuyerCustomerFilter;
+    @FXML private ComboBox<String> cmbBuyerRowsPerPage;
+    @FXML private Label             lblBuyerPageInfo;
+    @FXML private Button            btnBuyerPrevPage;
+    @FXML private Button            btnBuyerNextPage;
 
     @FXML private Label lblTotalCustomers;
     @FXML private Label lblCustomersSub;
@@ -84,6 +98,9 @@ public class CustomerInsightsController {
     });
     private MainLayoutController mainLayoutController;
 
+    private int buyerCurrentPage = 1;
+    private int totalBuyerRows = 0;
+
     public void setMainLayoutController(MainLayoutController c) { this.mainLayoutController = c; }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -97,17 +114,132 @@ public class CustomerInsightsController {
             exportMenuButton.setManaged(false);
         }
 
-        cmbCustomerFilter.setItems(FXCollections.observableArrayList(
+        ObservableList<String> dateChoices = FXCollections.observableArrayList(
+            "Last 7 Days", "Last 30 Days", "Last 12 Months", "Year to Date", "Custom");
+        if (cmbChartDateRange != null) {
+            cmbChartDateRange.setItems(dateChoices);
+            cmbChartDateRange.setValue("Last 12 Months");
+        }
+        if (cmbBuyerDateRange != null) {
+            cmbBuyerDateRange.setItems(FXCollections.observableArrayList(dateChoices));
+            cmbBuyerDateRange.setValue("Last 12 Months");
+        }
+
+        cmbBuyerCustomerFilter.setItems(FXCollections.observableArrayList(
             "All Customers", "Companies", "Normal Users"));
-        cmbCustomerFilter.setValue("All Customers");
+        cmbBuyerCustomerFilter.setValue("All Customers");
+
+        if (cmbBuyerRowsPerPage != null) {
+            cmbBuyerRowsPerPage.setValue("10");
+        }
 
         bindColumns();
         tblTopBuyers.setItems(topBuyerItems);
         tblTopBuyers.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
         applyRowFactory(tblTopBuyers);
+        setBuyerTableHeight();
 
-        cmbCustomerFilter.valueProperty().addListener((obs, o, n) -> loadData());
-        loadData();
+        wireChartDateListeners();
+        wireBuyerDateListeners();
+
+        cmbBuyerCustomerFilter.valueProperty().addListener((obs, o, n) -> {
+            buyerCurrentPage = 1;
+            loadTopBuyersTable();
+        });
+
+        configureInsightsChart();
+        loadKpiAndChart();
+        loadInsightAlertsFromDatabase();
+        loadTopBuyersTable();
+    }
+
+    /** X-axis layout: angled labels and spacing so months do not overlap (grouped bars). */
+    private void configureInsightsChart() {
+        if (chartFrequency == null) return;
+        chartFrequency.setAnimated(false);
+        chartFrequency.setLegendSide(Side.BOTTOM);
+        if (chartFrequency.getXAxis() instanceof CategoryAxis cx) {
+            cx.setTickLabelRotation(-52);
+            cx.setTickLabelGap(4);
+            cx.setGapStartAndEnd(true);
+            cx.setAnimated(false);
+        }
+        if (chartFrequency.getYAxis() instanceof NumberAxis ny) {
+            ny.setAnimated(false);
+            ny.setForceZeroInRange(true);
+            ny.setMinorTickVisible(false);
+            ny.setAutoRanging(true);
+        }
+    }
+
+    private void wireChartDateListeners() {
+        if (cmbChartDateRange != null) {
+            cmbChartDateRange.valueProperty().addListener((obs, o, n) -> {
+                updateChartCustomVisibility();
+                loadKpiAndChart();
+            });
+        }
+        Runnable chartReload = this::loadKpiAndChart;
+        if (dpChartStart != null) dpChartStart.valueProperty().addListener((o, a, b) -> chartReload.run());
+        if (dpChartEnd != null) dpChartEnd.valueProperty().addListener((o, a, b) -> chartReload.run());
+        updateChartCustomVisibility();
+    }
+
+    private void wireBuyerDateListeners() {
+        if (cmbBuyerDateRange != null) {
+            cmbBuyerDateRange.valueProperty().addListener((obs, o, n) -> {
+                updateBuyerCustomVisibility();
+                buyerCurrentPage = 1;
+                loadTopBuyersTable();
+            });
+        }
+        Runnable buyerReload = () -> {
+            buyerCurrentPage = 1;
+            loadTopBuyersTable();
+        };
+        if (dpBuyerStart != null) dpBuyerStart.valueProperty().addListener((o, a, b) -> buyerReload.run());
+        if (dpBuyerEnd != null) dpBuyerEnd.valueProperty().addListener((o, a, b) -> buyerReload.run());
+        updateBuyerCustomVisibility();
+    }
+
+    private void updateChartCustomVisibility() {
+        boolean custom = "Custom".equals(cmbChartDateRange != null ? cmbChartDateRange.getValue() : null);
+        setVisible(boxChartStartDate, custom);
+        setVisible(boxChartEndDate, custom);
+    }
+
+    private void updateBuyerCustomVisibility() {
+        boolean custom = "Custom".equals(cmbBuyerDateRange != null ? cmbBuyerDateRange.getValue() : null);
+        setVisible(boxBuyerStartDate, custom);
+        setVisible(boxBuyerEndDate, custom);
+    }
+
+    private static void setVisible(VBox box, boolean v) {
+        if (box != null) {
+            box.setVisible(v);
+            box.setManaged(v);
+        }
+    }
+
+    @FXML private void handleBuyerRowsPerPageChange(ActionEvent e) {
+        buyerCurrentPage = 1;
+        loadTopBuyersTable();
+    }
+
+    @FXML private void handleBuyerPrevPage(ActionEvent e) {
+        if (buyerCurrentPage > 1) {
+            buyerCurrentPage--;
+            loadTopBuyersTable();
+        }
+    }
+
+    @FXML private void handleBuyerNextPage(ActionEvent e) {
+        int ps = getBuyerPageSize();
+        int pages = Math.max(1, (int) Math.ceil((double) totalBuyerRows / ps));
+        if (buyerCurrentPage < pages) {
+            buyerCurrentPage++;
+            loadTopBuyersTable();
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -115,7 +247,6 @@ public class CustomerInsightsController {
     // ══════════════════════════════════════════════════════════════════════
 
     private void bindColumns() {
-        // Rank — medal emoji for top 3
         colRank.setCellValueFactory(new PropertyValueFactory<>("rank"));
         colRank.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(Number v, boolean empty) {
@@ -127,7 +258,6 @@ public class CustomerInsightsController {
             }
         });
 
-        // Name — bold
         colName.setCellValueFactory(new PropertyValueFactory<>("name"));
         colName.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(String v, boolean empty) {
@@ -138,7 +268,6 @@ public class CustomerInsightsController {
             }
         });
 
-        // Type — badge pill
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colType.setCellFactory(col -> new TableCell<>() {
             @Override protected void updateItem(String v, boolean empty) {
@@ -159,7 +288,6 @@ public class CustomerInsightsController {
         colSpent.setCellValueFactory(new PropertyValueFactory<>("totalSpent"));
         colSpent.setCellFactory(CurrencyUtil.currencyCellFactory());
 
-        // ── FIXED: was "orderCount" — correct property name is "totalOrders" ──
         colOrders.setCellValueFactory(new PropertyValueFactory<>("totalOrders"));
 
         colAOV.setCellValueFactory(new PropertyValueFactory<>("avgOrderValue"));
@@ -172,18 +300,14 @@ public class CustomerInsightsController {
     //  DATA LOADING
     // ══════════════════════════════════════════════════════════════════════
 
-    private void loadData() {
-        String filter = cmbCustomerFilter.getValue();
+    /** KPI cards + monthly bar chart (alerts load separately via {@link #loadInsightAlertsFromDatabase()}). */
+    private void loadKpiAndChart() {
         final LocalDate[] chartRange = resolveChartDateRange();
 
         Task<Void> task = new Task<>() {
-            // result fields populated in call(), consumed in succeeded()
             int    total, companies;
             double totalRevenue, avgSpending, avgFrequency;
-            List<CustomerDao.MonthlyCount> monthly;
-            List<TopBuyerRow>              topBuyers;
-            List<String>                   refundAlerts;
-            List<String>                   issueAlerts;
+            List<CustomerDao.MonthlySplit> monthlySplit;
 
             @Override
             protected Void call() throws Exception {
@@ -191,34 +315,18 @@ public class CustomerInsightsController {
                 companies    = customerDao.getCompanyCustomerCount();
                 totalRevenue = customerDao.getTotalRevenue();
                 avgSpending  = total > 0 ? totalRevenue / total : 0;
-                monthly      = customerDao.findMonthlyOrderCounts(chartRange[0], chartRange[1]);
+                monthlySplit = customerDao.findMonthlyOrderCountsByCustomerType(chartRange[0], chartRange[1]);
 
-                int totalOrders = monthly.stream().mapToInt(m -> m.count).sum();
-                int monthBuckets = Math.max(1, monthly.size());
+                int totalOrders = monthlySplit.stream()
+                    .mapToInt(m -> m.companyCount + m.individualCount).sum();
+                int monthBuckets = Math.max(1, monthlySplit.size());
                 avgFrequency = (total > 0 && totalOrders > 0)
                     ? (double) totalOrders / monthBuckets / total : 0;
-
-                // Fetch all top buyers then filter client-side
-                topBuyers = customerDao.findTopBuyers(100);
-                String typeArg = switch (filter != null ? filter : "All Customers") {
-                    case "Companies"    -> "Company";
-                    case "Normal Users" -> "Individual";
-                    default             -> null;
-                };
-                if (typeArg != null) {
-                    final String ft = typeArg;
-                    topBuyers = topBuyers.stream()
-                        .filter(r -> ft.equalsIgnoreCase(r.getType())).toList();
-                }
-
-                refundAlerts = customerDao.findRefundAlerts();
-                issueAlerts  = customerDao.findProductIssueAlerts();
                 return null;
             }
 
             @Override
             protected void succeeded() {
-                // KPI labels with fade-in
                 fadeLabel(lblTotalCustomers,  String.format("%,d", total));
                 fadeLabel(lblAvgSpending,      CurrencyUtil.formatCurrency(avgSpending));
                 fadeLabel(lblAvgFrequency,     String.format("%.2f / mo", avgFrequency));
@@ -231,24 +339,7 @@ public class CustomerInsightsController {
                     lblCompanySub.setText(String.format("%.0f%% of total",
                         total > 0 ? (double) companies / total * 100 : 0));
 
-                // Top buyers table
-                topBuyerItems.setAll(topBuyers);
-                if (lblBuyerCount != null)
-                    lblBuyerCount.setText(topBuyers.size() + " customers");
-                if (lblTotalSpentSummary != null) {
-                    double sum = topBuyers.stream().mapToDouble(TopBuyerRow::getTotalSpent).sum();
-                    lblTotalSpentSummary.setText("Combined total: " + CurrencyUtil.formatCurrency(sum));
-                }
-                setTableHeight(tblTopBuyers, topBuyers.size());
-
-                // Bar chart — Companies vs Individuals side by side
-                buildBarChart(monthly);
-
-                // Alert cards
-                populateAlertList(vboxRefundAlerts, lblNoRefunds, lblRefundCount,
-                    refundAlerts, "#991B1B", "#FEF2F2");
-                populateAlertList(vboxProductIssues, lblNoIssues, lblIssueCount,
-                    issueAlerts, "#92400E", "#FFFBEB");
+                buildBarChart(monthlySplit);
             }
 
             @Override
@@ -259,22 +350,152 @@ public class CustomerInsightsController {
         executor.execute(task);
     }
 
-    // ── Bar chart (monthly order volume) ─────────────────────────────────
+    /**
+     * Dedicated DB refresh for refund/churn and product-issue cards (always queries live tables).
+     * Runs on its own task so alert UI stays tied to current {@code Refund} / order data.
+     */
+    private void loadInsightAlertsFromDatabase() {
+        Task<Void> task = new Task<>() {
+            List<String> refundAlerts;
+            List<String> issueAlerts;
 
-    private void buildBarChart(List<CustomerDao.MonthlyCount> monthly) {
+            @Override
+            protected Void call() throws Exception {
+                refundAlerts = customerDao.findRefundAlerts();
+                issueAlerts  = customerDao.findProductIssueAlerts();
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                populateAlertList(vboxRefundAlerts, lblNoRefunds, lblRefundCount,
+                    refundAlerts, "#991B1B", "#FEF2F2");
+                populateAlertList(vboxProductIssues, lblNoIssues, lblIssueCount,
+                    issueAlerts, "#92400E", "#FFFBEB");
+            }
+
+            @Override
+            protected void failed() {
+                if (getException() != null) getException().printStackTrace();
+                populateAlertList(vboxRefundAlerts, lblNoRefunds, lblRefundCount,
+                    List.of(), "#991B1B", "#FEF2F2");
+                populateAlertList(vboxProductIssues, lblNoIssues, lblIssueCount,
+                    List.of(), "#92400E", "#FFFBEB");
+            }
+        };
+        executor.execute(task);
+    }
+
+    private void loadTopBuyersTable() {
+        final LocalDate[] buyerRange = resolveBuyerDateRange();
+        final String typeFilter = cmbBuyerCustomerFilter != null ? cmbBuyerCustomerFilter.getValue() : "All Customers";
+        final int ps = getBuyerPageSize();
+        final int offset = (buyerCurrentPage - 1) * ps;
+
+        Task<Void> task = new Task<>() {
+            List<TopBuyerRow> rows;
+            int               count;
+            double            combinedSpent;
+
+            @Override
+            protected Void call() throws Exception {
+                count = customerDao.countTopBuyersInRange(buyerRange[0], buyerRange[1], typeFilter);
+                combinedSpent = customerDao.sumOrderTotalInBuyerFilterRange(buyerRange[0], buyerRange[1], typeFilter);
+                rows = customerDao.findTopBuyersInRange(buyerRange[0], buyerRange[1], typeFilter, ps, offset);
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                totalBuyerRows = count;
+                int pages = Math.max(1, (int) Math.ceil((double) count / (double) ps));
+                if (buyerCurrentPage > pages) {
+                    buyerCurrentPage = pages;
+                    loadTopBuyersTable();
+                    return;
+                }
+                topBuyerItems.setAll(rows != null ? rows : List.of());
+                if (lblBuyerCount != null)
+                    lblBuyerCount.setText(count + " customers");
+                if (lblTotalSpentSummary != null) {
+                    lblTotalSpentSummary.setText("Combined total: " + CurrencyUtil.formatCurrency(combinedSpent));
+                }
+                updateBuyerPaginationUi();
+                setBuyerTableHeight();
+            }
+
+            @Override
+            protected void failed() {
+                if (getException() != null) getException().printStackTrace();
+            }
+        };
+        executor.execute(task);
+    }
+
+    private void updateBuyerPaginationUi() {
+        int ps = getBuyerPageSize();
+        int pages = Math.max(1, (int) Math.ceil((double) totalBuyerRows / ps));
+        if (lblBuyerPageInfo != null)
+            lblBuyerPageInfo.setText("Page " + buyerCurrentPage + " of " + pages);
+        if (btnBuyerPrevPage != null) btnBuyerPrevPage.setDisable(buyerCurrentPage <= 1);
+        if (btnBuyerNextPage != null) btnBuyerNextPage.setDisable(buyerCurrentPage >= pages);
+    }
+
+    private int getBuyerPageSize() {
+        String v = cmbBuyerRowsPerPage != null ? cmbBuyerRowsPerPage.getValue() : "10";
+        try { return Integer.parseInt(v != null ? v.trim() : "10"); }
+        catch (NumberFormatException e) { return 10; }
+    }
+
+    private void setBuyerTableHeight() {
+        if (tblTopBuyers == null) return;
+        double h = 38 + (double) getBuyerPageSize() * 44.0;
+        tblTopBuyers.setPrefHeight(h);
+        tblTopBuyers.setMinHeight(h);
+    }
+
+    // ── Bar chart (monthly order volume — companies vs individuals) ───────
+
+    private void buildBarChart(List<CustomerDao.MonthlySplit> monthly) {
         if (chartFrequency == null) return;
         chartFrequency.getData().clear();
 
-        XYChart.Series<String, Number> series = new XYChart.Series<>();
-        series.setName("Orders");
-        for (CustomerDao.MonthlyCount m : monthly)
-            series.getData().add(new XYChart.Data<>(m.month, m.count));
-        chartFrequency.getData().add(series);
+        XYChart.Series<String, Number> companies = new XYChart.Series<>();
+        companies.setName("Companies");
+        XYChart.Series<String, Number> individuals = new XYChart.Series<>();
+        individuals.setName("Individuals");
 
-        // Style bars after layout
-        javafx.application.Platform.runLater(() ->
+        for (CustomerDao.MonthlySplit m : monthly) {
+            String label = formatChartMonthLabel(m.month);
+            companies.getData().add(new XYChart.Data<>(label, m.companyCount));
+            individuals.getData().add(new XYChart.Data<>(label, m.individualCount));
+        }
+        chartFrequency.getData().add(companies);
+        chartFrequency.getData().add(individuals);
+
+        javafx.application.Platform.runLater(() -> {
+            configureInsightsChart();
             chartFrequency.lookupAll(".default-color0.chart-bar")
-                .forEach(n -> n.setStyle("-fx-bar-fill: #1E2939;")));
+                .forEach(n -> n.setStyle("-fx-bar-fill: #1E40AF;"));
+            chartFrequency.lookupAll(".default-color1.chart-bar")
+                .forEach(n -> n.setStyle("-fx-bar-fill: #64748B;"));
+            chartFrequency.requestLayout();
+        });
+    }
+
+    /** Compact month label for category axis (e.g. {@code 2024-03} → {@code Mar 2024}). */
+    private static String formatChartMonthLabel(String yyyyMm) {
+        if (yyyyMm == null || yyyyMm.isBlank()) return "";
+        String key = yyyyMm.trim();
+        if (key.length() == 7 && key.charAt(4) == '-') {
+            try {
+                return LocalDate.parse(key + "-01")
+                    .format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH));
+            } catch (Exception ignored) {
+                return key;
+            }
+        }
+        return key;
     }
 
     // ── Alert card builder ────────────────────────────────────────────────
@@ -293,7 +514,6 @@ public class CustomerInsightsController {
         if (countLabel != null) countLabel.setText(String.valueOf(alerts.size()));
 
         for (String alert : alerts) {
-            // Separator between rows
             if (!container.getChildren().isEmpty()) {
                 Separator sep = new Separator();
                 sep.setStyle("-fx-opacity: 0.4;");
@@ -321,8 +541,7 @@ public class CustomerInsightsController {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    //  EXPORT  — builds List<String[]> from topBuyerItems
-    //            (ExportService does not accept TableView directly)
+    //  EXPORT
     // ══════════════════════════════════════════════════════════════════════
 
     @FXML private void handleExportCSV(ActionEvent e) { doExport("csv"); }
@@ -343,9 +562,12 @@ public class CustomerInsightsController {
         if (file == null) return;
 
         try {
-            List<String[]> data = buildExportData();
-            if ("csv".equals(format)) ExportService.exportRowsToCSV(data, file);
-            else                       ExportService.exportRowsToPDF("Customer Insights — Top Buyers", data, file);
+            if ("csv".equals(format)) {
+                ExportService.exportRowsToCSV(buildExportData(), file);
+            } else {
+                ExportService.exportMergedReport("Customer Insights - Top Buyers",
+                    buildMergedCustomerInsightsExportData(), file);
+            }
             toast("success", format.toUpperCase() + " exported: " + file.getName());
         } catch (Exception ex) {
             toast("error", "Export failed: " + (ex.getMessage() != null ? ex.getMessage() : "Unknown"));
@@ -368,6 +590,99 @@ public class CustomerInsightsController {
                 r.getLastPurchase()
             });
         }
+        return rows;
+    }
+
+    /** Rich PDF: KPIs, monthly order bar charts, ranked buyers, refund and issue alerts. */
+    private List<String[]> buildMergedCustomerInsightsExportData() throws Exception {
+        LocalDate[] chartRange = resolveChartDateRange();
+        LocalDate[] buyerRange = resolveBuyerDateRange();
+        String buyerTypeFilter = cmbBuyerCustomerFilter != null ? cmbBuyerCustomerFilter.getValue() : "All Customers";
+
+        int total = customerDao.getTotalCustomerCount();
+        int companies = customerDao.getCompanyCustomerCount();
+        double totalRevenue = customerDao.getTotalRevenue();
+        double avgSpending = total > 0 ? totalRevenue / total : 0;
+        List<CustomerDao.MonthlySplit> monthlySplit =
+            customerDao.findMonthlyOrderCountsByCustomerType(chartRange[0], chartRange[1]);
+        int totalOrders = monthlySplit.stream().mapToInt(m -> m.companyCount + m.individualCount).sum();
+        int monthBuckets = Math.max(1, monthlySplit.size());
+        double avgFrequency = (total > 0 && totalOrders > 0)
+            ? (double) totalOrders / monthBuckets / total : 0;
+
+        List<TopBuyerRow> topBuyers = customerDao.findTopBuyersInRange(
+            buyerRange[0], buyerRange[1], buyerTypeFilter, 10_000, 0);
+
+        List<String> refundAlerts = customerDao.findRefundAlerts();
+        List<String> issueAlerts = customerDao.findProductIssueAlerts();
+
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"__COVER__",
+            "Customer Insights",
+            "Top buyers, trends, and alerts",
+            date});
+        rows.add(new String[]{"__SECTION__", "Key metrics", "Portfolio overview"});
+        rows.add(new String[]{"__KPI__",
+            "Total Customers", String.format("%,d", total),
+            "Companies", String.format("%,d", companies),
+            "Avg Spend / Cust", CurrencyUtil.formatCurrency(avgSpending),
+            "Avg frequency", String.format("%.2f / mo", avgFrequency)});
+
+        List<String> barCo = new ArrayList<>();
+        barCo.add("__BARCHART__");
+        barCo.add("Orders by month — Companies");
+        for (CustomerDao.MonthlySplit m : monthlySplit) {
+            barCo.add(m.month);
+            barCo.add(String.valueOf(m.companyCount));
+        }
+        if (barCo.size() > 2) rows.add(barCo.toArray(new String[0]));
+
+        List<String> barInd = new ArrayList<>();
+        barInd.add("__BARCHART__");
+        barInd.add("Orders by month — Individuals");
+        for (CustomerDao.MonthlySplit m : monthlySplit) {
+            barInd.add(m.month);
+            barInd.add(String.valueOf(m.individualCount));
+        }
+        if (barInd.size() > 2) rows.add(barInd.toArray(new String[0]));
+
+        rows.add(new String[]{"__SECTION__", "Top buyers", "Ranked by total spent (table filters)"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Rank", "Customer", "Type", "Country", "Total Spent", "Orders", "AOV", "Last purchase"});
+        for (TopBuyerRow r : topBuyers) {
+            rows.add(new String[]{
+                String.valueOf(r.getRank()),
+                r.getName(),
+                r.getType(),
+                r.getCountry(),
+                CurrencyUtil.formatCurrency(r.getTotalSpent()),
+                String.valueOf(r.getTotalOrders()),
+                CurrencyUtil.formatCurrency(r.getAvgOrderValue()),
+                r.getLastPurchase() != null ? r.getLastPurchase() : ""
+            });
+        }
+
+        rows.add(new String[]{"__SECTION__", "Refund alerts", "Customers with refunds"});
+        rows.add(new String[]{"__TABLEHEADER__", "Detail"});
+        if (refundAlerts.isEmpty()) {
+            rows.add(new String[]{"No refund alerts"});
+        } else {
+            for (String a : refundAlerts) {
+                rows.add(new String[]{a != null ? a : ""});
+            }
+        }
+
+        rows.add(new String[]{"__SECTION__", "Product / order issues", "Follow-up items"});
+        rows.add(new String[]{"__TABLEHEADER__", "Detail"});
+        if (issueAlerts.isEmpty()) {
+            rows.add(new String[]{"No issues"});
+        } else {
+            for (String a : issueAlerts) {
+                rows.add(new String[]{a != null ? a : ""});
+            }
+        }
+
         return rows;
     }
 
@@ -396,18 +711,33 @@ public class CustomerInsightsController {
         return new LocalDate[]{from, to};
     }
 
+    private LocalDate[] resolveBuyerDateRange() {
+        LocalDate to = LocalDate.now();
+        LocalDate from;
+        String val = cmbBuyerDateRange != null ? cmbBuyerDateRange.getValue() : "Last 12 Months";
+        if (val == null) val = "Last 12 Months";
+        from = switch (val) {
+            case "Custom" -> {
+                LocalDate s = dpBuyerStart != null ? dpBuyerStart.getValue() : null;
+                LocalDate e = dpBuyerEnd != null ? dpBuyerEnd.getValue() : null;
+                if (e != null) to = e;
+                yield s != null ? s : to.minusMonths(12);
+            }
+            case "Last 7 Days" -> to.minusDays(7);
+            case "Last 30 Days" -> to.minusDays(30);
+            case "Year to Date" -> to.withDayOfYear(1);
+            default -> to.minusMonths(12);
+        };
+        if (from.isAfter(to)) from = to;
+        return new LocalDate[]{from, to};
+    }
+
     private void fadeLabel(Label lbl, String value) {
         if (lbl == null) return;
         lbl.setText(value);
         lbl.setOpacity(0);
         FadeTransition ft = new FadeTransition(Duration.millis(400), lbl);
         ft.setFromValue(0); ft.setToValue(1); ft.play();
-    }
-
-    private void setTableHeight(TableView<?> t, int rows) {
-        if (t == null) return;
-        double h = 38 + Math.max(rows, 5) * 44.0;
-        t.setPrefHeight(h); t.setMinHeight(h);
     }
 
     @SuppressWarnings({"unchecked","rawtypes"})
