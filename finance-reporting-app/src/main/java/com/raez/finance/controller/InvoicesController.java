@@ -8,6 +8,7 @@ import com.raez.finance.dao.InvoiceDao.OrderWithoutInvoiceRow;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -37,7 +38,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class InvoicesController {
+public class InvoicesController implements UiAutoRefreshable {
 
     private MainLayoutController mainLayoutController;
 
@@ -689,5 +690,10 @@ public class InvoicesController {
         executor.shutdown();
         try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
         catch (InterruptedException e) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        loadInvoices();
     }
 }

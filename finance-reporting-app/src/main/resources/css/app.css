@@ -13,10 +13,10 @@
 
 
 /* =========================================================================
-   1. COLOUR PALETTE — looked-up colors (reference by name in other rules)
+   1. COLOUR PALETTE — looked-up colors on .root
    ========================================================================= */
 
-   .root {
+.root {
     /* Brand */
     -primary:            #1E2939;
     -primary-hover:      #2D3E52;
@@ -61,13 +61,103 @@
     -chart-5:            #EF4444;
     -chart-6:            #06B6D4;
 
-    /* Base font */
+    /* Shell / glass (session overlay) */
+    -raez-glass-fill:    rgba(255, 255, 255, 0.72);
+    -raez-glass-border:  rgba(255, 255, 255, 0.35);
+    -raez-scrim:         rgba(15, 23, 42, 0.45);
+
     -fx-font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     -fx-font-size: 13px;
     -fx-text-fill: -text-primary;
     -fx-background-color: -bg-page;
 }
 
+/* Main window shell — uses theme tokens from .root */
+.main-layout-root {
+    -fx-background-color: -bg-page;
+}
+
+.main-sidebar-host {
+    -fx-background-color: -primary;
+}
+
+.main-topbar-host {
+    -fx-background-color: -bg-card;
+    -fx-border-color: -border-default;
+    -fx-border-width: 0 0 1 0;
+}
+
+.session-warning-overlay {
+    -fx-background-color: -raez-scrim;
+}
+
+/* Full-area layer behind the dialog (captures mouse on dimmed region) */
+.session-warning-scrim {
+    -fx-background-color: transparent;
+}
+
+/* Capsule / oval dialog */
+.session-warning-card {
+    -fx-background-color: -raez-glass-fill;
+    -fx-background-radius: 999px;
+    -fx-padding: 40px 48px 44px 48px;
+    -fx-border-color: -raez-glass-border;
+    -fx-border-radius: 999px;
+    -fx-border-width: 1.5px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.22), 32, 0.18, 0, 12);
+    -fx-alignment: center;
+}
+
+.session-warning-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -text-primary;
+    -fx-text-alignment: center;
+    -fx-alignment: center;
+}
+
+.session-warning-message {
+    -fx-font-size: 13px;
+    -fx-text-fill: -text-secondary;
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+    -fx-alignment: center;
+    -fx-max-width: 320px;
+}
+
+.session-warning-progress {
+    -fx-pref-width: 280px;
+    -fx-max-width: 280px;
+    -fx-pref-height: 10px;
+}
+
+.session-warning-progress .bar {
+    -fx-background-color: -primary;
+    -fx-background-radius: 999px;
+    -fx-padding: 0;
+}
+
+.session-warning-progress .track {
+    -fx-background-color: -bg-subtle;
+    -fx-background-radius: 999px;
+}
+
+.session-warning-stay {
+    -fx-background-color: -primary;
+    -fx-text-fill: white;
+    -fx-background-radius: 999px;
+    -fx-padding: 12px 32px;
+    -fx-font-weight: 600;
+    -fx-cursor: hand;
+}
+
+.session-warning-stay:hover {
+    -fx-background-color: -primary-hover;
+}
+
+.session-warning-stay:pressed {
+    -fx-background-color: -primary-pressed;
+}
 
 /* =========================================================================
    2. TYPOGRAPHY

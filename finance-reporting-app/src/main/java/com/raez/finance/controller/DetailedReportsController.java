@@ -12,6 +12,7 @@ import com.raez.finance.model.ProductReportRow;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -35,7 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class DetailedReportsController implements Initializable {
+public class DetailedReportsController implements Initializable, UiAutoRefreshable {
 
     // ── DAOs ─────────────────────────────────────────────────────────────
     private final OrderDaoInterface    orderDao    = new OrderDao();
@@ -148,6 +149,11 @@ public class DetailedReportsController implements Initializable {
         executor.shutdown();
         try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
         catch (InterruptedException e) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        loadCurrentTab();
     }
 
     // ══════════════════════════════════════════════════════════════════════

@@ -6,6 +6,7 @@ import com.raez.finance.model.ProductReportRow;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.animation.FadeTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -38,7 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class ProductProfitabilityController {
+public class ProductProfitabilityController implements UiAutoRefreshable {
 
     // ── Margin threshold ──────────────────────────────────────────────────
     private static final double LOW_MARGIN_THRESHOLD = 35.0;
@@ -761,5 +762,10 @@ public class ProductProfitabilityController {
         executor.shutdown();
         try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
         catch (InterruptedException ex) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        loadData();
     }
 }

@@ -9,6 +9,7 @@ import com.raez.finance.service.GlobalSettingsService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.service.UserService;
 import com.raez.finance.util.PasswordGenerator;
+import com.raez.finance.util.UiAutoRefreshable;
 import com.raez.finance.util.ValidationUtils;
 import javafx.collections.FXCollections;
 import javafx.animation.FadeTransition;
@@ -21,6 +22,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
@@ -39,7 +41,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class SettingsController {
+public class SettingsController implements UiAutoRefreshable {
 
     // ── Services ─────────────────────────────────────────────────────────
     private final FUserDao             fUserDao       = new FUserDao();
@@ -914,6 +916,13 @@ public class SettingsController {
         if (ts == null) return "-";
         try { return java.time.LocalDateTime.parse(ts.replace(" ", "T")).format(DATE_FMT); }
         catch (Exception e) { return ts; }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        if (viewAccount != null && viewAccount.isVisible()) loadAccountDetails();
+        else if (viewUsers != null && viewUsers.isVisible() && SessionManager.isAdmin()) refreshUsers();
+        else if (viewFinancial != null && viewFinancial.isVisible() && SessionManager.isAdmin()) loadFinancialSettings();
     }
 
     public void shutdown() {

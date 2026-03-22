@@ -3,6 +3,7 @@ package com.raez.finance.controller;
 import com.raez.finance.dao.AuditLogDao;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
@@ -22,7 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class AuditLogController {
+public class AuditLogController implements UiAutoRefreshable {
 
     private final AuditLogDao auditLogDao = new AuditLogDao();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -193,5 +194,10 @@ public class AuditLogController {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
         }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        loadData();
     }
 }

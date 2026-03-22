@@ -19,9 +19,13 @@ import com.raez.finance.service.DashboardService;
 import com.raez.finance.service.ExportService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
-import com.raez.finance.util.StageNavigator;          // ← NEW: StageNavigator import
+import com.raez.finance.util.StageNavigator;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.animation.FadeTransition;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
+import javafx.concurrent.ScheduledService;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -30,13 +34,17 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.Window;
@@ -49,14 +57,19 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class MainLayoutController {
 
-    private static final String VIEW_PATH               = "/com/raez/finance/view/";
-    private static final long   SESSION_WARNING_SECONDS = 30;
+    private static final String VIEW_PATH = "/com/raez/finance/view/";
+
+    /**
+     * OS / JavaFX often deliver {@code MOUSE_MOVED} while the cursor appears still, which
+     * prevented idle timeout with the window focused. Only count movement after this distance² in scene coords.
+     */
+    private static final double SESSION_MOUSE_MOVE_EPSILON_SQ = 5.0 * 5.0;
 
     public static void queueStartupToast(String type, String message) {
         pendingToastType    = type;
@@ -67,13 +80,23 @@ public class MainLayoutController {
     private static volatile String pendingToastMessage;
 
     private TopBarController topBarController;
-    private final AtomicBoolean sessionWarningShown = new AtomicBoolean(false);
+    private final AtomicBoolean sessionWarningLatch = new AtomicBoolean(false);
+
+    private ProgressBar inactivityProgressBar;
+    private Timeline      sessionUiTicker;
+    private ScheduledService<Void> autoRefreshService;
+    private boolean sessionWarningBuilt;
+
+    /** Last scene position used for idle detection (NaN = not set / reset after mouse leaves window). */
+    private double sessionMouseAnchorX = Double.NaN;
+    private double sessionMouseAnchorY = Double.NaN;
 
     // ── FXML ────────────────────────────────────────────────────────────
     @FXML private VBox      sidebarContainer;
     @FXML private VBox      topBarContainer;
     @FXML private StackPane contentArea;
     @FXML private VBox      footerContainer;
+    @FXML private StackPane sessionWarningOverlay;
 
     // ══════════════════════════════════════════════════════════════════════
     //  INIT
@@ -94,6 +117,8 @@ public class MainLayoutController {
 
         Platform.runLater(() -> {
             attachActivityListeners();
+            startSessionUiTicker();
+            startAutoRefresh();
             refreshNotificationBadge();
             String pt = pendingToastType;
             String pm = pendingToastMessage;
@@ -175,32 +200,219 @@ public class MainLayoutController {
     }
 
     // ══════════════════════════════════════════════════════════════════════
-    //  ACTIVITY LISTENERS — unchanged
+    //  ACTIVITY LISTENERS — real idle vs phantom MOUSE_MOVED
     // ══════════════════════════════════════════════════════════════════════
 
     private void attachActivityListeners() {
         if (contentArea == null || contentArea.getScene() == null) return;
         Node sceneRoot = contentArea.getScene().getRoot();
-        sceneRoot.addEventFilter(MouseEvent.ANY, e -> { SessionManager.extendSession(); checkSessionWarning(); });
-        sceneRoot.addEventFilter(KeyEvent.ANY,   e -> { SessionManager.extendSession(); checkSessionWarning(); });
+        sceneRoot.addEventFilter(MouseEvent.ANY, this::handleSessionMouseFilter);
+        sceneRoot.addEventFilter(KeyEvent.KEY_PRESSED, e -> onDefiniteUserActivity());
+        sceneRoot.addEventFilter(ScrollEvent.ANY, e -> onDefiniteUserActivity());
     }
 
-    private void checkSessionWarning() {
-        long remaining = SessionManager.getRemainingSeconds();
-        if (remaining > SESSION_WARNING_SECONDS) { sessionWarningShown.set(false); return; }
-        if (remaining <= 0) return;
-        if (sessionWarningShown.getAndSet(true)) return;
+    private void handleSessionMouseFilter(MouseEvent e) {
+        if (isSessionWarningDialogOpen()) {
+            return;
+        }
+        var t = e.getEventType();
+        if (t == MouseEvent.MOUSE_EXITED) {
+            sessionMouseAnchorX = Double.NaN;
+            sessionMouseAnchorY = Double.NaN;
+            return;
+        }
+        if (t == MouseEvent.MOUSE_DRAGGED) {
+            snapSessionMouseAnchor(e);
+            onDefiniteUserActivity();
+            return;
+        }
+        if (t == MouseEvent.MOUSE_CLICKED || t == MouseEvent.MOUSE_PRESSED) {
+            snapSessionMouseAnchor(e);
+            onDefiniteUserActivity();
+            return;
+        }
+        if (t == MouseEvent.MOUSE_MOVED) {
+            double x = e.getSceneX();
+            double y = e.getSceneY();
+            if (Double.isNaN(sessionMouseAnchorX)) {
+                sessionMouseAnchorX = x;
+                sessionMouseAnchorY = y;
+                return;
+            }
+            double dx = x - sessionMouseAnchorX;
+            double dy = y - sessionMouseAnchorY;
+            if (dx * dx + dy * dy >= SESSION_MOUSE_MOVE_EPSILON_SQ) {
+                sessionMouseAnchorX = x;
+                sessionMouseAnchorY = y;
+                onDefiniteUserActivity();
+            }
+        }
+    }
 
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Session Expiring");
-        alert.setHeaderText("Your session will expire in " + remaining + " seconds.");
-        alert.setContentText("Click 'Stay logged in' to continue, or 'Log out' to sign out.");
-        ButtonType stay   = new ButtonType("Stay logged in", ButtonType.OK.getButtonData());
-        ButtonType logout = new ButtonType("Log out",        ButtonType.CANCEL.getButtonData());
-        alert.getButtonTypes().setAll(stay, logout);
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == stay) { SessionManager.extendSession(); sessionWarningShown.set(false); }
-        else handleLogout();
+    private void snapSessionMouseAnchor(MouseEvent e) {
+        sessionMouseAnchorX = e.getSceneX();
+        sessionMouseAnchorY = e.getSceneY();
+    }
+
+    /**
+     * While the session timeout dialog is open, mouse/keys must not extend the session or close it —
+     * only {@link #dismissInactivityWarning()} (Stay Logged In) does.
+     */
+    private boolean isSessionWarningDialogOpen() {
+        return sessionWarningOverlay != null && sessionWarningOverlay.isVisible();
+    }
+
+    private void onDefiniteUserActivity() {
+        if (isSessionWarningDialogOpen()) {
+            return;
+        }
+        SessionManager.touchSessionFromUserInput();
+        long remaining = SessionManager.getRemainingSeconds();
+        if (remaining > SessionManager.SESSION_WARNING_LEAD_SECONDS) {
+            sessionWarningLatch.set(false);
+            hideInactivityWarningUi();
+        }
+    }
+
+    private void ensureSessionWarningBuilt() {
+        if (sessionWarningBuilt || sessionWarningOverlay == null) return;
+        sessionWarningBuilt = true;
+
+        sessionWarningOverlay.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+        Region scrim = new Region();
+        scrim.getStyleClass().add("session-warning-scrim");
+        scrim.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        scrim.prefWidthProperty().bind(sessionWarningOverlay.widthProperty());
+        scrim.prefHeightProperty().bind(sessionWarningOverlay.heightProperty());
+
+        Label title = new Label("Session timeout");
+        title.getStyleClass().add("session-warning-title");
+        title.setMaxWidth(Double.MAX_VALUE);
+        title.setAlignment(Pos.CENTER);
+        title.setTextAlignment(TextAlignment.CENTER);
+
+        Label msg = new Label("You will be logged out in 10 seconds due to inactivity.");
+        msg.getStyleClass().add("session-warning-message");
+        msg.setMaxWidth(Double.MAX_VALUE);
+        msg.setAlignment(Pos.CENTER);
+        msg.setTextAlignment(TextAlignment.CENTER);
+
+        inactivityProgressBar = new ProgressBar(1);
+        inactivityProgressBar.getStyleClass().add("session-warning-progress");
+
+        Button stay = new Button("Stay Logged In");
+        stay.setDefaultButton(true);
+        stay.getStyleClass().setAll("session-warning-stay");
+        stay.setOnAction(e -> dismissInactivityWarning());
+
+        VBox card = new VBox(18, title, msg, inactivityProgressBar, stay);
+        card.setAlignment(Pos.CENTER);
+        card.setMaxWidth(400);
+        card.getStyleClass().add("session-warning-card");
+
+        StackPane cardHost = new StackPane(card);
+        cardHost.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+        cardHost.setPickOnBounds(false);
+        StackPane.setAlignment(card, Pos.CENTER);
+
+        sessionWarningOverlay.getChildren().addAll(scrim, cardHost);
+    }
+
+    private void startSessionUiTicker() {
+        stopSessionUiTicker();
+        sessionUiTicker = new Timeline(new KeyFrame(Duration.millis(250), e -> tickInactivityWarningUi()));
+        sessionUiTicker.setCycleCount(Timeline.INDEFINITE);
+        sessionUiTicker.play();
+    }
+
+    private void stopSessionUiTicker() {
+        if (sessionUiTicker != null) {
+            sessionUiTicker.stop();
+            sessionUiTicker = null;
+        }
+    }
+
+    private void tickInactivityWarningUi() {
+        if (sessionWarningOverlay == null || !SessionManager.isLoggedIn()) return;
+        long rem = SessionManager.getRemainingSeconds();
+        long lead = SessionManager.SESSION_WARNING_LEAD_SECONDS;
+
+        if (rem > lead) {
+            sessionWarningLatch.set(false);
+            hideInactivityWarningUi();
+            return;
+        }
+        if (rem <= 0) return;
+
+        ensureSessionWarningBuilt();
+        if (!sessionWarningLatch.getAndSet(true)) {
+            sessionWarningOverlay.setVisible(true);
+            sessionWarningOverlay.setManaged(true);
+            sessionWarningOverlay.setPickOnBounds(true);
+            sessionWarningOverlay.toFront();
+        }
+        if (inactivityProgressBar != null && lead > 0)
+            inactivityProgressBar.setProgress(Math.max(0, Math.min(1, rem / (double) lead)));
+    }
+
+    private void hideInactivityWarningUi() {
+        if (sessionWarningOverlay == null) return;
+        sessionWarningOverlay.setVisible(false);
+        sessionWarningOverlay.setManaged(false);
+        sessionWarningOverlay.setPickOnBounds(false);
+        sessionWarningLatch.set(false);
+    }
+
+    private void dismissInactivityWarning() {
+        SessionManager.extendSession();
+        hideInactivityWarningUi();
+    }
+
+    private void startAutoRefresh() {
+        stopAutoRefresh();
+        autoRefreshService = new ScheduledService<>() {
+            @Override protected Task<Void> createTask() {
+                return new Task<>() {
+                    @Override protected Void call() {
+                        return null;
+                    }
+                };
+            }
+        };
+        autoRefreshService.setPeriod(Duration.seconds(30));
+        autoRefreshService.setExecutor(Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "ui-auto-refresh");
+            t.setDaemon(true);
+            return t;
+        }));
+        autoRefreshService.setOnSucceeded(e -> Platform.runLater(this::triggerVisibleViewRefresh));
+        autoRefreshService.setRestartOnFailure(true);
+        autoRefreshService.start();
+    }
+
+    private void stopAutoRefresh() {
+        if (autoRefreshService != null) {
+            autoRefreshService.cancel();
+            autoRefreshService = null;
+        }
+    }
+
+    private void triggerVisibleViewRefresh() {
+        if (contentArea == null || contentArea.getChildren().isEmpty()) return;
+        SessionManager.beginAutomatedDataRefresh();
+        try {
+            Object ud = contentArea.getChildren().get(0).getUserData();
+            if (ud instanceof UiAutoRefreshable r) {
+                try {
+                    r.refreshVisibleData();
+                } catch (Exception ex) {
+                    System.err.println("[MainLayout] auto-refresh failed: " + ex.getMessage());
+                }
+            }
+        } finally {
+            SessionManager.endAutomatedDataRefresh();
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -212,13 +424,18 @@ public class MainLayoutController {
 
         if (!contentArea.getChildren().isEmpty()) {
             Object ud = contentArea.getChildren().get(0).getUserData();
-            if      (ud instanceof OverviewController c)            c.shutdown();
-            else if (ud instanceof DetailedReportsController c)     c.shutdown();
-            else if (ud instanceof GlobalSearchResultsController c) c.shutdown();
-            else if (ud instanceof InvoicesController c)            c.shutdown();
+            if      (ud instanceof OverviewController c)             c.shutdown();
+            else if (ud instanceof DetailedReportsController c)      c.shutdown();
+            else if (ud instanceof GlobalSearchResultsController c)  c.shutdown();
+            else if (ud instanceof InvoicesController c)             c.shutdown();
             else if (ud instanceof NotificationsAlertsController c) c.shutdown();
-            else if (ud instanceof AuditLogController c)            c.shutdown();
-            else if (ud instanceof AiInsightsController c)          c.shutdown();
+            else if (ud instanceof AuditLogController c)             c.shutdown();
+            else if (ud instanceof AiInsightsController c)           c.shutdown();
+            else if (ud instanceof CustomerInsightsController c)     c.shutdown();
+            else if (ud instanceof ProductProfitabilityController c) c.shutdown();
+            else if (ud instanceof RevenueVatSummaryController c)    c.shutdown();
+            else if (ud instanceof InventorySupplierController c)     c.shutdown();
+            else if (ud instanceof SettingsController c)             c.shutdown();
         }
 
         contentArea.getChildren().setAll(node);
@@ -237,10 +454,13 @@ public class MainLayoutController {
     // ══════════════════════════════════════════════════════════════════════
 
     public void handleLogout() {
+        stopSessionUiTicker();
+        stopAutoRefresh();
+        hideInactivityWarningUi();
         SessionManager.logout();
         if (contentArea == null || contentArea.getScene() == null) return;
         Stage stage = (Stage) contentArea.getScene().getWindow();
-        StageNavigator.navigateToLogin(stage);   // ← replaces old inline scene-swap
+        StageNavigator.navigateToLogin(stage);
     }
 
     // ══════════════════════════════════════════════════════════════════════

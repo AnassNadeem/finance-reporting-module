@@ -5,6 +5,7 @@ import com.raez.finance.dao.ProductDao;
 import com.raez.finance.service.DashboardService;
 import com.raez.finance.service.PredictionService;
 import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
@@ -36,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Dedicated analytics page: revenue / acquisition forecasts (Commons Math regression), churn counts, charts.
  */
-public class AiInsightsController {
+public class AiInsightsController implements UiAutoRefreshable {
 
     private static final DateTimeFormatter CHART_MONTH = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH);
     private static final String NEXT_MONTH_LABEL = "Next mo. (est.)";
@@ -82,6 +83,11 @@ public class AiInsightsController {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
         }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        refresh();
     }
 
     private void stopChartTimelines() {

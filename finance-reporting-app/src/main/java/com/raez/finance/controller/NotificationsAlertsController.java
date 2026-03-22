@@ -4,6 +4,7 @@ import com.raez.finance.dao.AlertDao;
 import com.raez.finance.dao.AlertDaoInterface;
 import com.raez.finance.dao.FinancialAnomalyDao;
 import com.raez.finance.dao.FinancialAnomalyDaoInterface;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.animation.FadeTransition;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -24,7 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class NotificationsAlertsController {
+public class NotificationsAlertsController implements UiAutoRefreshable {
 
     // ── FXML ─────────────────────────────────────────────────────────────
     @FXML private ComboBox<String> cmbFilter;
@@ -451,5 +452,10 @@ public class NotificationsAlertsController {
         executor.shutdown();
         try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
         catch (InterruptedException e) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        loadAll();
     }
 }

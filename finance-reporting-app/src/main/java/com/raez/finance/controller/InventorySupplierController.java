@@ -6,6 +6,7 @@ import com.raez.finance.service.ExportService;
 import com.raez.finance.service.DashboardService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -37,7 +38,7 @@ import java.util.concurrent.TimeUnit;
  *  - Animated KPI label fade-in via FadeTransition
  *  - Runs DB/mock load on a background thread; all UI updates on FX thread
  */
-public class InventorySupplierController {
+public class InventorySupplierController implements UiAutoRefreshable {
 
     // ── FXML injections ────────────────────────────────────────────────────
     @FXML private ScrollPane pageScrollPane;
@@ -568,5 +569,10 @@ public class InventorySupplierController {
         executor.shutdown();
         try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
         catch (InterruptedException e) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        loadDataAsync();
     }
 }

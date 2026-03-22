@@ -10,6 +10,7 @@ import com.raez.finance.model.CustomerReportRow;
 import com.raez.finance.model.OrderReportRow;
 import com.raez.finance.model.ProductReportRow;
 import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -26,7 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class GlobalSearchResultsController {
+public class GlobalSearchResultsController implements UiAutoRefreshable {
 
     // ── FXML ─────────────────────────────────────────────────────────────
     @FXML private Label lblQuery;
@@ -85,6 +86,11 @@ public class GlobalSearchResultsController {
         executor.shutdown();
         try { if (!executor.awaitTermination(2, TimeUnit.SECONDS)) executor.shutdownNow(); }
         catch (InterruptedException e) { executor.shutdownNow(); Thread.currentThread().interrupt(); }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        if (query != null && !query.isBlank()) runSearch();
     }
 
     public void setQuery(String q) {

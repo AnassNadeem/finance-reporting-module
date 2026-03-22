@@ -5,6 +5,7 @@ import com.raez.finance.model.UserRole;
 import com.raez.finance.service.AuthService;
 import com.raez.finance.service.AuthService.FirstLoginRequiredException;
 import com.raez.finance.service.SessionManager;
+import com.raez.finance.util.StageNavigator;
 import com.raez.finance.util.ValidationUtils;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
@@ -12,10 +13,7 @@ import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
@@ -28,8 +26,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-
-import java.net.URL;
 
 public class AdminLoginController {
 
@@ -356,19 +352,12 @@ public class AdminLoginController {
     private void navigateToMainLayout(ActionEvent event) {
         String path = VIEW_PATH + "MainLayout.fxml";
         try {
-            URL url = getClass().getResource(path);
-            if (url == null) throw new IllegalStateException("FXML not found: " + path);
-            Parent root = FXMLLoader.load(url);
-            Scene  scene = new Scene(root);
-            URL    css   = getClass().getResource("/css/app.css");
-            if (css != null) scene.getStylesheets().add(css.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(scene);
+            StageNavigator.navigate(stage, path);
             stage.setTitle("RAEZ Finance");
             stage.setMinWidth(900);
             stage.setMinHeight(650);
-            stage.setMaximized(true);
-            stage.show();
+            StageNavigator.forceMaximizedLayout(stage);
         } catch (Exception e) {
             System.err.println("=== NAVIGATION TO MAIN LAYOUT FAILED ===");
             e.printStackTrace();
@@ -379,16 +368,8 @@ public class AdminLoginController {
 
     private void navigateTo(String resourcePath, ActionEvent event) {
         try {
-            URL url = getClass().getResource(resourcePath);
-            if (url == null) throw new IllegalStateException("FXML not found: " + resourcePath);
-            Parent root = FXMLLoader.load(url);
-            Scene  scene = new Scene(root);
-            URL    css   = getClass().getResource("/css/app.css");
-            if (css != null) scene.getStylesheets().add(css.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            stage.show();
+            StageNavigator.navigate(stage, resourcePath);
         } catch (Exception e) {
             System.err.println("=== NAVIGATION FAILED: " + resourcePath + " ===");
             e.printStackTrace();
@@ -399,19 +380,12 @@ public class AdminLoginController {
     private void navigateToFirstLogin(String identifier, ActionEvent event) {
         String path = VIEW_PATH + "FinanceUserLogin.fxml";
         try {
-            URL url = getClass().getResource(path);
-            if (url == null) throw new IllegalStateException("FXML not found: " + path);
-            FXMLLoader loader = new FXMLLoader(url);
-            Parent root = loader.load();
-            FinanceUserLoginController ctrl = loader.getController();
-            if (ctrl != null) ctrl.prepareForFirstLogin(identifier);
-            Scene scene = new Scene(root);
-            URL   css   = getClass().getResource("/css/app.css");
-            if (css != null) scene.getStylesheets().add(css.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(scene);
+            StageNavigator.navigate(stage, path, ctrl -> {
+                if (ctrl instanceof FinanceUserLoginController f)
+                    f.prepareForFirstLogin(identifier);
+            });
             stage.setTitle("RAEZ Finance – Set Password");
-            stage.show();
         } catch (Exception e) {
             System.err.println("=== NAVIGATION TO FIRST LOGIN FAILED ===");
             e.printStackTrace();

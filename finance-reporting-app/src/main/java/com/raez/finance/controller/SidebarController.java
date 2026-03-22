@@ -110,7 +110,15 @@ public class SidebarController {
     }
 
     private void applyRoleVisibility() {
-        // Extend here if admin-only items are added to sidebar.
+        if (!SessionManager.isAdmin()) {
+            hideNav(btnAuditLog);
+        }
+    }
+
+    private static void hideNav(Button b) {
+        if (b == null) return;
+        b.setVisible(false);
+        b.setManaged(false);
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -275,21 +283,23 @@ public class SidebarController {
             } else if (ctrl instanceof DetailedReportsController c) {
                 c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "DetailedReportsController";
             } else if (ctrl instanceof CustomerInsightsController c) {
-                c.setMainLayoutController(mainLayoutController); wired = "CustomerInsightsController";
+                c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "CustomerInsightsController";
             } else if (ctrl instanceof ProductProfitabilityController c) {
-                c.setMainLayoutController(mainLayoutController); wired = "ProductProfitabilityController";
+                c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "ProductProfitabilityController";
             } else if (ctrl instanceof RevenueVatSummaryController c) {
-                c.setMainLayoutController(mainLayoutController); wired = "RevenueVatSummaryController";
+                c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "RevenueVatSummaryController";
             } else if (ctrl instanceof InventorySupplierController c) {
-                c.setMainLayoutController(mainLayoutController); wired = "InventorySupplierController";
+                c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "InventorySupplierController";
             } else if (ctrl instanceof NotificationsAlertsController c) {
-                c.setMainLayoutController(mainLayoutController); wired = "NotificationsAlertsController";
+                c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "NotificationsAlertsController";
             } else if (ctrl instanceof AuditLogController c) {
-                c.setMainLayoutController(mainLayoutController); wired = "AuditLogController";
-            } else if (ctrl instanceof SettingsController) {
-                ((SettingsController) ctrl).setMainLayoutController(mainLayoutController); wired = "SettingsController";
+                c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "AuditLogController";
+            } else if (ctrl instanceof SettingsController sc) {
+                sc.setMainLayoutController(mainLayoutController); root.setUserData(sc); wired = "SettingsController";
             } else if (ctrl instanceof InvoicesController ic) {
                 ic.setMainLayoutController(mainLayoutController); root.setUserData(ic); wired = "InvoicesController";
+            } else if (ctrl instanceof AiInsightsController c) {
+                c.setMainLayoutController(mainLayoutController); root.setUserData(c); wired = "AiInsightsController";
             }
 
             agentLog("H3", "SidebarController.load", "loaded controller",

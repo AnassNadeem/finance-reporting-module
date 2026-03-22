@@ -652,7 +652,16 @@ public class TopBarController {
             URL url = MainLayoutController.class.getResource(fxmlPath);
             if (url == null) url = getClass().getResource(fxmlPath);
             if (url == null) return;
-            Parent root = FXMLLoader.load(url);
+            FXMLLoader loader = new FXMLLoader(url);
+            Parent root = loader.load();
+            Object ctrl = loader.getController();
+            if (ctrl instanceof SettingsController sc) {
+                sc.setMainLayoutController(mainLayoutController);
+                root.setUserData(sc);
+            } else if (ctrl instanceof NotificationsAlertsController na) {
+                na.setMainLayoutController(mainLayoutController);
+                root.setUserData(na);
+            }
             mainLayoutController.setContent(root);
         } catch (Exception ex) {
             System.err.println("[TopBar] Navigation failed: " + ex.getMessage());

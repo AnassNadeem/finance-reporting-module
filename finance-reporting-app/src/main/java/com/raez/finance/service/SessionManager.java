@@ -8,30 +8,37 @@ import javafx.application.Platform;
 import javafx.util.Duration;
 
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * SessionManager
  *
  * Tracks the currently logged-in user and enforces an inactivity timeout.
  *
- * Timeout (dev): SESSION_TIMEOUT_SECONDS = 3600 (1 hour).
- * Change to 15 * 60 (15 minutes) for production.
+ * Timeout: {@link #SESSION_TIMEOUT_SECONDS} of inactivity (default 2 minutes for demo).
+ * Warning UI should appear {@link #SESSION_WARNING_LEAD_SECONDS} before expiry.
  *
  * Usage:
  *   SessionManager.startSession(user);
  *   SessionManager.setOnTimeoutCallback(() -> navigateToLogin());
  *
  * The MainLayoutController calls setOnTimeoutCallback() after loading.
- * Any UI controller that receives a user interaction should call extendSession().
- * The inactivity checker runs every 30 seconds on the FX thread.
+ * Scene filters call {@link #touchSessionFromUserInput()} for real input (throttled mouse move).
+ * The inactivity checker runs every second on the FX thread.
  */
 public final class SessionManager {
 
-    /** Development timeout — 1 hour. Change to 15 * 60 for production. */
-    public static final long SESSION_TIMEOUT_SECONDS = 3600;
+    /** Total inactivity allowed before forced logout. */
+    public static final long SESSION_TIMEOUT_SECONDS = 120;
 
-    /** How often to check for inactivity (every 30 seconds). */
-    private static final long CHECK_INTERVAL_SECONDS = 30;
+    /**
+     * When remaining seconds are at or below this value, the UI may show the
+     * non-blocking warning (e.g. 10 seconds before logout).
+     */
+    public static final long SESSION_WARNING_LEAD_SECONDS = 10;
+
+    /** How often to check for expiry on the FX thread. */
+    private static final long CHECK_INTERVAL_SECONDS = 1;
 
     private static FUser   currentUser;
     private static Instant lastActivity;
@@ -39,6 +46,9 @@ public final class SessionManager {
 
     // The checker timeline — recreated on each login
     private static Timeline inactivityChecker;
+
+    /** When positive, {@link #touchSessionFromUserInput()} does not update last activity (timed UI refresh). */
+    private static final AtomicInteger automatedRefreshDepth = new AtomicInteger(0);
 
     private SessionManager() {}
 
@@ -62,13 +72,32 @@ public final class SessionManager {
     }
 
     /**
-     * Call this from any controller when the user interacts with the app
-     * (mouse move, key press, button click, etc.) to reset the inactivity clock.
+     * Resets the inactivity clock. Use for explicit user actions (buttons, menu choices),
+     * not for scene-wide input filters — those should use {@link #touchSessionFromUserInput()}.
      */
     public static void extendSession() {
         if (currentUser != null) {
             lastActivity = Instant.now();
         }
+    }
+
+    /**
+     * Call from global scene filters (mouse/key). Ignored while a timed data refresh
+     * is running so background refresh does not count as user activity.
+     */
+    public static void touchSessionFromUserInput() {
+        if (currentUser == null || automatedRefreshDepth.get() > 0) return;
+        lastActivity = Instant.now();
+    }
+
+    /** Wrap timed UI refresh; must be paired with {@link #endAutomatedDataRefresh()}. */
+    public static void beginAutomatedDataRefresh() {
+        automatedRefreshDepth.incrementAndGet();
+    }
+
+    public static void endAutomatedDataRefresh() {
+        int v = automatedRefreshDepth.decrementAndGet();
+        if (v < 0) automatedRefreshDepth.set(0);
     }
 
     /** Clears the session and stops the inactivity checker. */

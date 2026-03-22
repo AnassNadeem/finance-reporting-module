@@ -5,6 +5,7 @@ import com.raez.finance.model.UserRole;
 import com.raez.finance.service.AuthService;
 import com.raez.finance.service.AuthService.FirstLoginRequiredException;
 import com.raez.finance.service.SessionManager;
+import com.raez.finance.util.StageNavigator;
 import com.raez.finance.util.ValidationUtils;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
@@ -12,10 +13,7 @@ import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
@@ -29,13 +27,11 @@ import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
-import java.net.URL;
-
 public class FinanceUserLoginController {
 
     private static final String VIEW_PATH     = "/com/raez/finance/view/";
     private static final String DEMO_EMAIL    = "finance@raez.org.uk";
-    private static final String DEMO_PASSWORD = "User@123";
+    private static final String DEMO_PASSWORD = "User123@";
 
     private final AuthService authService = new AuthService();
 
@@ -402,19 +398,12 @@ public class FinanceUserLoginController {
     private void navigateToMainLayout(ActionEvent event) {
         String path = VIEW_PATH + "MainLayout.fxml";
         try {
-            URL url = getClass().getResource(path);
-            if (url == null) throw new IllegalStateException("Not found: " + path);
-            Parent root = FXMLLoader.load(url);
-            Scene scene = new Scene(root);
-            URL css = getClass().getResource("/css/app.css");
-            if (css != null) scene.getStylesheets().add(css.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(scene);
+            StageNavigator.navigate(stage, path);
             stage.setTitle("RAEZ Finance");
             stage.setMinWidth(900);
             stage.setMinHeight(650);
-            stage.setMaximized(true);   // ← launch maximised
-            stage.show();
+            StageNavigator.forceMaximizedLayout(stage);
         } catch (Exception e) {
             throw new RuntimeException("Navigation failed: " + path, e);
         }
@@ -422,16 +411,8 @@ public class FinanceUserLoginController {
 
     private void navigateTo(String resourcePath, ActionEvent event) {
         try {
-            URL url = getClass().getResource(resourcePath);
-            if (url == null) throw new IllegalStateException("Not found: " + resourcePath);
-            Parent root = FXMLLoader.load(url);
-            Scene scene = new Scene(root);
-            URL css = getClass().getResource("/css/app.css");
-            if (css != null) scene.getStylesheets().add(css.toExternalForm());
             Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            stage.setScene(scene);
-            stage.setMaximized(true);
-            stage.show();
+            StageNavigator.navigate(stage, resourcePath);
         } catch (Exception e) {
             throw new RuntimeException("Navigation failed: " + resourcePath, e);
         }

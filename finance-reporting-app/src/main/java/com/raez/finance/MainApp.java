@@ -1,5 +1,6 @@
 package com.raez.finance;
 
+import com.raez.finance.util.StageNavigator;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -7,6 +8,8 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+
+import java.net.URL;
 
 /**
  * MainApp — JavaFX Application entry point.
@@ -22,7 +25,6 @@ public class MainApp extends Application {
 
     private static final String ROLE_SELECTION = "/com/raez/finance/view/RoleSelection.fxml";
     private static final String CSS            = "/css/app.css";
-
     @Override
     public void start(Stage primaryStage) throws Exception {
         primaryStage.initStyle(StageStyle.DECORATED);
@@ -37,14 +39,13 @@ public class MainApp extends Application {
             getClass().getResource(ROLE_SELECTION)
         );
         Scene scene = new Scene(root);
-
-        java.net.URL css = getClass().getResource(CSS);
+        URL css = getClass().getResource(CSS);
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
 
         primaryStage.setScene(scene);
 
-        // Set maximized AFTER setScene() so the window starts full-screen correctly.
-        primaryStage.setMaximized(true);
+        // Re-apply maximize after setScene() — JavaFX can clear it during the swap.
+        StageNavigator.forceMaximizedLayout(primaryStage);
 
         primaryStage.setOnCloseRequest(e -> Platform.exit());
         primaryStage.show();

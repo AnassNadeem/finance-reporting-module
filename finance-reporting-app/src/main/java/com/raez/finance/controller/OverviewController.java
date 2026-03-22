@@ -11,6 +11,7 @@ import com.raez.finance.service.ExportService;
 import com.raez.finance.service.PredictionService;
 import com.raez.finance.service.SessionManager;
 import com.raez.finance.util.CurrencyUtil;
+import com.raez.finance.util.UiAutoRefreshable;
 import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -64,7 +65,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class OverviewController {
+public class OverviewController implements UiAutoRefreshable {
 
     private static final String VIEW_PATH  = "/com/raez/finance/view/";
     private static final String[] PIE_COLORS = {
@@ -108,6 +109,11 @@ public class OverviewController {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
         }
+    }
+
+    @Override
+    public void refreshVisibleData() {
+        loadDashboardData();
     }
 
     // --- FXML ------------------------------------------------------------

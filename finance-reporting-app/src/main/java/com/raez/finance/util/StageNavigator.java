@@ -87,8 +87,7 @@ public final class StageNavigator {
             // ── 2. Load FXML ──────────────────────────────────────────────
             URL url = StageNavigator.class.getResource(fxmlPath);
             if (url == null) {
-                System.err.println("[StageNavigator] FXML not found: " + fxmlPath);
-                return;
+                throw new IllegalStateException("[StageNavigator] FXML not found: " + fxmlPath);
             }
             FXMLLoader loader = new FXMLLoader(url);
             Parent root = loader.load();
@@ -105,25 +104,8 @@ public final class StageNavigator {
             stage.setScene(scene);
 
             // ── 5. Restore stage state immediately after ──────────────────
-            if (wasFullScreen) {
-                stage.setFullScreen(true);
-
-            } else if (wasMaximized) {
-                // false→true toggle forces JavaFX to re-apply maximized layout.
-                // Calling setMaximized(true) alone is often a no-op when JavaFX
-                // thinks the state is already "maximized" but hasn't re-laid out.
-                stage.setMaximized(false);
-                stage.setMaximized(true);
-
-            } else {
-                // Windowed: restore exact pixel position + size
-                stage.setWidth(prevW);
-                stage.setHeight(prevH);
-                stage.setX(prevX);
-                stage.setY(prevY);
-            }
-
-            stage.show();
+            restoreStageAfterSceneChange(stage, wasFullScreen, wasMaximized,
+                    prevW, prevH, prevX, prevY);
 
         } catch (Exception ex) {
             System.err.println("[StageNavigator] Navigation failed: " + fxmlPath);
@@ -133,17 +115,21 @@ public final class StageNavigator {
 
     // ══════════════════════════════════════════════════════════════════════
     //  NAVIGATE TO LOGIN  (logout / back flows)
-    //  Resets to a sensible windowed size if not maximized.
+    //  Same geometry rules as navigate() — no hard-coded window size.
     // ══════════════════════════════════════════════════════════════════════
 
     public static void navigateToLogin(Stage stage) {
         try {
-            boolean wasMaximized = stage.isMaximized();
+            boolean wasFullScreen = stage.isFullScreen();
+            boolean wasMaximized  = stage.isMaximized();
+            double  prevW         = stage.getWidth();
+            double  prevH         = stage.getHeight();
+            double  prevX         = stage.getX();
+            double  prevY         = stage.getY();
 
             URL url = StageNavigator.class.getResource(ROLE_SELECTION_FXML);
             if (url == null) {
-                System.err.println("[StageNavigator] RoleSelection.fxml not found");
-                return;
+                throw new IllegalStateException("[StageNavigator] RoleSelection.fxml not found");
             }
             Parent root  = FXMLLoader.load(url);
             Scene  scene = new Scene(root);
@@ -152,19 +138,44 @@ public final class StageNavigator {
 
             stage.setScene(scene);
 
-            if (wasMaximized) {
-                stage.setMaximized(false);
-                stage.setMaximized(true);
-            } else {
-                stage.setWidth(1000);
-                stage.setHeight(700);
-                stage.centerOnScreen();
-            }
-            stage.show();
+            restoreStageAfterSceneChange(stage, wasFullScreen, wasMaximized,
+                    prevW, prevH, prevX, prevY);
 
+        } catch (RuntimeException ex) {
+            throw ex;
         } catch (Exception ex) {
             System.err.println("[StageNavigator] navigateToLogin failed");
             ex.printStackTrace();
+            throw new RuntimeException("navigateToLogin failed", ex);
         }
     }
-}
+
+    /**
+     * Re-apply maximized layout after {@code setScene} (e.g. opening the main dashboard from login).
+     * Skipped when the stage is full-screen. Uses false→true so JavaFX re-computes maximize bounds.
+     */
+    public static void forceMaximizedLayout(Stage stage) {
+        if (stage.isFullScreen()) {
+            stage.setFullScreen(true);
+            return;
+        }
+        stage.setMaximized(false);
+        stage.setMaximized(true);
+    }
+
+    private static void restoreStageAfterSceneChange(Stage stage,
+            boolean wasFullScreen, boolean wasMaximized,
+            double prevW, double prevH, double prevX, double prevY) {
+        if (wasFullScreen) {
+            stage.setFullScreen(true);
+        } else if (wasMaximized) {
+            stage.setMaximized(false);
+            stage.setMaximized(true);
+        } else {
+            stage.setWidth(prevW);
+            stage.setHeight(prevH);
+            stage.setX(prevX);
+            stage.setY(prevY);
+        }
+        stage.show();
+                }    }
