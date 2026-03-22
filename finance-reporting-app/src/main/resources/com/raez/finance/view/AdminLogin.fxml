@@ -8,94 +8,122 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.text.Font?>
 
+<!--
+  AdminLogin.fxml — dark glassmorphism redesign
+  ALL fx:id and onAction references preserved from original.
+  Background: same deep dark as RoleSelection (#040D1C) — bubbles injected by controller.
+  Card: glass panel with emerald top accent and white frosted style.
+-->
 <StackPane
-    style="-fx-background-color: #F9FAFB;"
+    style="-fx-background-color: #040D1C;"
     xmlns="http://javafx.com/javafx/21"
     xmlns:fx="http://javafx.com/fxml/1"
     fx:controller="com.raez.finance.controller.AdminLoginController">
 
-    <!-- Animated background (same circles as RoleSelection) -->
-    <Pane fx:id="animatedBg" style="-fx-background-color: transparent;" />
+    <!-- Animated bubble bg (controller injects same circles as RoleSelection) -->
+    <Pane fx:id="animatedBg" mouseTransparent="true"
+          style="-fx-background-color: transparent;" />
+
+    <!-- Gradient overlay -->
+    <Pane mouseTransparent="true"
+          style="-fx-background-color:
+                 linear-gradient(from 0% 0% to 100% 100%,
+                 rgba(16,185,129,0.04) 0%, transparent 50%,
+                 rgba(37,99,235,0.05) 100%);" />
 
     <!-- Centred scroll-safe wrapper -->
-    <VBox alignment="CENTER" style="-fx-background-color: transparent;">
+    <VBox alignment="CENTER">
 
-        <VBox
-            fx:id="loginCard"
-            alignment="CENTER_LEFT"
-            maxWidth="460"
-            opacity="0"
-            style="-fx-background-color: transparent;">
+        <!-- ══ LOGIN CARD ══ -->
+        <VBox fx:id="loginCard"
+              alignment="CENTER_LEFT"
+              maxWidth="440"
+              opacity="0">
             <padding><Insets top="24" right="0" bottom="24" left="0" /></padding>
 
-            <!-- Back link -->
+            <!-- Back link — styled for dark bg -->
             <HBox alignment="CENTER_LEFT">
-                <VBox.margin><Insets bottom="16" /></VBox.margin>
+                <VBox.margin><Insets bottom="14" /></VBox.margin>
                 <Button fx:id="btnBack"
                         text="← Back to Role Selection"
                         onAction="#handleBack"
-                        style="-fx-background-color: transparent;
-                               -fx-text-fill: #4B5563;
+                        style="-fx-background-color: rgba(255,255,255,0.06);
+                               -fx-text-fill: rgba(255,255,255,0.55);
                                -fx-cursor: hand;
-                               -fx-font-size: 13px;
-                               -fx-border-color: transparent;" />
+                               -fx-font-size: 12.5px;
+                               -fx-border-color: transparent;
+                               -fx-background-radius: 7;
+                               -fx-padding: 6 12 6 12;" />
             </HBox>
 
-            <!-- Main card -->
-            <VBox
-                spacing="24"
-                style="-fx-background-color: white;
-                       -fx-background-radius: 16;
-                       -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.09), 20, 0, 0, 4);">
-                <padding><Insets top="36" right="36" bottom="36" left="36" /></padding>
+            <!-- Glass card -->
+            <VBox spacing="22"
+                  style="-fx-background-color: rgba(255,255,255,0.06);
+                         -fx-background-radius: 18;
+                         -fx-border-color: rgba(255,255,255,0.12);
+                         -fx-border-radius: 18;
+                         -fx-border-width: 1;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 36, 0, 0, 10);">
+                <padding><Insets top="0" right="36" bottom="36" left="36" /></padding>
 
-                <!-- Icon + title -->
+                <!-- Emerald top accent bar -->
+                <Region prefHeight="4"
+                        style="-fx-background-color: linear-gradient(to right, #10B981, rgba(16,185,129,0.20));
+                               -fx-background-radius: 18 18 0 0;" />
+
+                <!-- Icon + title block -->
                 <VBox alignment="CENTER" spacing="8">
-                    <StackPane
-                        prefWidth="60" prefHeight="60" maxWidth="60"
-                        style="-fx-background-color: #1E2939; -fx-background-radius: 12;">
-                        <VBox.margin><Insets bottom="8" /></VBox.margin>
-                        <SVGPath
-                            content="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4"
-                            fill="TRANSPARENT"
-                            stroke="WHITE"
-                            strokeLineCap="ROUND"
-                            strokeLineJoin="ROUND"
-                            strokeWidth="2"
-                            scaleX="1.1" scaleY="1.1" />
+                    <VBox.margin><Insets top="8" /></VBox.margin>
+                    <StackPane prefWidth="56" prefHeight="56" maxWidth="56"
+                               style="-fx-background-color: rgba(16,185,129,0.18);
+                                      -fx-background-radius: 14;
+                                      -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.35), 14, 0, 0, 0);">
+                        <VBox.margin><Insets bottom="6" /></VBox.margin>
+                        <SVGPath content="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4"
+                                 fill="TRANSPARENT" stroke="#10B981"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                                 strokeWidth="2.2" scaleX="1.1" scaleY="1.1" />
                     </StackPane>
                     <Label text="Admin Login"
-                           style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                           style="-fx-font-size: 21px; -fx-font-weight: 700; -fx-text-fill: white;">
+                        <font><Font name="System Bold" size="21" /></font>
+                    </Label>
                     <Label text="Restricted access — administrators only"
-                           style="-fx-font-size: 13px; -fx-text-fill: #6B7280;" />
+                           style="-fx-font-size: 12.5px; -fx-text-fill: rgba(255,255,255,0.42);" />
                 </VBox>
 
                 <!-- Form fields -->
-                <VBox spacing="16">
+                <VBox spacing="14">
 
-                    <!-- Email / Username -->
+                    <!-- Email -->
                     <VBox spacing="6">
                         <Label text="Admin Email"
-                               style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                               style="-fx-font-size: 11.5px; -fx-font-weight: 700;
+                                      -fx-text-fill: rgba(255,255,255,0.60);" />
                         <HBox alignment="CENTER_LEFT"
-                              style="-fx-border-color: #D1D5DB; -fx-border-radius: 8;
-                                     -fx-background-color: #FAFAFA; -fx-background-radius: 8;
+                              style="-fx-border-color: rgba(255,255,255,0.12);
+                                     -fx-border-radius: 9;
+                                     -fx-background-color: rgba(255,255,255,0.06);
+                                     -fx-background-radius: 9;
                                      -fx-padding: 0 12 0 12;">
                             <SVGPath content="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6"
-                                     fill="TRANSPARENT" stroke="#9CA3AF"
-                                     strokeLineCap="ROUND" strokeLineJoin="ROUND"
-                                     strokeWidth="1.5" />
+                                     fill="TRANSPARENT" stroke="rgba(255,255,255,0.30)"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
                             <TextField fx:id="txtEmail"
                                        promptText="j.carter@raez.org.uk"
-                                       prefHeight="38"
+                                       prefHeight="40"
                                        style="-fx-background-color: transparent;
                                               -fx-border-color: transparent;
+                                              -fx-text-fill: white;
+                                              -fx-prompt-text-fill: rgba(255,255,255,0.28);
                                               -fx-font-size: 13px;
-                                              -fx-padding: 0 0 0 8;"
+                                              -fx-padding: 0 0 0 10;"
                                        HBox.hgrow="ALWAYS" />
                         </HBox>
                     </VBox>
@@ -103,147 +131,182 @@
                     <!-- Password -->
                     <VBox spacing="6">
                         <Label text="Password"
-                               style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
+                               style="-fx-font-size: 11.5px; -fx-font-weight: 700;
+                                      -fx-text-fill: rgba(255,255,255,0.60);" />
                         <HBox alignment="CENTER_LEFT"
-                              style="-fx-border-color: #D1D5DB; -fx-border-radius: 8;
-                                     -fx-background-color: #FAFAFA; -fx-background-radius: 8;
+                              style="-fx-border-color: rgba(255,255,255,0.12);
+                                     -fx-border-radius: 9;
+                                     -fx-background-color: rgba(255,255,255,0.06);
+                                     -fx-background-radius: 9;
                                      -fx-padding: 0 12 0 12;">
                             <SVGPath content="M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M7 11V7a5 5 0 0 1 10 0v4"
-                                     fill="TRANSPARENT" stroke="#9CA3AF"
-                                     strokeLineCap="ROUND" strokeLineJoin="ROUND"
-                                     strokeWidth="1.5" />
+                                     fill="TRANSPARENT" stroke="rgba(255,255,255,0.30)"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
                             <PasswordField fx:id="txtPassword"
                                            promptText="Enter admin password"
-                                           prefHeight="38"
+                                           prefHeight="40"
                                            style="-fx-background-color: transparent;
                                                   -fx-border-color: transparent;
+                                                  -fx-text-fill: white;
+                                                  -fx-prompt-text-fill: rgba(255,255,255,0.28);
                                                   -fx-font-size: 13px;
-                                                  -fx-padding: 0 0 0 8;"
+                                                  -fx-padding: 0 0 0 10;"
                                            HBox.hgrow="ALWAYS" />
                         </HBox>
                     </VBox>
 
-                    <!-- Forgot password link -->
+                    <!-- Forgot password -->
                     <HBox alignment="CENTER_RIGHT">
                         <Hyperlink fx:id="linkForgotPassword"
                                    text="Forgot password?"
                                    onAction="#handleForgotPassword"
-                                   style="-fx-text-fill: #1E2939;
+                                   style="-fx-text-fill: rgba(16,185,129,0.80);
                                           -fx-border-color: transparent;
                                           -fx-font-size: 12px;" />
                     </HBox>
 
-                    <!-- Error box — wrapText ensures it is never cut off -->
-                    <VBox fx:id="errorBox"
-                          managed="false" visible="false"
-                          style="-fx-background-color: #FEF2F2;
-                                 -fx-border-color: #FECACA;
-                                 -fx-border-radius: 8;
-                                 -fx-background-radius: 8;">
+                    <!-- Error box -->
+                    <VBox fx:id="errorBox" managed="false" visible="false"
+                          style="-fx-background-color: rgba(239,68,68,0.12);
+                                 -fx-border-color: rgba(239,68,68,0.35);
+                                 -fx-border-radius: 9;
+                                 -fx-background-radius: 9;">
                         <padding><Insets top="12" right="16" bottom="12" left="16" /></padding>
                         <HBox spacing="8" alignment="TOP_LEFT">
                             <SVGPath content="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M12 8v4 M12 16h.01"
-                                     fill="TRANSPARENT" stroke="#DC2626"
-                                     strokeLineCap="ROUND" strokeLineJoin="ROUND"
-                                     strokeWidth="1.5" />
+                                     fill="TRANSPARENT" stroke="#EF4444"
+                                     strokeLineCap="ROUND" strokeLineJoin="ROUND" strokeWidth="1.5" />
                             <Label fx:id="lblError"
                                    text="Invalid credentials"
-                                   textFill="#B91C1C"
+                                   textFill="#FCA5A5"
                                    wrapText="true"
-                                   maxWidth="360"
+                                   maxWidth="340"
                                    style="-fx-font-size: 13px;"
                                    HBox.hgrow="ALWAYS" />
                         </HBox>
                     </VBox>
 
-                    <!-- Login button -->
+                    <!-- Login button — emerald fill -->
                     <Button fx:id="btnLogin"
                             text="Login as Administrator"
                             maxWidth="Infinity"
-                            prefHeight="44"
+                            prefHeight="46"
                             onAction="#handleLogin"
-                            style="-fx-background-color: #1E2939;
+                            style="-fx-background-color: #10B981;
                                    -fx-text-fill: white;
-                                   -fx-background-radius: 8;
-                                   -fx-font-size: 13px;
+                                   -fx-background-radius: 9;
+                                   -fx-font-size: 13.5px;
                                    -fx-font-weight: 700;
-                                   -fx-cursor: hand;">
+                                   -fx-cursor: hand;
+                                   -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.40), 14, 0, 0, 3);">
                         <VBox.margin><Insets top="4" /></VBox.margin>
                     </Button>
 
-                    <!-- Demo credentials (dev helper) -->
+                    <!-- Demo credentials -->
                     <HBox alignment="CENTER">
                         <Button fx:id="btnDemoCredentials"
                                 text="Fill demo credentials"
                                 onAction="#handleAddDemoCredentials"
                                 style="-fx-background-color: transparent;
-                                       -fx-text-fill: #6B7280;
-                                       -fx-border-color: #E5E7EB;
+                                       -fx-text-fill: rgba(255,255,255,0.38);
+                                       -fx-border-color: rgba(255,255,255,0.12);
                                        -fx-border-radius: 8;
                                        -fx-background-radius: 8;
-                                       -fx-font-size: 12px;
+                                       -fx-font-size: 11.5px;
                                        -fx-cursor: hand;
-                                       -fx-padding: 6 16 6 16;" />
+                                       -fx-padding: 7 16 7 16;" />
                     </HBox>
 
                 </VBox>
 
-                <!-- Warning notice — wrapText so it never clips -->
-                <VBox style="-fx-background-color: #FEFCE8;
-                             -fx-border-color: #FDE047;
+                <!-- Warning notice -->
+                <VBox style="-fx-background-color: rgba(234,179,8,0.10);
+                             -fx-border-color: rgba(234,179,8,0.25);
                              -fx-border-radius: 8;
                              -fx-background-radius: 8;">
-                    <padding><Insets top="12" right="14" bottom="12" left="14" /></padding>
-                    <Label
-                        text="⚠  All access attempts are logged and monitored by the security team."
-                        textFill="#854D0E"
-                        wrapText="true"
-                        style="-fx-font-size: 12px;" />
+                    <padding><Insets top="10" right="14" bottom="10" left="14" /></padding>
+                    <Label text="All access attempts are logged and monitored."
+                           textFill="rgba(253,224,71,0.75)"
+                           wrapText="true"
+                           style="-fx-font-size: 11.5px;" />
                 </VBox>
 
             </VBox>
-
         </VBox>
 
-        <VBox fx:id="forgotFlowCard" alignment="CENTER_LEFT" maxWidth="460" managed="false" visible="false">
+        <!-- ══ FORGOT PASSWORD CARD ══ -->
+        <VBox fx:id="forgotFlowCard" alignment="CENTER_LEFT" maxWidth="440"
+              managed="false" visible="false">
             <padding><Insets top="24" right="0" bottom="24" left="0" /></padding>
             <Button text="← Back to login" onAction="#handleForgotBackToLogin"
-                    style="-fx-background-color: transparent; -fx-text-fill: #4B5563; -fx-cursor: hand; -fx-font-size: 13px; -fx-border-color: transparent;">
-                <VBox.margin><Insets bottom="16" /></VBox.margin>
+                    style="-fx-background-color: rgba(255,255,255,0.06); -fx-text-fill: rgba(255,255,255,0.55);
+                           -fx-cursor: hand; -fx-font-size: 12.5px; -fx-border-color: transparent;
+                           -fx-background-radius: 7; -fx-padding: 6 12 6 12;">
+                <VBox.margin><Insets bottom="14" /></VBox.margin>
             </Button>
-            <VBox spacing="20" style="-fx-background-color: white; -fx-background-radius: 16; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.09), 20, 0, 0, 4);">
+            <VBox spacing="18"
+                  style="-fx-background-color: rgba(255,255,255,0.06);
+                         -fx-background-radius: 18;
+                         -fx-border-color: rgba(255,255,255,0.12);
+                         -fx-border-radius: 18; -fx-border-width: 1;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 36, 0, 0, 10);">
                 <padding><Insets top="32" right="32" bottom="32" left="32" /></padding>
-                <Label text="Reset password" style="-fx-font-size: 22px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
+                <Label text="Reset password"
+                       style="-fx-font-size: 20px; -fx-font-weight: 700; -fx-text-fill: white;" />
+
                 <VBox fx:id="forgotPaneSend" spacing="12">
                     <VBox spacing="6">
-                        <Label text="Account (email or username)" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
-                        <TextField fx:id="txtForgotAccount" prefHeight="38"
-                                   style="-fx-background-color: #FAFAFA; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-font-size: 13px;" />
+                        <Label text="Account (email or username)"
+                               style="-fx-font-size: 11.5px; -fx-font-weight: 700; -fx-text-fill: rgba(255,255,255,0.60);" />
+                        <TextField fx:id="txtForgotAccount" prefHeight="40"
+                                   style="-fx-background-color: rgba(255,255,255,0.06);
+                                          -fx-border-color: rgba(255,255,255,0.12);
+                                          -fx-border-radius: 9; -fx-background-radius: 9;
+                                          -fx-text-fill: white; -fx-prompt-text-fill: rgba(255,255,255,0.28);
+                                          -fx-font-size: 13px; -fx-padding: 0 12 0 12;" />
                     </VBox>
                     <VBox spacing="6">
-                        <Label text="Send code to (email)" style="-fx-font-size: 12px; -fx-font-weight: 700; -fx-text-fill: #374151;" />
-                        <TextField fx:id="txtForgotSendTo" promptText="Optional"
-                                   prefHeight="38"
-                                   style="-fx-background-color: #FAFAFA; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-font-size: 13px;" />
+                        <Label text="Send code to (email)"
+                               style="-fx-font-size: 11.5px; -fx-font-weight: 700; -fx-text-fill: rgba(255,255,255,0.60);" />
+                        <TextField fx:id="txtForgotSendTo" promptText="Optional" prefHeight="40"
+                                   style="-fx-background-color: rgba(255,255,255,0.06);
+                                          -fx-border-color: rgba(255,255,255,0.12);
+                                          -fx-border-radius: 9; -fx-background-radius: 9;
+                                          -fx-text-fill: white; -fx-prompt-text-fill: rgba(255,255,255,0.28);
+                                          -fx-font-size: 13px; -fx-padding: 0 12 0 12;" />
                     </VBox>
-                    <Button fx:id="btnForgotSend" text="Send reset email" maxWidth="Infinity" prefHeight="44" onAction="#handleForgotSendEmail"
-                            style="-fx-background-color: #1E2939; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-weight: 700; -fx-cursor: hand;" />
+                    <Button fx:id="btnForgotSend" text="Send reset email" maxWidth="Infinity"
+                            prefHeight="46" onAction="#handleForgotSendEmail"
+                            style="-fx-background-color: #10B981; -fx-text-fill: white;
+                                   -fx-background-radius: 9; -fx-font-weight: 700; -fx-cursor: hand;" />
                     <Label fx:id="lblForgotSendCountdown" managed="false" visible="false" text=""
-                           style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                           style="-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.45);" />
                 </VBox>
+
                 <VBox fx:id="forgotPaneToken" spacing="12" managed="false" visible="false">
-                    <TextField fx:id="txtForgotToken" promptText="Reset token" prefHeight="38"
-                               style="-fx-background-color: #FAFAFA; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-font-size: 13px;" />
-                    <PasswordField fx:id="txtForgotNewPassword" promptText="New password" prefHeight="38"
-                                   style="-fx-background-color: #FAFAFA; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-font-size: 13px;" />
-                    <PasswordField fx:id="txtForgotConfirmPassword" promptText="Confirm" prefHeight="38"
-                                   style="-fx-background-color: #FAFAFA; -fx-border-color: #D1D5DB; -fx-border-radius: 8; -fx-font-size: 13px;" />
-                    <Button fx:id="btnForgotApplyReset" text="Update password" maxWidth="Infinity" prefHeight="44" onAction="#handleForgotApplyReset"
-                            style="-fx-background-color: #10B981; -fx-text-fill: white; -fx-background-radius: 8; -fx-font-weight: 700; -fx-cursor: hand;" />
+                    <TextField fx:id="txtForgotToken" promptText="Reset token" prefHeight="40"
+                               style="-fx-background-color: rgba(255,255,255,0.06);
+                                      -fx-border-color: rgba(255,255,255,0.12);
+                                      -fx-border-radius: 9; -fx-background-radius: 9;
+                                      -fx-text-fill: white; -fx-prompt-text-fill: rgba(255,255,255,0.28);
+                                      -fx-font-size: 13px; -fx-padding: 0 12 0 12;" />
+                    <PasswordField fx:id="txtForgotNewPassword" promptText="New password" prefHeight="40"
+                                   style="-fx-background-color: rgba(255,255,255,0.06);
+                                          -fx-border-color: rgba(255,255,255,0.12);
+                                          -fx-border-radius: 9; -fx-background-radius: 9;
+                                          -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 0 12 0 12;" />
+                    <PasswordField fx:id="txtForgotConfirmPassword" promptText="Confirm" prefHeight="40"
+                                   style="-fx-background-color: rgba(255,255,255,0.06);
+                                          -fx-border-color: rgba(255,255,255,0.12);
+                                          -fx-border-radius: 9; -fx-background-radius: 9;
+                                          -fx-text-fill: white; -fx-font-size: 13px; -fx-padding: 0 12 0 12;" />
+                    <Button fx:id="btnForgotApplyReset" text="Update password" maxWidth="Infinity"
+                            prefHeight="46" onAction="#handleForgotApplyReset"
+                            style="-fx-background-color: #10B981; -fx-text-fill: white;
+                                   -fx-background-radius: 9; -fx-font-weight: 700; -fx-cursor: hand;" />
                 </VBox>
             </VBox>
         </VBox>
 
     </VBox>
-
 </StackPane>

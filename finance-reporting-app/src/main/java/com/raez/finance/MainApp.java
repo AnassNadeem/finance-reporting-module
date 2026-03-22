@@ -9,39 +9,44 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 /**
- * Single entry point for the RAEZ Finance application.
- * Initializes the JavaFX Stage and loads the Login view.
+ * MainApp — JavaFX Application entry point.
  *
- * To run: use {@code mvn javafx:run}, double-click run.bat, or run {@link com.raez.finance.MainLauncher}
- * (Right-click MainLauncher.java → Run) so JavaFX is available even when the IDE does not add it to the module path.
+ * DO NOT call stage.sizeToScene() anywhere in the app — it overrides maximized state.
+ * All scene transitions must go through StageNavigator (com.raez.finance.util.StageNavigator).
+ *
+ * Run via:
+ *   mvn javafx:run           (recommended — always works)
+ *   Right-click MainLauncher → Run  (IDE without module-path config)
  */
 public class MainApp extends Application {
 
+    private static final String ROLE_SELECTION = "/com/raez/finance/view/RoleSelection.fxml";
+    private static final String CSS            = "/css/app.css";
+
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // Ensure decorated window so the user can drag the window and use the close button
         primaryStage.initStyle(StageStyle.DECORATED);
         primaryStage.setResizable(true);
-
-        FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("/com/raez/finance/view/RoleSelection.fxml")
-        );
-        Parent root = loader.load();
-        double width = 1000;
-        double height = 700;
-        Scene scene = new Scene(root, width, height);
-        java.net.URL cssUrl = getClass().getResource("/css/app.css");
-        if (cssUrl != null) {
-            scene.getStylesheets().add(cssUrl.toExternalForm());
-        }
+        primaryStage.setMinWidth(900);
+        primaryStage.setMinHeight(620);
         primaryStage.setTitle("RAEZ Finance Portal");
+
+        // Load RoleSelection as the first scene.
+        // No explicit width/height passed to Scene — avoids sizeToScene interference.
+        Parent root = FXMLLoader.load(
+            getClass().getResource(ROLE_SELECTION)
+        );
+        Scene scene = new Scene(root);
+
+        java.net.URL css = getClass().getResource(CSS);
+        if (css != null) scene.getStylesheets().add(css.toExternalForm());
+
         primaryStage.setScene(scene);
-        primaryStage.setMinWidth(800);
-        primaryStage.setMinHeight(600);
+
+        // Set maximized AFTER setScene() so the window starts full-screen correctly.
+        primaryStage.setMaximized(true);
 
         primaryStage.setOnCloseRequest(e -> Platform.exit());
-
-        primaryStage.setMaximized(true);
         primaryStage.show();
     }
 

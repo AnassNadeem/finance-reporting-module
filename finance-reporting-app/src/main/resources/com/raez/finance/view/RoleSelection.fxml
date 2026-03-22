@@ -4,141 +4,306 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 <?import javafx.scene.text.Font?>
 
 <!--
-  RoleSelection — two clickable role cards with animated floating background.
-  All card selection, scale animation and background animation are in the controller.
+  RoleSelection.fxml — "Mission Control" premium redesign
+  ─────────────────────────────────────────────────────────────────────────
+  Concept: Deep-space intelligence terminal. The screen is alive:
+    • Mouse spotlight (radial glow tracks cursor — controller)
+    • Animated constellation blobs (controller)
+    • Left brand panel: giant wordmark, animated metric tickers (controller)
+    • Right panel: two premium horizontal role cards, staggered entrance
+    • Role cards slide right + glow on hover (controller)
+    • Entry animation: panel rises from -20px with fade (controller)
 -->
 <StackPane
     fx:id="rootPane"
-    style="-fx-background-color: #F9FAFB;"
     xmlns="http://javafx.com/javafx/21"
     xmlns:fx="http://javafx.com/fxml/1"
-    fx:controller="com.raez.finance.controller.RoleSelectionController">
+    fx:controller="com.raez.finance.controller.RoleSelectionController"
+    style="-fx-background-color: #040D1C;">
 
-    <!-- ── Animated background layer (circles added + animated in controller) ── -->
-    <Pane fx:id="animatedBg" style="-fx-background-color: transparent;" />
+    <!-- Layer 1: Animated blob background (circles injected by controller) -->
+    <Pane fx:id="animatedBg" mouseTransparent="true"
+          style="-fx-background-color: transparent;" />
 
-    <!-- ── Main card (fades in on load via controller) ── -->
-    <VBox
-        fx:id="mainCard"
-        alignment="CENTER"
-        maxWidth="560"
-        spacing="0"
-        opacity="0"
-        style="-fx-background-color: white;
-               -fx-background-radius: 16;
-               -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 24, 0, 0, 4);">
-        <padding><Insets top="48" right="48" bottom="48" left="48" /></padding>
+    <!-- Layer 2: Cursor spotlight overlay (radial gradient updated on mouse move) -->
+    <Pane fx:id="spotlightPane" mouseTransparent="true"
+          style="-fx-background-color: transparent;" />
 
-        <!-- Header -->
-        <VBox alignment="CENTER" spacing="6">
-            <VBox.margin><Insets bottom="36" /></VBox.margin>
+    <!-- Layer 3: Subtle grid mesh -->
+    <Pane mouseTransparent="true"
+          style="-fx-background-color:
+                 linear-gradient(from 0% 0% to 100% 100%,
+                 rgba(16,185,129,0.04) 0%, transparent 45%,
+                 rgba(37,99,235,0.05) 100%);" />
 
-            <!-- Logo mark -->
-            <StackPane
-                prefWidth="56" prefHeight="56" maxWidth="56" maxHeight="56"
-                style="-fx-background-color: #1E2939; -fx-background-radius: 12;">
-                <VBox.margin><Insets bottom="20" /></VBox.margin>
-                <SVGPath
-                    content="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7l-9-5z"
-                    fill="WHITE"
-                    scaleX="1.0" scaleY="1.0" />
-            </StackPane>
+    <!-- Layer 4: Main panel — wide asymmetric split card -->
+    <HBox fx:id="mainPanel"
+          maxWidth="940" minWidth="700"
+          prefHeight="540"
+          opacity="0"
+          alignment="CENTER"
+          style="-fx-background-color: transparent;"
+          translateY="20">
 
-            <Label text="RAEZ Finance Portal"
-                   style="-fx-font-size: 24px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-            <Label text="Select your role to continue"
-                   style="-fx-font-size: 14px; -fx-text-fill: #6B7280;" />
+        <!-- ══ LEFT: BRAND TERMINAL SECTION ═══════════════════════════════ -->
+        <VBox fx:id="brandPanel"
+              prefWidth="380" minWidth="340"
+              alignment="TOP_LEFT"
+              style="-fx-background-color: rgba(16,185,129,0.06);
+                     -fx-background-radius: 20 0 0 20;
+                     -fx-border-color: rgba(16,185,129,0.15) rgba(255,255,255,0.06) rgba(16,185,129,0.15) rgba(16,185,129,0.15);
+                     -fx-border-width: 1;
+                     -fx-border-radius: 20 0 0 20;">
+            <padding><Insets top="52" right="36" bottom="40" left="48" /></padding>
+            <children>
+
+                <!-- Logo badge -->
+                <StackPane prefWidth="50" prefHeight="50" maxWidth="50"
+                           style="-fx-background-color: #10B981;
+                                  -fx-background-radius: 13;
+                                  -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.60), 18, 0, 0, 4);">
+                    <VBox.margin><Insets bottom="28" /></VBox.margin>
+                    <SVGPath content="M12 2L3 7v6c0 5.25 3.75 10.15 9 11.25C17.25 23.15 21 18.25 21 13V7l-9-5z M9 12l2 2 4-4"
+                             fill="TRANSPARENT" stroke="WHITE"
+                             strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                             strokeWidth="2.2" />
+                </StackPane>
+
+                <!-- RAEZ wordmark -->
+                <Label text="RAEZ"
+                       style="-fx-font-size: 48px; -fx-font-weight: 900;
+                              -fx-text-fill: white;
+                              -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.30), 12, 0, 0, 0);">
+                    <font><Font name="System Bold" size="48" /></font>
+                </Label>
+                <Label text="Finance Intelligence"
+                       style="-fx-font-size: 13px; -fx-font-weight: 600;
+                              -fx-text-fill: rgba(255,255,255,0.45);
+                              -fx-letter-spacing: 2px;">
+                    <VBox.margin><Insets top="-6" bottom="32" /></VBox.margin>
+                </Label>
+
+                <!-- Accent rule -->
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <VBox.margin><Insets bottom="28" /></VBox.margin>
+                    <Region prefHeight="2" prefWidth="36"
+                            style="-fx-background-color: #10B981; -fx-background-radius: 2;" />
+                    <Region prefHeight="2" prefWidth="18"
+                            style="-fx-background-color: rgba(16,185,129,0.40); -fx-background-radius: 2;" />
+                    <Region prefHeight="2" prefWidth="8"
+                            style="-fx-background-color: rgba(16,185,129,0.20); -fx-background-radius: 2;" />
+                </HBox>
+
+                <!-- Tagline -->
+                <Label text="Unified financial intelligence&#10;for modern enterprise teams."
+                       wrapText="true"
+                       style="-fx-font-size: 14px; -fx-line-spacing: 4;
+                              -fx-text-fill: rgba(255,255,255,0.45);">
+                    <VBox.margin><Insets bottom="36" /></VBox.margin>
+                </Label>
+
+                <!-- Live metric cards (values injected by controller) -->
+                <VBox spacing="10">
+                    <VBox.margin><Insets bottom="8" /></VBox.margin>
+                    <Label text="PLATFORM METRICS"
+                           style="-fx-font-size: 9px; -fx-font-weight: 700;
+                                  -fx-text-fill: rgba(255,255,255,0.22);
+                                  -fx-letter-spacing: 1.5px;" />
+
+                    <!-- Metric row 1 -->
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <StackPane prefWidth="6" prefHeight="6"
+                                   style="-fx-background-color: #10B981; -fx-background-radius: 3;" />
+                        <Label fx:id="lblMetric1"
+                               text="Loading…"
+                               style="-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.55);" />
+                    </HBox>
+                    <!-- Metric row 2 -->
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <StackPane prefWidth="6" prefHeight="6"
+                                   style="-fx-background-color: #2563EB; -fx-background-radius: 3;" />
+                        <Label fx:id="lblMetric2"
+                               text="Loading…"
+                               style="-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.55);" />
+                    </HBox>
+                    <!-- Metric row 3 -->
+                    <HBox alignment="CENTER_LEFT" spacing="12">
+                        <StackPane prefWidth="6" prefHeight="6"
+                                   style="-fx-background-color: #8B5CF6; -fx-background-radius: 3;" />
+                        <Label fx:id="lblMetric3"
+                               text="Loading…"
+                               style="-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.55);" />
+                    </HBox>
+                </VBox>
+
+                <!-- Push footer to bottom -->
+                <Region VBox.vgrow="ALWAYS" />
+
+                <!-- Security footer -->
+                <HBox alignment="CENTER_LEFT" spacing="8">
+                    <SVGPath content="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                             fill="TRANSPARENT" stroke="rgba(255,255,255,0.22)"
+                             strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                             strokeWidth="1.4" />
+                    <Label text="256-bit encrypted · Fully audited · SOC 2"
+                           style="-fx-font-size: 10px; -fx-text-fill: rgba(255,255,255,0.22);" />
+                </HBox>
+
+            </children>
         </VBox>
 
-        <!-- Role cards row -->
-        <HBox spacing="20" alignment="CENTER">
+        <!-- Thin vertical separator -->
+        <Region prefWidth="1" prefHeight="540"
+                style="-fx-background-color: rgba(255,255,255,0.08);" />
 
-            <!-- ── ADMIN CARD ── -->
-            <VBox
-                fx:id="adminCard"
-                alignment="CENTER"
-                spacing="12"
-                prefWidth="200" minHeight="200"
-                style="-fx-background-color: #1E2939;
-                       -fx-background-radius: 12;
-                       -fx-cursor: hand;"
-                onMouseClicked="#handleAdminCardClick"
-                onMouseEntered="#handleAdminCardHover"
-                onMouseExited="#handleAdminCardExit">
-                <padding><Insets top="28" right="24" bottom="28" left="24" /></padding>
+        <!-- ══ RIGHT: ROLE SELECTION ══════════════════════════════════════ -->
+        <VBox fx:id="rolePanel"
+              alignment="CENTER_LEFT"
+              HBox.hgrow="ALWAYS"
+              style="-fx-background-color: rgba(255,255,255,0.04);
+                     -fx-background-radius: 0 20 20 0;
+                     -fx-border-color: rgba(255,255,255,0.10) rgba(255,255,255,0.10) rgba(255,255,255,0.10) transparent;
+                     -fx-border-width: 1;
+                     -fx-border-radius: 0 20 20 0;">
+            <padding><Insets top="52" right="48" bottom="40" left="44" /></padding>
+            <children>
 
-                <!-- Shield icon wrapper -->
-                <StackPane
-                    prefWidth="52" prefHeight="52"
-                    style="-fx-background-color: rgba(255,255,255,0.15); -fx-background-radius: 999;">
-                    <VBox.margin><Insets bottom="4" /></VBox.margin>
-                    <SVGPath
-                        content="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4"
-                        fill="TRANSPARENT"
-                        stroke="WHITE"
-                        strokeLineCap="ROUND"
-                        strokeLineJoin="ROUND"
-                        strokeWidth="2" />
-                </StackPane>
+                <!-- Section header -->
+                <Label text="Access Portal"
+                       style="-fx-font-size: 21px; -fx-font-weight: 700; -fx-text-fill: white;">
+                    <font><Font name="System Bold" size="21" /></font>
+                </Label>
+                <Label text="Choose your role to authenticate"
+                       style="-fx-font-size: 12.5px; -fx-text-fill: rgba(255,255,255,0.38);">
+                    <VBox.margin><Insets top="4" bottom="36" /></VBox.margin>
+                </Label>
 
-                <Label text="Administrator"
-                       style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: white;" />
-                <Label text="Full system access"
-                       style="-fx-font-size: 12px; -fx-text-fill: rgba(255,255,255,0.65);"
-                       wrapText="true" />
-            </VBox>
+                <!-- ── ADMIN ROLE CARD ──────────────────────────────────── -->
+                <HBox fx:id="adminRow"
+                      alignment="CENTER_LEFT"
+                      spacing="18"
+                      prefHeight="90"
+                      onMouseClicked="#handleAdminCardClick"
+                      onMouseEntered="#handleAdminRowHover"
+                      onMouseExited="#handleAdminRowExit"
+                      style="-fx-background-color: rgba(16,185,129,0.08);
+                             -fx-background-radius: 14;
+                             -fx-border-color: rgba(16,185,129,0.20) rgba(16,185,129,0.20) rgba(16,185,129,0.20) #10B981;
+                             -fx-border-radius: 14;
+                             -fx-border-width: 1 1 1 3;
+                             -fx-cursor: hand;">
+                    <padding><Insets top="22" right="22" bottom="22" left="20" /></padding>
+                    <VBox.margin><Insets bottom="16" /></VBox.margin>
 
-            <!-- ── FINANCE USER CARD ── -->
-            <VBox
-                fx:id="userCard"
-                alignment="CENTER"
-                spacing="12"
-                prefWidth="200" minHeight="200"
-                style="-fx-background-color: #F3F4F6;
-                       -fx-background-radius: 12;
-                       -fx-cursor: hand;"
-                onMouseClicked="#handleUserCardClick"
-                onMouseEntered="#handleUserCardHover"
-                onMouseExited="#handleUserCardExit">
-                <padding><Insets top="28" right="24" bottom="28" left="24" /></padding>
+                    <!-- Icon container with glow -->
+                    <StackPane prefWidth="48" prefHeight="48" minWidth="48"
+                               style="-fx-background-color: rgba(16,185,129,0.16);
+                                      -fx-background-radius: 12;
+                                      -fx-effect: dropshadow(gaussian, rgba(16,185,129,0.30), 10, 0, 0, 0);">
+                        <SVGPath content="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4"
+                                 fill="TRANSPARENT" stroke="#10B981"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                                 strokeWidth="2.0" />
+                    </StackPane>
 
-                <!-- Person icon wrapper -->
-                <StackPane
-                    prefWidth="52" prefHeight="52"
-                    style="-fx-background-color: rgba(30,41,57,0.10); -fx-background-radius: 999;">
-                    <VBox.margin><Insets bottom="4" /></VBox.margin>
-                    <SVGPath
-                        content="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
-                        fill="TRANSPARENT"
-                        stroke="#1E2939"
-                        strokeLineCap="ROUND"
-                        strokeLineJoin="ROUND"
-                        strokeWidth="2" />
-                </StackPane>
+                    <!-- Text -->
+                    <VBox alignment="CENTER_LEFT" spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Administrator"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: white;">
+                            <font><Font name="System Bold" size="15" /></font>
+                        </Label>
+                        <Label text="Full system access · User management · All exports"
+                               style="-fx-font-size: 11.5px; -fx-text-fill: rgba(255,255,255,0.42);" />
+                    </VBox>
 
-                <Label text="Finance User"
-                       style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-                <Label text="Reports &amp; analytics"
-                       style="-fx-font-size: 12px; -fx-text-fill: #6B7280;"
-                       wrapText="true" />
-            </VBox>
+                    <!-- Badge + chevron -->
+                    <VBox alignment="CENTER_RIGHT" spacing="6">
+                        <Label text="ADMIN"
+                               style="-fx-background-color: rgba(16,185,129,0.20);
+                                      -fx-text-fill: #10B981;
+                                      -fx-font-size: 9px; -fx-font-weight: 700;
+                                      -fx-background-radius: 4; -fx-padding: 3 8 3 8;" />
+                        <SVGPath content="M9 18l6-6-6-6"
+                                 fill="TRANSPARENT" stroke="rgba(16,185,129,0.50)"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                                 strokeWidth="2.2" />
+                    </VBox>
+                </HBox>
 
-        </HBox>
+                <!-- ── FINANCE USER ROLE CARD ───────────────────────────── -->
+                <HBox fx:id="userRow"
+                      alignment="CENTER_LEFT"
+                      spacing="18"
+                      prefHeight="90"
+                      onMouseClicked="#handleUserCardClick"
+                      onMouseEntered="#handleUserRowHover"
+                      onMouseExited="#handleUserRowExit"
+                      style="-fx-background-color: rgba(37,99,235,0.07);
+                             -fx-background-radius: 14;
+                             -fx-border-color: rgba(37,99,235,0.20) rgba(37,99,235,0.20) rgba(37,99,235,0.20) #2563EB;
+                             -fx-border-radius: 14;
+                             -fx-border-width: 1 1 1 3;
+                             -fx-cursor: hand;">
+                    <padding><Insets top="22" right="22" bottom="22" left="20" /></padding>
 
-        <!-- Footer note -->
-        <Label
-            text="All access attempts are logged and monitored."
-            style="-fx-font-size: 11px; -fx-text-fill: #9CA3AF;"
-            alignment="CENTER">
-            <VBox.margin><Insets top="32" /></VBox.margin>
-        </Label>
+                    <!-- Icon container with glow -->
+                    <StackPane prefWidth="48" prefHeight="48" minWidth="48"
+                               style="-fx-background-color: rgba(37,99,235,0.16);
+                                      -fx-background-radius: 12;
+                                      -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.30), 10, 0, 0, 0);">
+                        <SVGPath content="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
+                                 fill="TRANSPARENT" stroke="#2563EB"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                                 strokeWidth="2.0" />
+                    </StackPane>
 
-    </VBox>
+                    <!-- Text -->
+                    <VBox alignment="CENTER_LEFT" spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Finance User"
+                               style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: white;">
+                            <font><Font name="System Bold" size="15" /></font>
+                        </Label>
+                        <Label text="Reports · Analytics · Invoices · Dashboards"
+                               style="-fx-font-size: 11.5px; -fx-text-fill: rgba(255,255,255,0.42);" />
+                    </VBox>
+
+                    <!-- Badge + chevron -->
+                    <VBox alignment="CENTER_RIGHT" spacing="6">
+                        <Label text="USER"
+                               style="-fx-background-color: rgba(37,99,235,0.20);
+                                      -fx-text-fill: #60A5FA;
+                                      -fx-font-size: 9px; -fx-font-weight: 700;
+                                      -fx-background-radius: 4; -fx-padding: 3 8 3 8;" />
+                        <SVGPath content="M9 18l6-6-6-6"
+                                 fill="TRANSPARENT" stroke="rgba(37,99,235,0.50)"
+                                 strokeLineCap="ROUND" strokeLineJoin="ROUND"
+                                 strokeWidth="2.2" />
+                    </VBox>
+                </HBox>
+
+                <!-- Bottom spacer -->
+                <Region VBox.vgrow="ALWAYS" />
+
+                <!-- Footer row -->
+                <HBox alignment="CENTER_LEFT" spacing="0">
+                    <Label text="v2.4.1 · "
+                           style="-fx-font-size: 10.5px; -fx-text-fill: rgba(255,255,255,0.18);" />
+                    <Label text="RAEZ Finance Portal"
+                           style="-fx-font-size: 10.5px; -fx-text-fill: rgba(255,255,255,0.18);" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <Label text="Need help?"
+                           style="-fx-font-size: 10.5px; -fx-text-fill: rgba(255,255,255,0.25); -fx-cursor: hand;" />
+                </HBox>
+
+            </children>
+        </VBox>
+    </HBox>
 
 </StackPane>
