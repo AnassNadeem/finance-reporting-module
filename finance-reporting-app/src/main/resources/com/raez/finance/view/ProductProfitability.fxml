@@ -6,6 +6,7 @@
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.chart.BarChart?>
@@ -211,26 +212,30 @@
                     <VBox spacing="2" HBox.hgrow="ALWAYS">
                         <Label text="Profitability by Category"
                                style="-fx-font-size: 15px; -fx-font-weight: 700; -fx-text-fill: #111827;" />
-                        <Label text="Revenue vs profit per product category"
+                        <Label text="Revenue vs profit — horizontal bars by category"
                                style="-fx-font-size: 12px; -fx-text-fill: #9CA3AF;" />
                     </VBox>
                     <!-- Legend indicators built dynamically in controller -->
                     <HBox fx:id="chartLegend" spacing="16" alignment="CENTER_RIGHT" />
                 </HBox>
 
-                <VBox style="-fx-padding: 16 24 16 24;">
+                <VBox fx:id="boxChartProfitability" style="-fx-padding: 16 24 16 24;">
+                    <!-- Horizontal bars: category on Y-axis, values on X-axis (avoids overlapping labels) -->
                     <BarChart fx:id="chartProfitability"
-                              prefHeight="320"
                               legendVisible="false"
-                              animated="true"
+                              animated="false"
+                              minHeight="200"
+                              prefHeight="320"
                               style="-fx-background-color: transparent;">
                         <xAxis>
-                            <CategoryAxis side="BOTTOM"
-                                          style="-fx-tick-label-fill: #6B7280; -fx-font-size: 12px;" />
+                            <NumberAxis side="BOTTOM"
+                                        label="Amount"
+                                        style="-fx-tick-label-fill: #6B7280; -fx-font-size: 11px;" />
                         </xAxis>
                         <yAxis>
-                            <NumberAxis side="LEFT"
-                                        style="-fx-tick-label-fill: #6B7280; -fx-font-size: 11px;" />
+                            <CategoryAxis side="LEFT"
+                                          gapStartAndEnd="true"
+                                          style="-fx-tick-label-fill: #6B7280; -fx-font-size: 11px;" />
                         </yAxis>
                     </BarChart>
                 </VBox>
@@ -288,12 +293,55 @@
                     </placeholder>
                 </TableView>
 
-                <HBox alignment="CENTER_LEFT"
+                <HBox alignment="CENTER_LEFT" spacing="0"
                       style="-fx-border-color: #E5E7EB transparent transparent transparent;
                              -fx-border-width: 1 0 0 0; -fx-padding: 12 24 12 24;
                              -fx-background-color: #FAFAFA; -fx-background-radius: 0 0 10 10;">
                     <Label fx:id="lblTableSummary" text=""
                            style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                    <Region HBox.hgrow="ALWAYS" />
+                    <HBox alignment="CENTER_RIGHT" spacing="10">
+                        <Label text="Rows per page:"
+                               style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                        <ComboBox fx:id="cmbProductRowsPerPage"
+                                  prefWidth="72" prefHeight="30"
+                                  onAction="#handleProductRowsPerPageChange"
+                                  style="-fx-font-size: 13px;">
+                            <items>
+                                <FXCollections fx:factory="observableArrayList">
+                                    <String fx:value="10" />
+                                    <String fx:value="20" />
+                                    <String fx:value="30" />
+                                    <String fx:value="40" />
+                                    <String fx:value="50" />
+                                </FXCollections>
+                            </items>
+                            <value><String fx:value="10" /></value>
+                        </ComboBox>
+                        <Label fx:id="lblProductPageInfo"
+                               text="Page 1 of 1"
+                               style="-fx-font-size: 12px; -fx-text-fill: #6B7280;" />
+                        <Button fx:id="btnProductPrevPage"
+                                onAction="#handleProductPrevPage"
+                                style="-fx-background-color: white;
+                                       -fx-border-color: #E5E7EB; -fx-border-radius: 6;
+                                       -fx-background-radius: 6; -fx-cursor: hand;
+                                       -fx-padding: 4 10 4 10;">
+                            <graphic>
+                                <Label text="‹" style="-fx-font-size: 15px; -fx-text-fill: #374151;" />
+                            </graphic>
+                        </Button>
+                        <Button fx:id="btnProductNextPage"
+                                onAction="#handleProductNextPage"
+                                style="-fx-background-color: white;
+                                       -fx-border-color: #E5E7EB; -fx-border-radius: 6;
+                                       -fx-background-radius: 6; -fx-cursor: hand;
+                                       -fx-padding: 4 10 4 10;">
+                            <graphic>
+                                <Label text="›" style="-fx-font-size: 15px; -fx-text-fill: #374151;" />
+                            </graphic>
+                        </Button>
+                    </HBox>
                 </HBox>
             </VBox>
 

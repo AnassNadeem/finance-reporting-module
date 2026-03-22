@@ -14,6 +14,8 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.chart.BarChart;
+import javafx.scene.chart.CategoryAxis;
+import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -27,7 +29,9 @@ import javafx.util.Duration;
 
 import java.io.File;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.concurrent.ExecutorService;
@@ -56,8 +60,13 @@ public class ProductProfitabilityController {
     @FXML private Label lblLowMarginSub;
     @FXML private Label lblProductCount;
     @FXML private Label lblTableSummary;
+    @FXML private ComboBox<String> cmbProductRowsPerPage;
+    @FXML private Label            lblProductPageInfo;
+    @FXML private Button           btnProductPrevPage;
+    @FXML private Button           btnProductNextPage;
 
-    @FXML private BarChart<String, Number> chartProfitability;
+    @FXML private VBox                      boxChartProfitability;
+    @FXML private BarChart<Number, String> chartProfitability;
     @FXML private HBox chartLegend;
 
     @FXML private TableView<ProductReportRow>           tblProducts;
@@ -83,6 +92,8 @@ public class ProductProfitabilityController {
     private final ProductDaoInterface productDao    = new ProductDao();
     private final ExecutorService     executor      = Executors.newSingleThreadExecutor();
     private final ObservableList<ProductReportRow> productItems = FXCollections.observableArrayList();
+    private final List<ProductReportRow> allProductsFiltered = new ArrayList<>();
+    private int productCurrentPage = 1;
     private MainLayoutController mainLayoutController;
 
     public void setMainLayoutController(MainLayoutController c) { this.mainLayoutController = c; }
@@ -105,6 +116,11 @@ public class ProductProfitabilityController {
 
         chartProfitability.getStyleClass().add("profitability-chart");
         buildChartLegend();
+        configureProfitabilityChart();
+
+        if (cmbProductRowsPerPage != null) {
+            cmbProductRowsPerPage.setValue("10");
+        }
 
         loadCategoryOptions();
         if (cmbDateRange != null) {
@@ -127,6 +143,44 @@ public class ProductProfitabilityController {
         if (dpProfitStart != null) dpProfitStart.valueProperty().addListener((o, a, b) -> loadData());
         if (dpProfitEnd != null) dpProfitEnd.valueProperty().addListener((o, a, b) -> loadData());
         cmbCategoryFilter.valueProperty().addListener((obs, o, n) -> loadData());
+    }
+
+    @FXML private void handleProductRowsPerPageChange(ActionEvent e) {
+        productCurrentPage = 1;
+        applyProductPageSlice();
+    }
+
+    @FXML private void handleProductPrevPage(ActionEvent e) {
+        if (productCurrentPage > 1) {
+            productCurrentPage--;
+            applyProductPageSlice();
+        }
+    }
+
+    @FXML private void handleProductNextPage(ActionEvent e) {
+        int ps = getProductPageSize();
+        int pages = Math.max(1, (int) Math.ceil((double) allProductsFiltered.size() / ps));
+        if (productCurrentPage < pages) {
+            productCurrentPage++;
+            applyProductPageSlice();
+        }
+    }
+
+    /** Horizontal bar chart: categories on Y-axis, values on X-axis. */
+    private void configureProfitabilityChart() {
+        if (chartProfitability == null) return;
+        chartProfitability.setAnimated(false);
+        if (chartProfitability.getYAxis() instanceof CategoryAxis cy) {
+            cy.setGapStartAndEnd(true);
+            cy.setTickLabelGap(6);
+            cy.setAnimated(false);
+        }
+        if (chartProfitability.getXAxis() instanceof NumberAxis nx) {
+            nx.setAnimated(false);
+            nx.setForceZeroInRange(true);
+            nx.setMinorTickVisible(false);
+            nx.setAutoRanging(true);
+        }
     }
 
     private LocalDate[] resolveProfitDateRange() {
@@ -242,7 +296,8 @@ public class ProductProfitabilityController {
     }
 
     private void loadData() {
-        String categoryFilter = cmbCategoryFilter.getValue();
+        productCurrentPage = 1;
+        String categoryFilter = cmbCategoryFilter != null ? cmbCategoryFilter.getValue() : null;
         final LocalDate[] range = resolveProfitDateRange();
 
         Task<Void> task = new Task<>() {
@@ -284,36 +339,19 @@ public class ProductProfitabilityController {
                 if (lblLowMarginSub != null)
                     lblLowMarginSub.setText("Below " + (int) LOW_MARGIN_THRESHOLD + "% threshold");
 
-                // Table
-                productItems.setAll(products);
+                // Table — full filtered list cached; visible rows paginated
+                allProductsFiltered.clear();
+                allProductsFiltered.addAll(products);
                 if (lblProductCount != null) lblProductCount.setText(products.size() + " products");
                 if (lblTableSummary != null)
                     lblTableSummary.setText(String.format(
                         "Total: %s revenue · %s profit",
                         CurrencyUtil.formatCurrency(totalRevenue),
                         CurrencyUtil.formatCurrency(totalProfit)));
-                setTableHeight(tblProducts, products.size());
+                applyProductPageSlice();
 
-                // Chart
-                chartProfitability.getData().clear();
-                XYChart.Series<String, Number> revSeries  = new XYChart.Series<>();
-                revSeries.setName("Revenue");
-                XYChart.Series<String, Number> profSeries = new XYChart.Series<>();
-                profSeries.setName("Profit");
-                for (ProductDao.CategoryRevenueProfit c : catData) {
-                    revSeries.getData().add(new XYChart.Data<>(c.category, c.revenue));
-                    profSeries.getData().add(new XYChart.Data<>(c.category, c.profit));
-                }
-                chartProfitability.getData().add(revSeries);
-                chartProfitability.getData().add(profSeries);
-
-                // Apply colours after nodes exist
-                javafx.application.Platform.runLater(() -> {
-                    chartProfitability.lookupAll(".default-color0.chart-bar")
-                        .forEach(n -> n.setStyle("-fx-bar-fill: #1E2939;"));
-                    chartProfitability.lookupAll(".default-color1.chart-bar")
-                        .forEach(n -> n.setStyle("-fx-bar-fill: #10B981;"));
-                });
+                // Horizontal bar chart — one row per category on Y-axis (no overlapping X labels)
+                buildCategoryProfitabilityChart(catData);
 
                 // Performers
                 List<ProductReportRow> high = products.stream()
@@ -332,6 +370,97 @@ public class ProductProfitabilityController {
             }
         };
         executor.execute(task);
+    }
+
+    /**
+     * Horizontal bars: category on Y-axis (readable for long names), value on X-axis.
+     * Categories are ordered with highest revenue toward the top of the chart.
+     */
+    private void buildCategoryProfitabilityChart(List<ProductDao.CategoryRevenueProfit> catData) {
+        if (chartProfitability == null) return;
+        chartProfitability.getData().clear();
+        if (catData == null || catData.isEmpty()) {
+            chartProfitability.setMinHeight(200);
+            chartProfitability.setPrefHeight(200);
+            return;
+        }
+
+        List<ProductDao.CategoryRevenueProfit> ordered = new ArrayList<>(catData);
+        // Query returns revenue DESC; axis lists first category at bottom — reverse so largest is at top
+        Collections.reverse(ordered);
+
+        XYChart.Series<Number, String> revSeries = new XYChart.Series<>();
+        revSeries.setName("Revenue");
+        XYChart.Series<Number, String> profSeries = new XYChart.Series<>();
+        profSeries.setName("Profit");
+        for (ProductDao.CategoryRevenueProfit c : ordered) {
+            String catLabel = categoryAxisLabel(c.category);
+            revSeries.getData().add(new XYChart.Data<>(c.revenue, catLabel));
+            profSeries.getData().add(new XYChart.Data<>(c.profit, catLabel));
+        }
+        chartProfitability.getData().add(revSeries);
+        chartProfitability.getData().add(profSeries);
+
+        double rowH = 46.0;
+        double chartH = Math.max(220, 80 + ordered.size() * rowH);
+        chartProfitability.setMinHeight(chartH);
+        chartProfitability.setPrefHeight(chartH);
+
+        javafx.application.Platform.runLater(() -> {
+            configureProfitabilityChart();
+            chartProfitability.lookupAll(".default-color0.chart-bar")
+                .forEach(n -> n.setStyle("-fx-bar-fill: #1E2939;"));
+            chartProfitability.lookupAll(".default-color1.chart-bar")
+                .forEach(n -> n.setStyle("-fx-bar-fill: #10B981;"));
+            chartProfitability.requestLayout();
+        });
+    }
+
+    private static String categoryAxisLabel(String raw) {
+        if (raw == null || raw.isBlank()) return "Uncategorized";
+        return raw.trim();
+    }
+
+    private void applyProductPageSlice() {
+        int ps = getProductPageSize();
+        int total = allProductsFiltered.size();
+        int pages = Math.max(1, (int) Math.ceil((double) total / Math.max(1, ps)));
+        if (productCurrentPage > pages) productCurrentPage = pages;
+        if (productCurrentPage < 1) productCurrentPage = 1;
+        int from = (productCurrentPage - 1) * ps;
+        if (from >= total || total == 0) {
+            productItems.setAll(List.of());
+        } else {
+            int to = Math.min(from + ps, total);
+            productItems.setAll(allProductsFiltered.subList(from, to));
+        }
+        updateProductPaginationUi();
+        setProductTableHeight();
+    }
+
+    private void updateProductPaginationUi() {
+        int ps = getProductPageSize();
+        int total = allProductsFiltered.size();
+        int pages = Math.max(1, (int) Math.ceil((double) total / Math.max(1, ps)));
+        if (lblProductPageInfo != null)
+            lblProductPageInfo.setText("Page " + productCurrentPage + " of " + pages);
+        if (btnProductPrevPage != null) btnProductPrevPage.setDisable(productCurrentPage <= 1);
+        if (btnProductNextPage != null)
+            btnProductNextPage.setDisable(productCurrentPage >= pages || total == 0);
+    }
+
+    private int getProductPageSize() {
+        String v = cmbProductRowsPerPage != null ? cmbProductRowsPerPage.getValue() : "10";
+        try { return Integer.parseInt(v != null ? v.trim() : "10"); }
+        catch (NumberFormatException e) { return 10; }
+    }
+
+    private void setProductTableHeight() {
+        if (tblProducts == null) return;
+        int rows = Math.max(productItems.size(), 1);
+        double h = 38 + rows * 44.0;
+        tblProducts.setPrefHeight(h);
+        tblProducts.setMinHeight(h);
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -353,9 +482,12 @@ public class ProductProfitabilityController {
         File file = fc.showSaveDialog(window);
         if (file == null) return;
         try {
-            List<String[]> data = buildExportData();
-            if ("csv".equals(format)) ExportService.exportRowsToCSV(data, file);
-            else                       ExportService.exportRowsToPDF("Product Profitability Report", data, file);
+            if ("csv".equals(format)) {
+                ExportService.exportRowsToCSV(buildExportData(), file);
+            } else {
+                ExportService.exportMergedReport("Product Profitability Report",
+                    buildMergedProductProfitabilityExportData(), file);
+            }
             toast("success", format.toUpperCase() + " exported: " + file.getName());
         } catch (Exception ex) {
             toast("error", "Export failed: " +
@@ -373,7 +505,7 @@ public class ProductProfitabilityController {
         rows.add(new String[]{
             "Product", "Category", "Revenue", "Cost", "Profit", "Margin %", "Units Sold", "Trend"
         });
-        for (ProductReportRow p : productItems) {
+        for (ProductReportRow p : allProductsFiltered) {
             rows.add(new String[]{
                 p.getName(),
                 p.getCategory(),
@@ -386,6 +518,144 @@ public class ProductProfitabilityController {
             });
         }
         return rows;
+    }
+
+    /** Rich PDF aligned with on-screen KPIs, category bars, performer lists, and product table. */
+    private List<String[]> buildMergedProductProfitabilityExportData() throws Exception {
+        String categoryFilter = cmbCategoryFilter != null ? cmbCategoryFilter.getValue() : null;
+        LocalDate[] range = resolveProfitDateRange();
+        List<ProductReportRow> products =
+            productDao.findReportRows(range[0], range[1], categoryFilter, null);
+        List<ProductDao.CategoryRevenueProfit> raw =
+            productDao.findCategoryRevenueProfit(range[0], range[1]);
+        List<ProductDao.CategoryRevenueProfit> catData;
+        if (categoryFilter != null && !"All Categories".equalsIgnoreCase(categoryFilter.trim())) {
+            String cf = categoryFilter.trim();
+            catData = raw.stream()
+                .filter(c -> cf.equalsIgnoreCase(c.category))
+                .collect(Collectors.toList());
+        } else {
+            catData = raw;
+        }
+
+        double totalRevenue = products.stream().mapToDouble(ProductReportRow::getRevenue).sum();
+        double totalProfit = products.stream().mapToDouble(ProductReportRow::getProfit).sum();
+        double avgMargin = products.isEmpty() ? 0
+            : products.stream().mapToDouble(ProductReportRow::getMarginPercent).average().orElse(0);
+        long lowCount = products.stream()
+            .filter(p -> p.getMarginPercent() < LOW_MARGIN_THRESHOLD).count();
+
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"__COVER__",
+            "Product Profitability Report",
+            "Margins, categories, and rankings",
+            date});
+        rows.add(new String[]{"__SECTION__", "Key metrics", "Current filters"});
+        rows.add(new String[]{"__KPI__",
+            "Total Revenue", CurrencyUtil.formatCurrency(totalRevenue),
+            "Total Profit", CurrencyUtil.formatCurrency(totalProfit),
+            "Avg Margin", String.format("%.1f%%", avgMargin),
+            "Low margin count", String.valueOf(lowCount)});
+        rows.add(new String[]{"__KPI__",
+            "Products", String.valueOf(products.size()),
+            "Category", categoryFilter != null ? categoryFilter : "All",
+            "Period", formatProfitRangeLabel(range)});
+
+        if (!catData.isEmpty()) {
+            rows.add(new String[]{"__SECTION__", "Revenue by category", "Bar chart"});
+            List<String> revBar = new ArrayList<>();
+            revBar.add("__BARCHART__");
+            revBar.add("Revenue by category");
+            for (ProductDao.CategoryRevenueProfit c : catData) {
+                revBar.add(c.category);
+                revBar.add(String.valueOf(c.revenue));
+            }
+            rows.add(revBar.toArray(new String[0]));
+
+            rows.add(new String[]{"__SECTION__", "Profit by category", "Bar chart"});
+            List<String> profBar = new ArrayList<>();
+            profBar.add("__BARCHART__");
+            profBar.add("Profit by category");
+            for (ProductDao.CategoryRevenueProfit c : catData) {
+                profBar.add(c.category);
+                profBar.add(String.valueOf(c.profit));
+            }
+            rows.add(profBar.toArray(new String[0]));
+        }
+
+        List<ProductReportRow> high = products.stream()
+            .filter(p -> p.getMarginPercent() >= LOW_MARGIN_THRESHOLD).toList();
+        List<ProductReportRow> low = products.stream()
+            .filter(p -> p.getMarginPercent() < LOW_MARGIN_THRESHOLD && p.getRevenue() > 0).toList();
+
+        rows.add(new String[]{"__SECTION__",
+            "Strong margin (>= " + (int) LOW_MARGIN_THRESHOLD + "%)",
+            "Top performers"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Product", "Margin %", "Revenue", "Profit"});
+        if (high.isEmpty()) {
+            rows.add(new String[]{"None", "", "", ""});
+        } else {
+            for (ProductReportRow p : high) {
+                rows.add(new String[]{
+                    p.getName(),
+                    String.format("%.1f%%", p.getMarginPercent()),
+                    CurrencyUtil.formatCurrency(p.getRevenue()),
+                    CurrencyUtil.formatCurrency(p.getProfit())
+                });
+            }
+        }
+
+        rows.add(new String[]{"__SECTION__",
+            "Needs attention (below " + (int) LOW_MARGIN_THRESHOLD + "%)",
+            "Review these SKUs"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Product", "Margin %", "Revenue", "Profit"});
+        if (low.isEmpty()) {
+            rows.add(new String[]{"None", "", "", ""});
+        } else {
+            for (ProductReportRow p : low) {
+                rows.add(new String[]{
+                    p.getName(),
+                    String.format("%.1f%%", p.getMarginPercent()),
+                    CurrencyUtil.formatCurrency(p.getRevenue()),
+                    CurrencyUtil.formatCurrency(p.getProfit())
+                });
+            }
+        }
+
+        rows.add(new String[]{"__SECTION__", "All products", "Full listing"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Product", "Category", "Revenue", "Cost", "Profit", "Margin %", "Units", "Trend"});
+        for (ProductReportRow p : products) {
+            rows.add(new String[]{
+                p.getName(),
+                p.getCategory(),
+                CurrencyUtil.formatCurrency(p.getRevenue()),
+                CurrencyUtil.formatCurrency(p.getCost()),
+                CurrencyUtil.formatCurrency(p.getProfit()),
+                String.format("%.1f%%", p.getMarginPercent()),
+                String.valueOf(p.getUnitsSold()),
+                asciiTrendForExport(p)
+            });
+        }
+        return rows;
+    }
+
+    private static String formatProfitRangeLabel(LocalDate[] range) {
+        if (range[0] == null) return "All time";
+        return range[0].format(DateTimeFormatter.ISO_LOCAL_DATE)
+            + " to " + range[1].format(DateTimeFormatter.ISO_LOCAL_DATE);
+    }
+
+    private static String asciiTrendForExport(ProductReportRow p) {
+        String t = p.getTrend();
+        if (t == null) return "-";
+        String u = t.toLowerCase();
+        if (u.contains("up") || t.contains("+")) return "Up";
+        if (u.contains("down") || t.contains("-")) return "Down";
+        return "Flat";
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -456,12 +726,6 @@ public class ProductProfitabilityController {
         lbl.setText(value);
         FadeTransition ft = new FadeTransition(Duration.millis(400), lbl);
         ft.setFromValue(0); ft.setToValue(1); ft.play();
-    }
-
-    private void setTableHeight(TableView<?> t, int rows) {
-        if (t == null) return;
-        double h = 38 + Math.max(rows, 4) * 44.0;
-        t.setPrefHeight(h); t.setMinHeight(h);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
