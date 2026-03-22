@@ -79,9 +79,10 @@
                 <VBox styleClass="filter-card" HBox.hgrow="ALWAYS" spacing="12">
                     <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
                     <Label text="Monthly revenue vs next-step estimate" styleClass="title-label" />
-                    <LineChart fx:id="chartRevenue" legendVisible="true" prefHeight="320" maxWidth="Infinity">
-                        <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
-                        <yAxis><NumberAxis side="LEFT" /></yAxis>
+                    <LineChart fx:id="chartRevenue" legendVisible="true" animated="true" createSymbols="true"
+                               prefHeight="340" minHeight="280" maxWidth="Infinity">
+                        <xAxis><CategoryAxis side="BOTTOM" gapStartAndEnd="true" /></xAxis>
+                        <yAxis><NumberAxis side="LEFT" forceZeroInRange="true" /></yAxis>
                     </LineChart>
                 </VBox>
                 <VBox styleClass="filter-card" prefWidth="380" spacing="12">
@@ -97,9 +98,10 @@
             <VBox styleClass="filter-card" spacing="12">
                 <padding><Insets top="16" right="16" bottom="16" left="16" /></padding>
                 <Label text="First-order acquisition by month (proxy)" styleClass="title-label" />
-                <LineChart fx:id="chartAcquisition" legendVisible="false" prefHeight="280" maxWidth="Infinity">
-                    <xAxis><CategoryAxis side="BOTTOM" /></xAxis>
-                    <yAxis><NumberAxis side="LEFT" /></yAxis>
+                <LineChart fx:id="chartAcquisition" legendVisible="false" animated="true" createSymbols="true"
+                           prefHeight="300" minHeight="260" maxWidth="Infinity">
+                    <xAxis><CategoryAxis side="BOTTOM" gapStartAndEnd="true" /></xAxis>
+                    <yAxis><NumberAxis side="LEFT" forceZeroInRange="true" /></yAxis>
                 </LineChart>
             </VBox>
 
