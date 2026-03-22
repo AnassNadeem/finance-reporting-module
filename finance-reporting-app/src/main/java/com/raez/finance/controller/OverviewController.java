@@ -865,12 +865,110 @@ public class OverviewController {
         File file = pickFile("dashboard_summary.pdf", "PDF Files", "*.pdf");
         if (file == null) return;
         try {
-            // Use the standard exportRowsToPDF - exportRowsToPDFProfessional may not exist
-            ExportService.exportRowsToPDF("Dashboard Summary", buildExportData(), file);
+            ExportService.exportMergedReport("Dashboard Summary", buildMergedDashboardExportData(), file);
             toast("success", "PDF exported: " + file.getName());
         } catch (Exception e) {
             toast("error", "Export failed: " + e.getMessage());
         }
+    }
+
+    /** Rich PDF: same scope as the dashboard (KPIs, sales trend, category mix, top products, metric table). */
+    private List<String[]> buildMergedDashboardExportData() throws Exception {
+        LocalDate[] range = resolveDateRange();
+        LocalDate from = range[0];
+        LocalDate to = range[1];
+        String category = cmbCategory != null && cmbCategory.getValue() != null
+            ? cmbCategory.getValue() : "All Categories";
+
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+
+        double totalSales = dashboardService.getTotalSales(from, to, category);
+        double totalProfit = dashboardService.getTotalProfit(from, to, category);
+        double outstanding = dashboardService.getOutstandingPayments(from, to, category);
+        double vatCollected = dashboardService.getTotalVatCollected(from, to, category);
+        double refunds = dashboardService.getRefunds(from, to, category);
+        int customers = dashboardService.getTotalCustomers();
+        int orders = dashboardService.getTotalOrders(from, to, category);
+        double aov = dashboardService.getAverageOrderValue(from, to, category);
+        String popular = dashboardService.getMostPopularProductName(from, to, category);
+
+        List<DashboardService.DataPoint<String, Number>> timeSeries =
+            dashboardService.getSalesTimeSeries(from, to, category);
+        List<DashboardService.DataPoint<String, Number>> categoryRevenue =
+            dashboardService.getCategoryRevenue(from, to, category);
+        List<DashboardService.TopProductRow> topProducts =
+            dashboardService.getTopProductsByQuantity(from, to, category, 10);
+
+        List<String[]> rows = new ArrayList<>();
+        rows.add(new String[]{"__COVER__",
+            "Dashboard Summary",
+            "KPIs, trends, category mix, and top products",
+            date});
+
+        rows.add(new String[]{"__SECTION__",
+            "Key metrics",
+            "Date range and filters match the dashboard"});
+        rows.add(new String[]{"__KPI__",
+            "Total Sales", CurrencyUtil.formatCurrency(totalSales),
+            "Net Profit", CurrencyUtil.formatCurrency(totalProfit),
+            "Outstanding", CurrencyUtil.formatCurrency(outstanding),
+            "VAT Collected", CurrencyUtil.formatCurrency(vatCollected)});
+        rows.add(new String[]{"__KPI__",
+            "Refunds", CurrencyUtil.formatCurrency(refunds),
+            "Orders", String.valueOf(orders),
+            "Customers", String.valueOf(customers),
+            "Avg Order", CurrencyUtil.formatCurrency(aov)});
+
+        List<String> salesBar = new ArrayList<>();
+        salesBar.add("__BARCHART__");
+        salesBar.add("Sales trend");
+        for (DashboardService.DataPoint<String, Number> dp : timeSeries) {
+            salesBar.add(dp.x);
+            salesBar.add(String.valueOf(dp.y.doubleValue()));
+        }
+        rows.add(salesBar.toArray(new String[0]));
+
+        rows.add(new String[]{"__SECTION__",
+            "Revenue by category",
+            "Share by category (selected filters)"});
+        List<String> catBar = new ArrayList<>();
+        catBar.add("__BARCHART__");
+        catBar.add("Category revenue");
+        for (DashboardService.DataPoint<String, Number> dp : categoryRevenue) {
+            catBar.add(dp.x);
+            catBar.add(String.valueOf(dp.y.doubleValue()));
+        }
+        rows.add(catBar.toArray(new String[0]));
+
+        rows.add(new String[]{"__SECTION__",
+            "Top products",
+            "By units sold"});
+        rows.add(new String[]{"__TABLEHEADER__",
+            "Rank", "Product", "Qty sold", "Revenue"});
+        for (DashboardService.TopProductRow p : topProducts) {
+            rows.add(new String[]{
+                String.valueOf(p.rank),
+                p.name,
+                String.valueOf(p.quantitySold),
+                CurrencyUtil.formatCurrency(p.revenue)
+            });
+        }
+
+        rows.add(new String[]{"__SECTION__",
+            "Metric snapshot",
+            "Same figures as dashboard cards"});
+        rows.add(new String[]{"__TABLEHEADER__", "Metric", "Value"});
+        rows.add(new String[]{"Total Sales", CurrencyUtil.formatCurrency(totalSales)});
+        rows.add(new String[]{"Net Income / Profit", CurrencyUtil.formatCurrency(totalProfit)});
+        rows.add(new String[]{"Outstanding Payments", CurrencyUtil.formatCurrency(outstanding)});
+        rows.add(new String[]{"VAT Collected", CurrencyUtil.formatCurrency(vatCollected)});
+        rows.add(new String[]{"Refunds / Returns", CurrencyUtil.formatCurrency(refunds)});
+        rows.add(new String[]{"Total Customers", String.valueOf(customers)});
+        rows.add(new String[]{"Total Orders", String.valueOf(orders)});
+        rows.add(new String[]{"Avg Order Value", CurrencyUtil.formatCurrency(aov)});
+        rows.add(new String[]{"Most Popular Product", popular != null ? popular : "-"});
+
+        return rows;
     }
 
     private List<String[]> buildExportData() {

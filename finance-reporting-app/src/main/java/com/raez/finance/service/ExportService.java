@@ -96,12 +96,18 @@ public class ExportService {
         }
     }
 
-    /** Export raw rows to a professional single-section PDF. */
+    /** Export raw rows to PDF using the same branded layout as Full Report (cover + section + table). */
     public static void exportRowsToPDF(String title, List<String[]> data, File file) throws Exception {
-        exportRowsToPDFProfessional(title, null, data, file);
+        exportRowsToPDF(title, "RAEZ Finance report export", data, file);
     }
 
-    /** Export TableView to PDF (generic). */
+    /** Same as {@link #exportRowsToPDF(String, List, File)} with a custom cover subtitle. */
+    public static void exportRowsToPDF(String title, String coverSubtitle, List<String[]> data, File file) throws Exception {
+        List<String[]> merged = flatTableToMergedReportRows(title, coverSubtitle, data);
+        exportMergedReport(title, merged, file);
+    }
+
+    /** Export TableView to PDF using merged report styling (cover + table). */
     public static void exportToPDF(TableView<?> table, String title, File file) throws Exception {
         List<String> headers = new ArrayList<>();
         for (TableColumn<?, ?> col : table.getColumns()) {
@@ -120,9 +126,8 @@ public class ExportService {
             }
             data.add(cells.toArray(new String[0]));
         }
-        List<String> summary = new ArrayList<>();
-        summary.add("Total rows: " + (data.size() - 1));
-        exportRowsToPDFProfessional(title != null ? title : "Report", summary, data, file);
+        String sub = "Total rows: " + (Math.max(0, data.size() - 1));
+        exportRowsToPDF(title != null ? title : "Report", sub, data, file);
     }
 
     // =====================================================================
@@ -636,8 +641,10 @@ public class ExportService {
 
     private static String trimForPdf(String s, int maxLen) {
         if (s == null) return "";
+        s = sanitizePdfText(s);
         s = s.replaceAll("[\\x00-\\x1f]", " ").trim();
-        return s.length() > maxLen ? s.substring(0, maxLen - 1) + "…" : s;
+        if (s.length() > maxLen) s = s.substring(0, maxLen - 1) + "...";
+        return s;
     }
 
     private static String formatBarValue(double val) {
@@ -659,141 +666,72 @@ public class ExportService {
     }
 
     // =====================================================================
-    //  PROFESSIONAL SINGLE-SECTION PDF  (unchanged, used by exportRowsToPDF)
+    //  Flat table → merged PDF (cover + optional summary + table)
     // =====================================================================
 
+    private static List<String[]> flatTableToMergedReportRows(String title, String coverSubtitle, List<String[]> data) {
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        List<String[]> merged = new ArrayList<>();
+        merged.add(new String[]{"__COVER__",
+                title != null ? title : "Report",
+                coverSubtitle != null ? coverSubtitle : "RAEZ Finance",
+                date});
+        merged.add(new String[]{"__SECTION__", "Report data", ""});
+        if (data == null || data.isEmpty()) return merged;
+        String[] header = data.get(0);
+        String[] th = new String[header.length + 1];
+        th[0] = "__TABLEHEADER__";
+        System.arraycopy(header, 0, th, 1, header.length);
+        merged.add(th);
+        for (int i = 1; i < data.size(); i++) merged.add(data.get(i));
+        return merged;
+    }
+
+    /**
+     * Legacy helper: builds merged-layout PDF (cover + optional summary lines + table).
+     * Prefer {@link #exportRowsToPDF(String, List, File)} for simple tables.
+     */
     public static void exportRowsToPDFProfessional(String reportTitle,
             List<String> summaryLines,
             List<String[]> data, File file) throws Exception {
+        if (reportTitle == null) reportTitle = "Report";
+        if (summaryLines == null) summaryLines = new ArrayList<>();
+        if (data == null) data = new ArrayList<>();
 
-        GlobalSettingsService gs = GlobalSettingsService.getInstance();
-        String companyName    = gs.getCompanyName()    != null ? gs.getCompanyName()    : "";
-        String companyAddress = gs.getCompanyAddress() != null ? gs.getCompanyAddress() : "";
-        String vatRateText    = String.format("VAT rate applied: %s%%",
-                                String.valueOf((int) Math.round(gs.getDefaultVatPercent())));
-        String generatedDate  = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
-        if (reportTitle   == null) reportTitle   = "Report";
-        if (summaryLines  == null) summaryLines  = new ArrayList<>();
-        if (data          == null) data          = new ArrayList<>();
-
-        int   cols       = data.isEmpty() ? 1 : data.get(0).length;
-        float margin     = 50f;
-        float pageHeight = PDRectangle.A4.getHeight();
-        float pageWidth  = PDRectangle.A4.getWidth();
-        float rowHeight  = 18f;
-        float footerH    = 28f;
-        float bottomY    = margin + footerH + rowHeight;
-        float colWidth   = (pageWidth - 2 * margin) / Math.max(1, cols);
-        PDType1Font font     = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
-        PDType1Font fontBold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-        float leading = 14f;
-
-        try (PDDocument doc = new PDDocument()) {
-            PDPage page = new PDPage(PDRectangle.A4);
-            doc.addPage(page);
-            PDPageContentStream cs = new PDPageContentStream(doc, page);
-            float y = pageHeight - margin;
-
-            cs.beginText(); cs.setFont(fontBold, 16); cs.newLineAtOffset(margin, y);
-            cs.showText(trimForPdf(companyName.isEmpty() ? "Company" : companyName, 60));
-            cs.endText(); y -= leading;
-            if (!companyAddress.isEmpty()) {
-                cs.beginText(); cs.setFont(font, 10); cs.newLineAtOffset(margin, y);
-                cs.showText(trimForPdf(companyAddress, 70));
-                cs.endText(); y -= leading;
+        String date = LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+        List<String[]> merged = new ArrayList<>();
+        merged.add(new String[]{"__COVER__", reportTitle, "RAEZ Finance", date});
+        if (!summaryLines.isEmpty()) {
+            merged.add(new String[]{"__SECTION__", "Executive summary", ""});
+            merged.add(new String[]{"__TABLEHEADER__", "Detail"});
+            for (String line : summaryLines) {
+                merged.add(new String[]{ line != null ? line : "" });
             }
-            cs.beginText(); cs.setFont(font, 9);
-            cs.setNonStrokingColor(0.4f, 0.4f, 0.4f);
-            cs.newLineAtOffset(margin, y);
-            cs.showText("Generated: " + generatedDate);
-            cs.endText(); cs.setNonStrokingColor(0f, 0f, 0f); y -= leading * 2;
-
-            cs.beginText(); cs.setFont(fontBold, 14); cs.newLineAtOffset(margin, y);
-            cs.showText(trimForPdf(reportTitle, 80));
-            cs.endText(); y -= leading * 1.5f;
-
-            if (!summaryLines.isEmpty()) {
-                cs.beginText(); cs.setFont(fontBold, 10); cs.newLineAtOffset(margin, y);
-                cs.showText("Executive Summary");
-                cs.endText(); y -= leading;
-                for (String line : summaryLines) {
-                    if (y < bottomY) break;
-                    cs.beginText(); cs.setFont(font, 9); cs.newLineAtOffset(margin, y);
-                    cs.showText(trimForPdf(line, 90));
-                    cs.endText(); y -= leading * 0.9f;
-                }
-                y -= leading * 0.5f;
-            }
-
-            int currentPage = 1;
-            String[] headerRow = data.isEmpty() ? new String[0] : data.get(0);
-
-            for (int r = 0; r < data.size(); r++) {
-                if (y < bottomY) {
-                    drawFooter(cs, pageWidth, pageHeight, margin, currentPage, vatRateText, font);
-                    cs.close();
-                    page = new PDPage(PDRectangle.A4);
-                    doc.addPage(page);
-                    currentPage++;
-                    cs = new PDPageContentStream(doc, page);
-                    y  = pageHeight - margin;
-                    if (headerRow.length > 0 && r > 0) {
-                        float rowY = y - rowHeight;
-                        cs.setNonStrokingColor(0.9f, 0.9f, 0.9f);
-                        cs.addRect(margin, rowY, pageWidth - 2 * margin, rowHeight);
-                        cs.fill(); cs.setNonStrokingColor(0f, 0f, 0f);
-                        drawPdfRowCells(cs, fontBold, font, headerRow, margin, y, rowHeight, colWidth, true);
-                        y -= rowHeight;
-                    }
-                }
-                String[] rowData  = data.get(r);
-                boolean  isHeader = (r == 0);
-                float    rowY     = y - rowHeight;
-
-                if (isHeader) {
-                    cs.setNonStrokingColor(0.9f, 0.9f, 0.9f);
-                    cs.addRect(margin, rowY, pageWidth - 2 * margin, rowHeight);
-                    cs.fill(); cs.setNonStrokingColor(0f, 0f, 0f);
-                } else if ((r - 1) % 2 == 1) {
-                    cs.setNonStrokingColor(0.97f, 0.97f, 0.97f);
-                    cs.addRect(margin, rowY, pageWidth - 2 * margin, rowHeight);
-                    cs.fill(); cs.setNonStrokingColor(0f, 0f, 0f);
-                }
-                drawPdfRowCells(cs, fontBold, font, rowData, margin, y, rowHeight, colWidth, isHeader);
-                y -= rowHeight;
-            }
-            drawFooter(cs, pageWidth, pageHeight, margin, currentPage, vatRateText, font);
-            cs.close();
-            doc.save(file);
         }
+        merged.add(new String[]{"__SECTION__", "Report data", ""});
+        if (!data.isEmpty()) {
+            String[] first = data.get(0);
+            String[] th = new String[first.length + 1];
+            th[0] = "__TABLEHEADER__";
+            System.arraycopy(first, 0, th, 1, first.length);
+            merged.add(th);
+            for (int i = 1; i < data.size(); i++) merged.add(data.get(i));
+        }
+        exportMergedReport(reportTitle, merged, file);
     }
 
-    private static void drawPdfRowCells(PDPageContentStream cs,
-            PDType1Font fontBold, PDType1Font font,
-            String[] rowData, float margin, float y, float rowHeight,
-            float colWidth, boolean isHeader) throws Exception {
-        if (rowData == null) return;
-        PDType1Font f  = isHeader ? fontBold : font;
-        int         fs = isHeader ? 10 : 9;
-        float       ty = y - 4;
-        for (int c = 0; c < rowData.length; c++) {
-            String cell = c < rowData.length ? trimForPdf(rowData[c], 28) : "";
-            cs.beginText(); cs.setFont(f, fs);
-            cs.newLineAtOffset(margin + 2 + c * colWidth, ty);
-            cs.showText(cell); cs.endText();
-        }
-    }
-
-    private static void drawFooter(PDPageContentStream cs,
-            float pageWidth, float pageHeight, float margin,
-            int pageNum, String vatRateText, PDType1Font font) throws Exception {
-        float y = margin + 12;
-        cs.beginText(); cs.setFont(font, 8);
-        cs.setNonStrokingColor(0.4f, 0.4f, 0.4f);
-        cs.newLineAtOffset(margin, y);
-        cs.showText(vatRateText); cs.endText();
-        cs.beginText(); cs.newLineAtOffset(pageWidth - margin - 36, y);
-        cs.showText("Page " + pageNum); cs.endText();
-        cs.setNonStrokingColor(0f, 0f, 0f);
+    /** WinAnsi / PDF Type1 fonts cannot render many Unicode glyphs; strip/replace before drawing. */
+    static String sanitizePdfText(String s) {
+        if (s == null) return "";
+        return s
+                .replace('\u00A0', ' ')
+                .replace("≥", ">=")
+                .replace("≤", "<=")
+                .replace("—", "-")
+                .replace("–", "-")
+                .replace("\u201C", "\"")
+                .replace("\u201D", "\"")
+                .replace("\u2022", "*")
+                .replace("\u20AC", "EUR ");
     }
 }
